@@ -135,9 +135,9 @@ export function LeadView({ leadovi, tabelaFali, demo }: { leadovi: LeadRow[]; ta
 
         {/* Filteri: tag pilovi kao na sajtu; na desktopu pretraga stoji desno u istom redu */}
         <div className="lg:mb-5 lg:flex lg:items-center lg:justify-between lg:gap-6">
-        <div className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:m-0 lg:flex-wrap lg:p-0">
+        <div className="mb-3 flex flex-wrap gap-2 lg:m-0">
           {tabovi.map((t) => (
-            <button key={t.v} onClick={() => setView(t.v)} className={`tag tag-filter shrink-0 ${view === t.v ? "tag-accent" : ""}`}>
+            <button key={t.v} onClick={() => setView(t.v)} className={`tag tag-filter ${view === t.v ? "tag-accent" : ""}`}>
               {t.l}
               <span className={`rounded-full px-1.5 text-[11px] leading-[18px] ${view === t.v ? "bg-white/15 text-white" : "bg-wash text-muted"}`}>{brojPo(t.v)}</span>
             </button>
