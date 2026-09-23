@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  /* Deko Pro brend: mornarsko plava (ink) + zlatna (flame) sa živog sajta */
+  --color-navy: #0B1E3B;
+  --color-navy-2: #16324f;
+  --color-gold: #D0B26A;
+  --color-gold-deep: #8A6A2F;
+
+  /* akcent = navy (primarne akcije, čitljivo belo na navy); zlatna je za istaknute detalje */
+  --color-akcent: #0B1E3B;
+  --color-akcent-light: #16324f;
+
+  --color-ink: #14203a;
+  --color-muted: #667085;
+  --color-line: #e6e9ef;
+  --color-bg: #f6f7f9;
+  --color-card: #ffffff;
+  --color-ok: #15a34a;
+  --color-warn: #d97706;
+  --color-danger: #dc2626;
+
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --font-display: var(--font-outfit), var(--font-inter), sans-serif;
+}
+
+:root { color-scheme: light; }
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+
+body {
+  background: var(--color-bg);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Naslovi — Outfit, uppercase, kao brend jezik sa sajta */
+.h-display {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  font-weight: 700;
+  color: var(--color-navy);
+}
+
+/* Fiksna skala naslova (namerno van @layer-a da pobedi utility klase) */
+h1 { font-size: 20px; line-height: 1.2; }
+h2 { font-size: 16px; line-height: 1.25; }
+h3 { font-size: 14px; line-height: 1.3; }
+h4 { font-size: 12px; line-height: 1.35; }
+h5 { font-size: 10px; line-height: 1.4; }
