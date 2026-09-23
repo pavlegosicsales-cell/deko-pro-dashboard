@@ -127,7 +127,7 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
             <Stat label="Stiglo danas" value={String(stigloDanas)} icon={<><path d="M12 5v14M5 12h14" /></>} />
             <Stat label="Stiglo juče" value={String(stigloJuce)} icon={<><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /></>} />
             <Stat label="Aktivni" value={String(uRedu)} icon={<><path d="M8 6h13M8 12h13M8 18h13" /><path d="M3 6h.01M3 12h.01M3 18h.01" /></>} />
-            <Stat label="Povratni poziv danas" value={String(dospeloDanas)} alarm={dospeloDanas > 0}
+            <Stat label="Povratni poziv danas" value={String(dospeloDanas)}
               icon={<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>} />
             <Stat label="Prodato" value={String(zatvoreno)} icon={<><path d="M20 6 9 17l-5-5" /></>} />
           </div>

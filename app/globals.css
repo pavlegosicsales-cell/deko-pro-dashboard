@@ -232,15 +232,17 @@ body {
   display: flex; align-items: center; gap: 10px;
   padding: 18px 14px;
   border-radius: 10px;
-  background: var(--color-ink); color: #fff;
+  background: transparent; color: #fff;
+  border: 1px solid rgba(255,255,255,.5);
   min-width: 0;
 }
-.stat:nth-child(2), .stat:nth-child(4) { background: var(--color-flame-deep); }
+/* Istaknute (akcent bronza): 1. Stiglo danas i 4. Povratni poziv danas */
+.stat:nth-child(1), .stat:nth-child(4) { background: var(--color-flame-deep); border-color: var(--color-flame-deep); }
 .stat { grid-column: span 2; }
 .stat:nth-child(4), .stat:nth-child(5) { grid-column: span 3; }
 @media (min-width: 1024px) { .stat, .stat:nth-child(4), .stat:nth-child(5) { grid-column: span 1; } }
-.stat-ico { width: 30px; height: 30px; flex: none; color: var(--color-accent-light); }
-.stat:nth-child(2) .stat-ico, .stat:nth-child(4) .stat-ico { color: rgba(255,255,255,.8); }
+.stat-ico { width: 30px; height: 30px; flex: none; color: rgba(255,255,255,.6); }
+.stat:nth-child(1) .stat-ico, .stat:nth-child(4) .stat-ico { color: rgba(255,255,255,.85); }
 .stat-ico svg { width: 100%; height: 100%; }
 .stat-num {
   font-family: var(--font-display);
