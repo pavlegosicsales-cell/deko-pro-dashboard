@@ -109,9 +109,6 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
               Interni panel
             </span>
             <h1 className="h2 lg:text-[34px]">Leadovi</h1>
-            <p className="max-w-md text-sm sm:text-[15px]">
-              Setter upisuje, vlasnik zove redom. Dospeli povratni pozivi su uvek na vrhu.
-            </p>
           </div>
 
           {/* Stat traka — navy / bronza / navy kao na sajtu */}
