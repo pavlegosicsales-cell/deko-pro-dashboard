@@ -2,7 +2,7 @@
 
 // Ishodi poziva (pipeline). Redosled = tok od novog leada do zatvaranja.
 export const STATUSI = [
-  { v: "nov", l: "Za poziv", boja: "#2563eb" },
+  { v: "nov", l: "Novi", boja: "#2563eb" },
   { v: "nije_se_javio", l: "Nije se javio", boja: "#d97706" },
   { v: "zvati_kasnije", l: "Zvati kasnije", boja: "#7c3aed" },
   { v: "zainteresovan", l: "Zainteresovan", boja: "#0891b2" },
