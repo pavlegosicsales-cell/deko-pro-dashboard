@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useMemo, useTransition, useOptimistic, useActionState, useEffect } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Sat } from "@/components/Sat";
+import { brojNaDan, danasKljuc, pomeriDan } from "@/lib/analitika";
 import { Card, Stat, ArrowIco, PlusIco, Logo } from "@/components/ui";
 import { Sidebar } from "@/components/Sidebar";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
@@ -14,6 +17,7 @@ export type LeadRow = {
   id: string; ime: string | null; prezime: string | null; telefon: string | null;
   proizvod: string | null; izvor: string | null; info: string | null; status: string;
   podseti_kad: string | null; ishod_beleska: string | null; created_at: string;
+  updated_at?: string | null; pozvan_kad?: string | null;
 };
 
 const danasIso = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Belgrade" });
@@ -39,8 +43,10 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
   );
   const [, start] = useTransition();
   const menjajStatus = (id: string, status: string) => {
-    if (demo) return setLokalni((a) => a.map((l) => (l.id === id ? { ...l, status } : l)));
-    start(() => { apply({ id, status }); promeniStatus(id, status); });
+    const sad = new Date().toISOString();
+    const izNov = opt.find((l) => l.id === id)?.status === "nov" && status !== "nov";
+    if (demo) return setLokalni((a) => a.map((l) => (l.id === id ? { ...l, status, ...(izNov ? { pozvan_kad: sad } : {}) } : l)));
+    start(() => { apply({ id, status }); promeniStatus(id, status, izNov); });
   };
   const menjajBelesku = (id: string, beleska: string) => {
     const b = beleska.trim() || null;
@@ -84,11 +90,13 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
   }, [opt, view, qq, danas]);
 
   const uRedu = opt.filter((l) => OTVORENI.has(l.status)).length;
+  const stigloDanas = brojNaDan(opt, danasKljuc());
+  const stigloJuce = brojNaDan(opt, pomeriDan(danasKljuc(), -1));
   const dospeloDanas = opt.filter((l) => jeDospeo(l, danas)).length;
   const zatvoreno = opt.filter((l) => l.status === "zatvoren").length;
 
   const brojPo = (v: string) => (v === "red" ? uRedu : v === "svi" ? opt.length : opt.filter((l) => l.status === v).length);
-  const tabovi = [{ v: "red", l: "Za zvanje" }, ...STATUSI.map((s) => ({ v: s.v, l: s.l })), { v: "svi", l: "Svi" }];
+  const tabovi = [{ v: "red", l: "Aktivni" }, ...STATUSI.map((s) => ({ v: s.v, l: s.l })), { v: "svi", l: "Svi" }];
 
   return (
     <div className="min-h-screen bg-wash lg:pl-64">
@@ -109,14 +117,17 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
               Interni panel
             </span>
             <h1 className="h2 lg:text-[34px]">Leadovi</h1>
+            <Sat className="text-sm text-white/70" />
           </div>
 
           {/* Stat traka — navy / bronza / navy kao na sajtu */}
-          <div className="rise mt-6 grid grid-cols-3 gap-2.5 sm:gap-4 lg:mt-0 lg:w-[560px] lg:shrink-0" style={{ animationDelay: ".12s" }}>
-            <Stat label="U redu" value={String(uRedu)} icon={<><path d="M8 6h13M8 12h13M8 18h13" /><path d="M3 6h.01M3 12h.01M3 18h.01" /></>} />
-            <Stat label="Dospelo danas" value={String(dospeloDanas)} alarm={dospeloDanas > 0}
+          <div className="rise mt-6 grid grid-cols-6 gap-2.5 sm:gap-3 lg:mt-0 lg:w-[760px] lg:shrink-0 lg:grid-cols-5" style={{ animationDelay: ".12s" }}>
+            <Stat label="Stiglo danas" value={String(stigloDanas)} icon={<><path d="M12 5v14M5 12h14" /></>} />
+            <Stat label="Stiglo juče" value={String(stigloJuce)} icon={<><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /></>} />
+            <Stat label="Aktivni" value={String(uRedu)} icon={<><path d="M8 6h13M8 12h13M8 18h13" /><path d="M3 6h.01M3 12h.01M3 18h.01" /></>} />
+            <Stat label="Povratni poziv danas" value={String(dospeloDanas)} alarm={dospeloDanas > 0}
               icon={<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>} />
-            <Stat label="Zatvoreno" value={String(zatvoreno)} icon={<><path d="M20 6 9 17l-5-5" /></>} />
+            <Stat label="Prodato" value={String(zatvoreno)} icon={<><path d="M20 6 9 17l-5-5" /></>} />
           </div>
           </div>
         </div>
@@ -205,6 +216,10 @@ function TopBar({ onDodaj, login }: { onDodaj: () => void; login?: boolean }) {
             </div>
           </div>
           <div className="flex items-center gap-1.5">
+            <Link href="/analitika" title="Analitika" aria-label="Analitika"
+              className="grid h-10 w-10 place-items-center rounded-full border border-white/10 text-white/80 transition-colors hover:bg-white/10 hover:text-white">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18M7 15l3-4 3 3 4-6" /></svg>
+            </Link>
             <button onClick={onDodaj} className="btn btn-sm btn-light hidden sm:inline-flex">Novi lead<PlusIco /></button>
             {login && <button onClick={odjava} title="Odjava" aria-label="Odjava"
               className="grid h-10 w-10 place-items-center rounded-full border border-white/10 text-white/80 transition-colors hover:bg-white/10 hover:text-white">
@@ -420,6 +435,7 @@ function LeadModal({ lead, onClose, akcija }: { lead?: LeadRow; onClose: () => v
         <form action={formAction} className="flex min-h-0 flex-1 flex-col">
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5">
             {lead && <input type="hidden" name="id" value={lead.id} />}
+            {lead && <input type="hidden" name="prethodni_status" value={lead.status} />}
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="Ime"><input name="ime" defaultValue={lead?.ime ?? ""} autoFocus className="inp" /></Field>

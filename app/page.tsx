@@ -1,5 +1,5 @@
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { LeadView, type LeadRow } from "@/components/LeadView";
+import { citajLeadove } from "@/lib/citajLeadove";
+import { LeadView } from "@/components/LeadView";
 import { DEMO_LEADOVI } from "@/lib/demo";
 import { JE_DEMO, TRAZI_LOGIN } from "@/lib/env";
 
@@ -12,13 +12,8 @@ const demo = JE_DEMO;
 export default async function Home() {
   if (demo) return <LeadView leadovi={DEMO_LEADOVI} tabelaFali={false} demo />;
 
-  const { data, error } = await supabaseAdmin
-    .from("leadovi")
-    .select("id, ime, prezime, telefon, proizvod, izvor, info, status, podseti_kad, ishod_beleska, created_at")
-    .order("created_at", { ascending: false });
-
-  const tabelaFali = !!error && /does not exist|schema cache|relation/i.test(error.message);
-  const leadovi = (data ?? []) as LeadRow[];
+  const { leadovi, error } = await citajLeadove();
+  const tabelaFali = !!error && /does not exist|schema cache|relation/i.test(error);
 
   return <LeadView leadovi={leadovi} tabelaFali={tabelaFali} login={TRAZI_LOGIN} />;
 }

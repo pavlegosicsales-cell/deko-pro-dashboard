@@ -1,12 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { Logo } from "@/components/ui";
 
 // Desktop sidebar kao na Mojsilov dashboardu: fiksan levo, navy, sadržaj ide
 // preko cele preostale širine. Na telefonu ga nema (tamo je pill nav).
-type Item = { label: string; icon: React.ReactNode; active?: boolean; uskoro?: boolean; badge?: number };
+type Item = { label: string; href: string; icon: React.ReactNode; uskoro?: boolean; badge?: number };
 
 const I = {
   leadovi: <><path d="M8 6h13M8 12h13M8 18h13" /><path d="M3 6h.01M3 12h.01M3 18h.01" /></>,
@@ -20,14 +21,15 @@ function Ico({ d }: { d: React.ReactNode }) {
   return <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{d}</svg>;
 }
 
-export function Sidebar({ uRedu, onDodaj, login }: { uRedu: number; onDodaj: () => void; login?: boolean }) {
+export function Sidebar({ uRedu, onDodaj, login }: { uRedu: number; onDodaj?: () => void; login?: boolean }) {
   const router = useRouter();
+  const pathname = usePathname();
   const odjava = async () => { await supabaseBrowser().auth.signOut(); router.replace("/login"); router.refresh(); };
 
   const stavke: Item[] = [
-    { label: "Leadovi", icon: I.leadovi, active: true, badge: uRedu },
-    { label: "Analitika", icon: I.analitika, uskoro: true },
-    { label: "Forma sa sajta", icon: I.forma, uskoro: true },
+    { label: "Leadovi", href: "/", icon: I.leadovi, badge: uRedu },
+    { label: "Analitika", href: "/analitika", icon: I.analitika },
+    { label: "Forma sa sajta", href: "#", icon: I.forma, uskoro: true },
   ];
 
   return (
@@ -41,25 +43,37 @@ export function Sidebar({ uRedu, onDodaj, login }: { uRedu: number; onDodaj: () 
       </div>
 
       <div className="px-4 pb-4">
-        <button onClick={onDodaj} className="btn btn-sm btn-gold btn-block">
-          Novi lead
-          <span className="btn-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg></span>
-        </button>
+        {onDodaj ? (
+          <button onClick={onDodaj} className="btn btn-sm btn-gold btn-block">
+            Novi lead
+            <span className="btn-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg></span>
+          </button>
+        ) : (
+          <Link href="/" className="btn btn-sm btn-gold btn-block">
+            Nazad na leadove
+            <span className="btn-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span>
+          </Link>
+        )}
       </div>
 
       <nav className="flex flex-col gap-1 px-3">
         <div className="micro px-3 pb-1 pt-2 text-[11px] text-white/45">Rad</div>
-        {stavke.map((it) => (
-          <button key={it.label} disabled={it.uskoro} title={it.uskoro ? "Uskoro" : undefined}
-            className={`flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-[14px] font-medium transition-colors ${it.active ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/5 hover:text-white"} ${it.uskoro ? "cursor-default opacity-50 hover:bg-transparent hover:text-white/70" : ""}`}>
-            <span className={it.active ? "text-gold" : ""}><Ico d={it.icon} /></span>
-            {it.label}
-            {it.badge != null && it.badge > 0 && (
-              <span className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gold px-1.5 text-[11px] font-bold text-navy">{it.badge}</span>
-            )}
-            {it.uskoro && <span className="ml-auto text-[10px] uppercase tracking-wider text-white/40">uskoro</span>}
-          </button>
-        ))}
+        {stavke.map((it) => {
+          const active = !it.uskoro && (it.href === "/" ? pathname === "/" : pathname.startsWith(it.href));
+          const cls = `flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-[14px] font-medium transition-colors ${active ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/5 hover:text-white"}`;
+          const inner = (
+            <>
+              <span className={active ? "text-gold" : ""}><Ico d={it.icon} /></span>
+              {it.label}
+              {it.badge != null && it.badge > 0 && (
+                <span className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gold px-1.5 text-[11px] font-bold text-navy">{it.badge}</span>
+              )}
+              {it.uskoro && <span className="ml-auto text-[10px] uppercase tracking-wider text-white/40">uskoro</span>}
+            </>
+          );
+          if (it.uskoro) return <span key={it.label} title="Uskoro" className={`${cls} cursor-default opacity-50 hover:bg-transparent hover:text-white/70`}>{inner}</span>;
+          return <Link key={it.label} href={it.href} className={cls}>{inner}</Link>;
+        })}
       </nav>
 
       <div className="mt-auto flex flex-col gap-1 border-t border-white/10 px-3 py-3">
