@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { jeDozvoljen } from "@/lib/auth";
+import { JE_DEMO, SUPABASE_URL, SUPABASE_ANON } from "@/lib/env";
 
 // Zaštita svih stranica: neulogovan (ili van allowliste) -> /login.
 // Javno ostaje samo /login i /api/lead (buduća forma sa sajta koja ubacuje lead).
@@ -8,11 +9,11 @@ export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   // Demo režim (Supabase još nije povezan): pusti sve, panel radi na probnim podacima.
-  if (/placeholder/.test(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "")) return response;
+  if (JE_DEMO) return response;
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    SUPABASE_URL,
+    SUPABASE_ANON,
     {
       cookies: {
         getAll() { return request.cookies.getAll(); },

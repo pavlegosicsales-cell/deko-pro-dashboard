@@ -1,12 +1,13 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { LeadView, type LeadRow } from "@/components/LeadView";
 import { DEMO_LEADOVI } from "@/lib/demo";
+import { JE_DEMO } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
 // Dok Supabase nije povezan (.env.local placeholder), panel prikazuje probne
 // leadove da se izgled i tok mogu videti; izmene se tada ne čuvaju.
-const demo = /placeholder/.test(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "");
+const demo = JE_DEMO;
 
 export default async function Home() {
   if (demo) return <LeadView leadovi={DEMO_LEADOVI} tabelaFali={false} demo />;

@@ -1,10 +1,11 @@
 "use client";
 
 import { createBrowserClient } from "@supabase/ssr";
+import { SUPABASE_URL, SUPABASE_ANON } from "@/lib/env";
 
 // Klijentski Supabase (za login/logout) — koristi javni anon ključ.
 export const supabaseBrowser = () =>
   createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    SUPABASE_URL,
+    SUPABASE_ANON
   );
