@@ -8,7 +8,7 @@ import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { STATUSI, OTVORENI, PROIZVODI, IZVORI, label } from "@/lib/opcije";
 import { telLink, smsLink, waLink, viberLink } from "@/lib/lead";
 import { pre } from "@/lib/format";
-import { dodajLead, izmeniLead, promeniStatus, obrisiLead, type LeadState } from "@/app/leadovi/actions";
+import { dodajLead, izmeniLead, promeniStatus, obrisiLead, promeniBelesku, type LeadState } from "@/app/leadovi/actions";
 
 export type LeadRow = {
   id: string; ime: string | null; prezime: string | null; telefon: string | null;
@@ -33,13 +33,19 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
 
   const [opt, apply] = useOptimistic(
     osnova,
-    (state: LeadRow[], a: { id: string; status?: string; del?: boolean }) =>
-      a.del ? state.filter((l) => l.id !== a.id) : state.map((l) => (l.id === a.id ? { ...l, status: a.status! } : l)),
+    (state: LeadRow[], a: { id: string; status?: string; beleska?: string | null; del?: boolean }) =>
+      a.del ? state.filter((l) => l.id !== a.id)
+        : state.map((l) => (l.id === a.id ? { ...l, ...(a.status !== undefined ? { status: a.status } : {}), ...(a.beleska !== undefined ? { ishod_beleska: a.beleska } : {}) } : l)),
   );
   const [, start] = useTransition();
   const menjajStatus = (id: string, status: string) => {
     if (demo) return setLokalni((a) => a.map((l) => (l.id === id ? { ...l, status } : l)));
     start(() => { apply({ id, status }); promeniStatus(id, status); });
+  };
+  const menjajBelesku = (id: string, beleska: string) => {
+    const b = beleska.trim() || null;
+    if (demo) return setLokalni((a) => a.map((l) => (l.id === id ? { ...l, ishod_beleska: b } : l)));
+    start(() => { apply({ id, beleska: b }); promeniBelesku(id, b); });
   };
   const obrisi = (id: string) => {
     if (demo) return setLokalni((a) => a.filter((l) => l.id !== id));
@@ -162,11 +168,11 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
           <>
             <div className="flex flex-col gap-3 lg:hidden">
               {filtrirani.map((l) => (
-                <LeadKartica key={l.id} l={l} danas={danas} onStatus={menjajStatus} onEdit={() => setIzmeni(l)} onDelete={() => obrisi(l.id)} />
+                <LeadKartica key={l.id} l={l} danas={danas} onStatus={menjajStatus} onBeleska={menjajBelesku} onEdit={() => setIzmeni(l)} onDelete={() => obrisi(l.id)} />
               ))}
             </div>
             <div className="hidden lg:block">
-              <LeadTabela leadovi={filtrirani} danas={danas} onStatus={menjajStatus} onEdit={setIzmeni} onDelete={obrisi} />
+              <LeadTabela leadovi={filtrirani} danas={danas} onStatus={menjajStatus} onBeleska={menjajBelesku} onEdit={setIzmeni} onDelete={obrisi} />
             </div>
           </>
         )}
@@ -215,7 +221,7 @@ function TopBar({ onDodaj, login }: { onDodaj: () => void; login?: boolean }) {
 }
 
 /* ---------------- Tabela (desktop) ---------------- */
-function LeadTabela({ leadovi, danas, onStatus, onEdit, onDelete }: { leadovi: LeadRow[]; danas: string; onStatus: (id: string, s: string) => void; onEdit: (l: LeadRow) => void; onDelete: (id: string) => void }) {
+function LeadTabela({ leadovi, danas, onStatus, onBeleska, onEdit, onDelete }: { leadovi: LeadRow[]; danas: string; onStatus: (id: string, s: string) => void; onBeleska: (id: string, b: string) => void; onEdit: (l: LeadRow) => void; onDelete: (id: string) => void }) {
   return (
     <Card className="overflow-hidden">
       <table className="w-full text-sm">
@@ -249,7 +255,7 @@ function LeadTabela({ leadovi, danas, onStatus, onEdit, onDelete }: { leadovi: L
                 <td className="px-4 py-3 whitespace-nowrap">{l.izvor ? <span className="tag tag-gold">{label(IZVORI, l.izvor)}</span> : <span className="text-muted">—</span>}</td>
                 <td className="max-w-[360px] px-4 py-3">
                   {l.info ? <p className="whitespace-pre-wrap text-[13px] leading-snug text-ink/85">{l.info}</p> : <span className="text-muted">—</span>}
-                  {l.ishod_beleska && <p className="mt-1 border-l-2 border-gold pl-2 text-xs text-muted">{l.ishod_beleska}</p>}
+                  <Beleska id={l.id} vrednost={l.ishod_beleska} onSave={onBeleska} mala />
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-xs text-muted">{pre(l.created_at)}</td>
                 <td className="px-4 py-3">
@@ -295,7 +301,7 @@ function MiniAkcija({ href, ima, title, icon, primarno, blank }: { href: string;
 }
 
 /* ---------------- Kartica leada ---------------- */
-function LeadKartica({ l, danas, onStatus, onEdit, onDelete }: { l: LeadRow; danas: string; onStatus: (id: string, s: string) => void; onEdit: () => void; onDelete: () => void }) {
+function LeadKartica({ l, danas, onStatus, onBeleska, onEdit, onDelete }: { l: LeadRow; danas: string; onStatus: (id: string, s: string) => void; onBeleska: (id: string, b: string) => void; onEdit: () => void; onDelete: () => void }) {
   const st = STATUSI.find((s) => s.v === l.status);
   const dospeo = jeDospeo(l, danas);
   const ima = !!l.telefon;
@@ -327,7 +333,6 @@ function LeadKartica({ l, danas, onStatus, onEdit, onDelete }: { l: LeadRow; dan
       </div>
 
       {l.info && <p className="mt-2.5 whitespace-pre-wrap text-sm text-ink/85">{l.info}</p>}
-      {l.ishod_beleska && <p className="mt-1.5 border-l-2 border-gold pl-2.5 text-xs text-muted">{l.ishod_beleska}</p>}
 
       {/* akcije komunikacije */}
       <div className="mt-3 grid grid-cols-4 gap-1.5">
@@ -349,7 +354,28 @@ function LeadKartica({ l, danas, onStatus, onEdit, onDelete }: { l: LeadRow; dan
           {STATUSI.map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
         </select>
       </div>
+      <Beleska id={l.id} vrednost={l.ishod_beleska} onSave={onBeleska} />
     </Card>
+  );
+}
+
+/* Beleška posle poziva: uvek vidljiva, čuva se kad se izađe iz polja (blur) ili na Enter. */
+function Beleska({ id, vrednost, onSave, mala }: { id: string; vrednost: string | null; onSave: (id: string, b: string) => void; mala?: boolean }) {
+  const [t, setT] = useState(vrednost ?? "");
+  const [zadnje, setZadnje] = useState(vrednost ?? "");
+  // ako se lead promeni spolja (revalidacija), povuci novu vrednost
+  if ((vrednost ?? "") !== zadnje) { setZadnje(vrednost ?? ""); setT(vrednost ?? ""); }
+  const sacuvaj = () => { if (t.trim() !== (vrednost ?? "").trim()) onSave(id, t); };
+  return (
+    <textarea
+      value={t}
+      onChange={(e) => setT(e.target.value)}
+      onBlur={sacuvaj}
+      onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); (e.target as HTMLTextAreaElement).blur(); } }}
+      rows={1}
+      placeholder="Beleška posle poziva…"
+      className={`inp field-sizing-content resize-none border-dashed bg-wash/60 text-[13px] leading-snug placeholder:text-muted/70 focus:bg-white ${mala ? "mt-1.5 min-h-[34px] px-2.5 py-1.5" : "mt-2.5 min-h-[40px] px-3 py-2"}`}
+    />
   );
 }
 

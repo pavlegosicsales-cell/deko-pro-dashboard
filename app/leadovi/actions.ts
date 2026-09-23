@@ -66,3 +66,9 @@ export async function obrisiLead(id: string): Promise<void> {
 
 const PORUKA_MIGRACIJA = "Baza još nije podešena — pokreni supabase/schema.sql u Supabase SQL editoru.";
 const jeTabelaFali = (msg?: string | null) => !!msg && /does not exist|schema cache|relation/i.test(msg);
+
+// Beleška posle poziva direktno sa kartice (čuva se na blur, bez otvaranja izmene).
+export async function promeniBelesku(id: string, beleska: string | null): Promise<void> {
+  await supabaseAdmin.from("leadovi").update({ ishod_beleska: beleska, updated_at: new Date().toISOString() }).eq("id", id);
+  revalidatePath("/");
+}
