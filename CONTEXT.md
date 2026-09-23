@@ -25,6 +25,8 @@ ih; **vlasnik** ih zove i beleži ishod. Optimizovano za **telefon**, optimisti�
   `.stat` traka (navy / bronza / navy), `.page-head` (navy + foto `public/hero-bg.jpg`
   + preliv), `.inp` polja 50px/r10. Telo teksta je **Noto Sans** (kao na sajtu), h3 Inter.
   Sve komponentne klase su u `@layer components` da Tailwind utility klase pobeđuju.
+- **Desktop = Mojsilov obrazac**: fiksni sidebar 256px (`components/Sidebar.tsx`), sadržaj
+  preko cele širine bez margina, leadovi kao tabela (`LeadTabela`). Telefon: pill nav + kartice.
 
 ## Stack
 Next 16.3.5 (App Router) + React 19 + TS + Tailwind v4 + Supabase (@supabase/ssr).

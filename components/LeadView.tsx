@@ -3,6 +3,7 @@
 import { useState, useMemo, useTransition, useOptimistic, useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Stat, ArrowIco, PlusIco, Logo } from "@/components/ui";
+import { Sidebar } from "@/components/Sidebar";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { STATUSI, OTVORENI, PROIZVODI, IZVORI, label } from "@/lib/opcije";
 import { telLink, smsLink, waLink, viberLink } from "@/lib/lead";
@@ -84,14 +85,15 @@ export function LeadView({ leadovi, tabelaFali, demo }: { leadovi: LeadRow[]; ta
   const tabovi = [{ v: "red", l: "Za zvanje" }, ...STATUSI.map((s) => ({ v: s.v, l: s.l })), { v: "svi", l: "Svi" }];
 
   return (
-    <div className="min-h-screen bg-wash">
+    <div className="min-h-screen bg-wash lg:pl-64">
       <TopBar onDodaj={() => setModal(true)} />
+      <Sidebar uRedu={uRedu} onDodaj={() => setModal(true)} />
 
       {/* Page head: navy + foto + preliv, kao naslovne trake unutrašnjih strana sajta */}
       <section className="page-head">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/hero-bg.jpg" alt="" aria-hidden />
-        <div className="mx-auto w-full max-w-3xl px-4 pb-6 pt-[calc(var(--nav-h)+28px)] sm:pt-[calc(var(--nav-h)+40px)] lg:max-w-6xl lg:px-6 lg:pb-8">
+        <div className="mx-auto w-full max-w-3xl px-4 pb-6 pt-[calc(var(--nav-h)+28px)] sm:pt-[calc(var(--nav-h)+40px)] lg:max-w-none lg:px-8 lg:pb-7 lg:pt-7">
           <div className="lg:flex lg:items-end lg:justify-between lg:gap-10">
           <div className="on-dark rise flex flex-col items-start gap-3">
             <span className="eyebrow">
@@ -100,7 +102,7 @@ export function LeadView({ leadovi, tabelaFali, demo }: { leadovi: LeadRow[]; ta
               </span>
               Interni panel
             </span>
-            <h1 className="h2">Leadovi</h1>
+            <h1 className="h2 lg:text-[34px]">Leadovi</h1>
             <p className="max-w-md text-sm sm:text-[15px]">
               Setter upisuje, vlasnik zove redom. Dospeli povratni pozivi su uvek na vrhu.
             </p>
@@ -117,7 +119,7 @@ export function LeadView({ leadovi, tabelaFali, demo }: { leadovi: LeadRow[]; ta
         </div>
       </section>
 
-      <main className="mx-auto w-full max-w-3xl px-4 py-5 sm:py-7 lg:max-w-6xl lg:px-6 lg:py-8">
+      <main className="mx-auto w-full max-w-3xl px-4 py-5 sm:py-7 lg:max-w-none lg:px-8 lg:py-6">
         {demo && (
           <div className="card mb-4 border-l-4 border-l-gold p-4 text-sm">
             <p className="h3 text-[15px]">Probni podaci</p>
@@ -157,11 +159,16 @@ export function LeadView({ leadovi, tabelaFali, demo }: { leadovi: LeadRow[]; ta
             )}
           </Card>
         ) : (
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
-            {filtrirani.map((l) => (
-              <LeadKartica key={l.id} l={l} danas={danas} onStatus={menjajStatus} onEdit={() => setIzmeni(l)} onDelete={() => obrisi(l.id)} />
-            ))}
-          </div>
+          <>
+            <div className="flex flex-col gap-3 lg:hidden">
+              {filtrirani.map((l) => (
+                <LeadKartica key={l.id} l={l} danas={danas} onStatus={menjajStatus} onEdit={() => setIzmeni(l)} onDelete={() => obrisi(l.id)} />
+              ))}
+            </div>
+            <div className="hidden lg:block">
+              <LeadTabela leadovi={filtrirani} danas={danas} onStatus={menjajStatus} onEdit={setIzmeni} onDelete={obrisi} />
+            </div>
+          </>
         )}
 
         <p className="mt-10 text-center text-xs text-muted">Deko Pro · dekorativni blok od 2015. · 062 253 140</p>
@@ -184,8 +191,8 @@ function TopBar({ onDodaj }: { onDodaj: () => void }) {
   const router = useRouter();
   const odjava = async () => { await supabaseBrowser().auth.signOut(); router.replace("/login"); router.refresh(); };
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-3 z-40 sm:top-5">
-      <div className="pointer-events-auto mx-auto w-full max-w-3xl px-3 sm:px-4 lg:max-w-6xl lg:px-6">
+    <header className="pointer-events-none fixed inset-x-0 top-3 z-40 sm:top-5 lg:hidden">
+      <div className="pointer-events-auto mx-auto w-full max-w-3xl px-3 sm:px-4">
         <div className="nav-bar">
           <div className="flex min-w-0 items-center gap-2.5">
             <Logo size={40} />
@@ -205,6 +212,86 @@ function TopBar({ onDodaj }: { onDodaj: () => void }) {
       </div>
     </header>
   );
+}
+
+/* ---------------- Tabela (desktop) ---------------- */
+function LeadTabela({ leadovi, danas, onStatus, onEdit, onDelete }: { leadovi: LeadRow[]; danas: string; onStatus: (id: string, s: string) => void; onEdit: (l: LeadRow) => void; onDelete: (id: string) => void }) {
+  return (
+    <Card className="overflow-hidden">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-line bg-wash/70 text-left text-[11px] uppercase tracking-wider text-muted">
+            <th className="px-4 py-3 font-semibold">Lead</th>
+            <th className="px-4 py-3 font-semibold">Proizvod</th>
+            <th className="px-4 py-3 font-semibold">Izvor</th>
+            <th className="px-4 py-3 font-semibold">Info za poziv</th>
+            <th className="px-4 py-3 font-semibold">Dodat</th>
+            <th className="px-4 py-3 font-semibold">Kontakt</th>
+            <th className="w-[220px] px-4 py-3 font-semibold">Ishod</th>
+            <th className="px-2 py-3" />
+          </tr>
+        </thead>
+        <tbody>
+          {leadovi.map((l) => {
+            const st = STATUSI.find((s) => s.v === l.status);
+            const dospeo = jeDospeo(l, danas);
+            const ima = !!l.telefon;
+            return (
+              <tr key={l.id} className={`border-b border-line align-top transition-colors last:border-0 hover:bg-wash/60 ${dospeo ? "bg-gold/8" : ""}`}>
+                <td className="px-4 py-3">
+                  <div className="font-alt font-bold tracking-[-.02em] text-ink">{punoIme(l)}</div>
+                  {l.telefon
+                    ? <a href={telLink(l.telefon)} className="font-display text-[14px] font-semibold text-gold-deep hover:text-navy">{l.telefon}</a>
+                    : <span className="text-xs text-muted">bez broja</span>}
+                  {l.podseti_kad && <div className="mt-1"><span className={`tag ${dospeo ? "tag-warn" : ""}`}>{dospeo ? "Dospelo" : "Zvati"} {datumKratko(l.podseti_kad)}</span></div>}
+                </td>
+                <td className="px-4 py-3 whitespace-nowrap">{l.proizvod ? <span className="tag tag-navy">{label(PROIZVODI, l.proizvod)}</span> : <span className="text-muted">—</span>}</td>
+                <td className="px-4 py-3 whitespace-nowrap">{l.izvor ? <span className="tag tag-gold">{label(IZVORI, l.izvor)}</span> : <span className="text-muted">—</span>}</td>
+                <td className="max-w-[360px] px-4 py-3">
+                  {l.info ? <p className="whitespace-pre-wrap text-[13px] leading-snug text-ink/85">{l.info}</p> : <span className="text-muted">—</span>}
+                  {l.ishod_beleska && <p className="mt-1 border-l-2 border-gold pl-2 text-xs text-muted">{l.ishod_beleska}</p>}
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 text-xs text-muted">{pre(l.created_at)}</td>
+                <td className="px-4 py-3">
+                  <div className="flex gap-1">
+                    <MiniAkcija href={telLink(l.telefon)} ima={ima} title="Pozovi" primarno icon={<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />} />
+                    <MiniAkcija href={viberLink(l.telefon)} ima={ima} title="Viber" icon={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />} />
+                    <MiniAkcija href={waLink(l.telefon)} ima={ima} title="WhatsApp" blank icon={<path d="M21 11.5a8.38 8.38 0 0 1-8.5 8.5 8.5 8.5 0 0 1-3.6-.8L3 21l1.9-5.5A8.38 8.38 0 0 1 4 11.5 8.5 8.5 0 0 1 12.5 3 8.38 8.38 0 0 1 21 11.5z" />} />
+                    <MiniAkcija href={smsLink(l.telefon)} ima={ima} title="SMS" icon={<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2zM8 9h8M8 13h5" />} />
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: st?.boja }} />
+                    <select value={l.status} onChange={(e) => onStatus(l.id, e.target.value)} className="inp inp-sm min-w-0 flex-1 font-medium">
+                      {STATUSI.map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
+                    </select>
+                  </div>
+                </td>
+                <td className="px-2 py-3">
+                  <div className="flex items-center">
+                    <button onClick={() => onEdit(l)} className="grid h-8 w-8 place-items-center rounded-full text-muted hover:bg-wash hover:text-navy" aria-label="Izmeni">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+                    </button>
+                    <button onClick={() => { if (confirm(`Obrisati lead — ${punoIme(l)}?`)) onDelete(l.id); }} className="grid h-8 w-8 place-items-center rounded-full text-muted hover:bg-danger/8 hover:text-danger" aria-label="Obriši">
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </Card>
+  );
+}
+
+function MiniAkcija({ href, ima, title, icon, primarno, blank }: { href: string; ima: boolean; title: string; icon: React.ReactNode; primarno?: boolean; blank?: boolean }) {
+  const cls = `grid h-9 w-9 place-items-center rounded-full border transition-colors ${primarno ? "border-navy bg-navy text-gold hover:border-gold-deep hover:bg-gold-deep hover:text-white" : "border-line text-ink hover:border-accent hover:bg-wash"} ${ima ? "" : "pointer-events-none opacity-40"}`;
+  const svg = <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{icon}</svg>;
+  if (!ima) return <span className={cls} title={title}>{svg}</span>;
+  return <a href={href} title={title} target={blank ? "_blank" : undefined} rel={blank ? "noreferrer" : undefined} className={cls}>{svg}</a>;
 }
 
 /* ---------------- Kartica leada ---------------- */
