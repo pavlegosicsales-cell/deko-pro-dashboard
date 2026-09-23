@@ -21,6 +21,7 @@ export const PROIZVODI = [
   { v: "privat", l: "Ograda PRIVAT" },
   { v: "potporni_zid", l: "Potporni zid" },
   { v: "oblaganje", l: "Oblaganje / fasada" },
+  { v: "dekorativni_blok", l: "Dekorativni blok" },
   { v: "ostalo", l: "Ostalo / nije sigurno" },
 ] as const;
 
