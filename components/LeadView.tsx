@@ -21,7 +21,7 @@ const punoIme = (l: LeadRow) => [l.ime, l.prezime].filter(Boolean).join(" ") || 
 const jeDospeo = (l: LeadRow, danas: string) => l.status === "zvati_kasnije" && !!l.podseti_kad && l.podseti_kad <= danas;
 const datumKratko = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("sr-RS", { day: "2-digit", month: "2-digit" });
 
-export function LeadView({ leadovi, tabelaFali, demo }: { leadovi: LeadRow[]; tabelaFali: boolean; demo?: boolean }) {
+export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRow[]; tabelaFali: boolean; demo?: boolean; login?: boolean }) {
   const [view, setView] = useState<string>("red"); // "red" (za zvanje) | status | "svi"
   const [q, setQ] = useState("");
   const [modal, setModal] = useState(false);
@@ -86,8 +86,8 @@ export function LeadView({ leadovi, tabelaFali, demo }: { leadovi: LeadRow[]; ta
 
   return (
     <div className="min-h-screen bg-wash lg:pl-64">
-      <TopBar onDodaj={() => setModal(true)} />
-      <Sidebar uRedu={uRedu} onDodaj={() => setModal(true)} />
+      <TopBar onDodaj={() => setModal(true)} login={login} />
+      <Sidebar uRedu={uRedu} onDodaj={() => setModal(true)} login={login} />
 
       {/* Page head: navy + foto + preliv, kao naslovne trake unutrašnjih strana sajta */}
       <section className="page-head">
@@ -187,7 +187,7 @@ export function LeadView({ leadovi, tabelaFali, demo }: { leadovi: LeadRow[]; ta
 }
 
 /* ---------------- Plutajući pill nav (kao na sajtu) ---------------- */
-function TopBar({ onDodaj }: { onDodaj: () => void }) {
+function TopBar({ onDodaj, login }: { onDodaj: () => void; login?: boolean }) {
   const router = useRouter();
   const odjava = async () => { await supabaseBrowser().auth.signOut(); router.replace("/login"); router.refresh(); };
   return (
@@ -203,10 +203,10 @@ function TopBar({ onDodaj }: { onDodaj: () => void }) {
           </div>
           <div className="flex items-center gap-1.5">
             <button onClick={onDodaj} className="btn btn-sm btn-light hidden sm:inline-flex">Novi lead<PlusIco /></button>
-            <button onClick={odjava} title="Odjava" aria-label="Odjava"
+            {login && <button onClick={odjava} title="Odjava" aria-label="Odjava"
               className="grid h-10 w-10 place-items-center rounded-full border border-white/10 text-white/80 transition-colors hover:bg-white/10 hover:text-white">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" /></svg>
-            </button>
+            </button>}
           </div>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { LeadView, type LeadRow } from "@/components/LeadView";
 import { DEMO_LEADOVI } from "@/lib/demo";
-import { JE_DEMO } from "@/lib/env";
+import { JE_DEMO, TRAZI_LOGIN } from "@/lib/env";
 
 export const dynamic = "force-dynamic";
 
@@ -20,5 +20,5 @@ export default async function Home() {
   const tabelaFali = !!error && /does not exist|schema cache|relation/i.test(error.message);
   const leadovi = (data ?? []) as LeadRow[];
 
-  return <LeadView leadovi={leadovi} tabelaFali={tabelaFali} />;
+  return <LeadView leadovi={leadovi} tabelaFali={tabelaFali} login={TRAZI_LOGIN} />;
 }

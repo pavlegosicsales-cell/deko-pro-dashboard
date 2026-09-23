@@ -20,7 +20,7 @@ function Ico({ d }: { d: React.ReactNode }) {
   return <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{d}</svg>;
 }
 
-export function Sidebar({ uRedu, onDodaj }: { uRedu: number; onDodaj: () => void }) {
+export function Sidebar({ uRedu, onDodaj, login }: { uRedu: number; onDodaj: () => void; login?: boolean }) {
   const router = useRouter();
   const odjava = async () => { await supabaseBrowser().auth.signOut(); router.replace("/login"); router.refresh(); };
 
@@ -66,9 +66,9 @@ export function Sidebar({ uRedu, onDodaj }: { uRedu: number; onDodaj: () => void
         <button disabled title="Uskoro" className="flex cursor-default items-center gap-3 rounded-[10px] px-3 py-2.5 text-[14px] font-medium text-white/50">
           <Ico d={I.podesavanja} />Podešavanja
         </button>
-        <button onClick={odjava} className="flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[14px] font-medium text-white/70 transition-colors hover:bg-white/5 hover:text-white">
+        {login && <button onClick={odjava} className="flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[14px] font-medium text-white/70 transition-colors hover:bg-white/5 hover:text-white">
           <Ico d={I.odjava} />Odjava
-        </button>
+        </button>}
         <div className="px-3 pt-2 text-[11px] text-white/35">062 253 140 · od 2015.</div>
       </div>
     </aside>
