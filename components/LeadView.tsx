@@ -11,7 +11,7 @@ import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { STATUSI, OTVORENI, PROIZVODI, IZVORI, label, normalizujProizvod } from "@/lib/opcije";
 import { telLink, smsLink, waLink, viberLink } from "@/lib/lead";
 import { pre } from "@/lib/format";
-import { dodajLead, izmeniLead, promeniStatus, obrisiLead, promeniBelesku, type LeadState } from "@/app/leadovi/actions";
+import { dodajLead, izmeniLead, promeniStatus, obrisiLead, promeniBelesku, promeniPodsetnik, type LeadState } from "@/app/leadovi/actions";
 
 export type LeadRow = {
   id: string; ime: string | null; prezime: string | null; telefon: string | null;
@@ -39,9 +39,9 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
 
   const [opt, apply] = useOptimistic(
     osnova,
-    (state: LeadRow[], a: { id: string; status?: string; beleska?: string | null; del?: boolean }) =>
+    (state: LeadRow[], a: { id: string; status?: string; beleska?: string | null; datum?: string | null; del?: boolean }) =>
       a.del ? state.filter((l) => l.id !== a.id)
-        : state.map((l) => (l.id === a.id ? { ...l, ...(a.status !== undefined ? { status: a.status } : {}), ...(a.beleska !== undefined ? { ishod_beleska: a.beleska } : {}) } : l)),
+        : state.map((l) => (l.id === a.id ? { ...l, ...(a.status !== undefined ? { status: a.status } : {}), ...(a.beleska !== undefined ? { ishod_beleska: a.beleska } : {}), ...(a.datum !== undefined ? { podseti_kad: a.datum } : {}) } : l)),
   );
   const [, start] = useTransition();
   const menjajStatus = (id: string, status: string) => {
@@ -54,6 +54,11 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
     const b = beleska.trim() || null;
     if (demo) return setLokalni((a) => a.map((l) => (l.id === id ? { ...l, ishod_beleska: b } : l)));
     start(() => { apply({ id, beleska: b }); promeniBelesku(id, b); });
+  };
+  const menjajDatum = (id: string, datum: string) => {
+    const d = datum || null;
+    if (demo) return setLokalni((a) => a.map((l) => (l.id === id ? { ...l, podseti_kad: d } : l)));
+    start(() => { apply({ id, datum: d }); promeniPodsetnik(id, d); });
   };
   const obrisi = (id: string) => {
     if (demo) return setLokalni((a) => a.filter((l) => l.id !== id));
@@ -129,7 +134,7 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
             <Stat label="Aktivni" value={String(uRedu)} icon={<><path d="M8 6h13M8 12h13M8 18h13" /><path d="M3 6h.01M3 12h.01M3 18h.01" /></>} />
             <Stat label="Povratni poziv danas" value={String(dospeloDanas)}
               icon={<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>} />
-            <Stat label="Prodato" value={String(zatvoreno)} icon={<><path d="M20 6 9 17l-5-5" /></>} />
+            <Stat label="Kupili" value={String(zatvoreno)} icon={<><path d="M20 6 9 17l-5-5" /></>} />
           </div>
           </div>
         </div>
@@ -178,11 +183,11 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
           <>
             <div className="flex flex-col gap-3 lg:hidden">
               {filtrirani.map((l) => (
-                <LeadKartica key={l.id} l={l} danas={danas} onStatus={menjajStatus} onBeleska={menjajBelesku} onEdit={() => setIzmeni(l)} onDelete={() => obrisi(l.id)} />
+                <LeadKartica key={l.id} l={l} danas={danas} onStatus={menjajStatus} onBeleska={menjajBelesku} onDatum={menjajDatum} onEdit={() => setIzmeni(l)} onDelete={() => obrisi(l.id)} />
               ))}
             </div>
             <div className="hidden lg:block">
-              <LeadTabela leadovi={filtrirani} danas={danas} onStatus={menjajStatus} onBeleska={menjajBelesku} onEdit={setIzmeni} onDelete={obrisi} />
+              <LeadTabela leadovi={filtrirani} danas={danas} onStatus={menjajStatus} onBeleska={menjajBelesku} onDatum={menjajDatum} onEdit={setIzmeni} onDelete={obrisi} />
             </div>
           </>
         )}
@@ -235,7 +240,7 @@ function TopBar({ onDodaj, login }: { onDodaj: () => void; login?: boolean }) {
 }
 
 /* ---------------- Tabela (desktop) ---------------- */
-function LeadTabela({ leadovi, danas, onStatus, onBeleska, onEdit, onDelete }: { leadovi: LeadRow[]; danas: string; onStatus: (id: string, s: string) => void; onBeleska: (id: string, b: string) => void; onEdit: (l: LeadRow) => void; onDelete: (id: string) => void }) {
+function LeadTabela({ leadovi, danas, onStatus, onBeleska, onDatum, onEdit, onDelete }: { leadovi: LeadRow[]; danas: string; onStatus: (id: string, s: string) => void; onBeleska: (id: string, b: string) => void; onDatum: (id: string, d: string) => void; onEdit: (l: LeadRow) => void; onDelete: (id: string) => void }) {
   return (
     <Card className="overflow-hidden">
       <table className="w-full text-sm">
@@ -290,6 +295,9 @@ function LeadTabela({ leadovi, danas, onStatus, onBeleska, onEdit, onDelete }: {
                       {STATUSI.map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
                     </select>
                   </div>
+                  {l.status === "zvati_kasnije" && (
+                    <input type="date" value={l.podseti_kad ?? ""} onChange={(e) => onDatum(l.id, e.target.value)} className="inp inp-sm mt-1.5 w-full" aria-label="Kog datuma pozvati" />
+                  )}
                 </td>
                 <td className="px-2 py-3">
                   <div className="flex items-center">
@@ -318,7 +326,7 @@ function MiniAkcija({ href, ima, title, icon, primarno, blank }: { href: string;
 }
 
 /* ---------------- Kartica leada ---------------- */
-function LeadKartica({ l, danas, onStatus, onBeleska, onEdit, onDelete }: { l: LeadRow; danas: string; onStatus: (id: string, s: string) => void; onBeleska: (id: string, b: string) => void; onEdit: () => void; onDelete: () => void }) {
+function LeadKartica({ l, danas, onStatus, onBeleska, onDatum, onEdit, onDelete }: { l: LeadRow; danas: string; onStatus: (id: string, s: string) => void; onBeleska: (id: string, b: string) => void; onDatum: (id: string, d: string) => void; onEdit: () => void; onDelete: () => void }) {
   const st = STATUSI.find((s) => s.v === l.status);
   const dospeo = jeDospeo(l, danas);
   const ima = !!l.telefon;
@@ -374,6 +382,12 @@ function LeadKartica({ l, danas, onStatus, onBeleska, onEdit, onDelete }: { l: L
           {STATUSI.map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
         </select>
       </div>
+      {l.status === "zvati_kasnije" && (
+        <label className="mt-2 flex items-center gap-2.5">
+          <span className="micro shrink-0 text-[11px] text-muted">Kad</span>
+          <input type="date" value={l.podseti_kad ?? ""} onChange={(e) => onDatum(l.id, e.target.value)} className="inp inp-sm min-w-0 flex-1" aria-label="Kog datuma pozvati" />
+        </label>
+      )}
       <Beleska id={l.id} vrednost={l.ishod_beleska} onSave={onBeleska} />
     </Card>
   );
@@ -480,7 +494,7 @@ function LeadModal({ lead, onClose, akcija }: { lead?: LeadRow; onClose: () => v
                       {STATUSI.map((s) => <option key={s.v} value={s.v}>{s.l}</option>)}
                     </select>
                   </Field>
-                  <Field label="Zvati ponovo"><input type="date" name="podseti_kad" defaultValue={lead.podseti_kad ?? ""} className="inp" /></Field>
+                  <Field label="Pozvati kog datuma"><input type="date" name="podseti_kad" defaultValue={lead.podseti_kad ?? ""} className="inp" /></Field>
                 </div>
                 <Field label="Beleška posle poziva"><textarea name="ishod_beleska" defaultValue={lead.ishod_beleska ?? ""} rows={2} className="inp" /></Field>
               </>

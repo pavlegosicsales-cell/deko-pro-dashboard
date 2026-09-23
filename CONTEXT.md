@@ -36,11 +36,12 @@ Isti stek kao Mojsilov-Dashboard (odatle su preuzeti config i auth/supabase infr
 Jedna glavna strana (`/`) = lista leadova, mobile-first, optimistična.
 - **Dodaj lead** (dugme u top baru): ime, prezime, telefon, proizvod, izvor, info za vlasnika.
 - Svaki lead: **Pozovi / Viber / WhatsApp / SMS** dugmad + padajući **ishod**.
-- Ishodi: `nov` (Za poziv) → `nije_se_javio` → `zvati_kasnije` (+ datum) →
-  `zainteresovan` → `ponuda` → `zatvoren` / `propao`.
-- Filter „Za zvanje" (otvoreni), po statusu, „Svi" + pretraga. Red za zvanje:
+- Ishodi (Lukin spisak, 23.09.2026.): `nov` Novi → `nije_se_javio` → `zvati_kasnije`
+  „Pozvati (datum)" (+ datum, inline na kartici) → `dostaviti_ponudu` → `ponuda` „Čeka
+  odgovor na ponudu" → `zatvoren` „Kupio" / `propao` „Odustao".
+- Filter „Aktivni" (otvoreni), po statusu, „Svi" + pretraga. Red za zvanje:
   dospeli povratni pozivi gore, pa najstariji novi (zove se redom).
-- KPI: U redu / Dospelo danas / Zatvoreno.
+- KPI: Stiglo danas / Stiglo juče / Aktivni / Povratni poziv danas / Kupili. Strana `/analitika`.
 - `/api/lead` — javni endpoint (token-opcioni) za buduću formu sa sajta (izvor="sajt").
 
 ## Odluke (default-ovane, potvrditi sa Pavleom)

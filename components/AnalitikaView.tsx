@@ -69,7 +69,7 @@ export function AnalitikaView({ leadovi }: { leadovi: LeadRow[] }) {
           <Plocica label="Stiglo danas" value={brojNaDan(leadovi, danas)} sub={`juče ${brojNaDan(leadovi, juce)}`} />
           <Plocica label="Pozvano danas" value={pozvanoNaDan(leadovi, danas)} sub={`juče ${pozvanoNaDan(leadovi, juce)}`} />
           <Plocica label={`Novih za ${dana} dana`} value={ukNovi} sub={`pozvano ${ukPozvani}`} />
-          <Plocica label="Stopa zatvaranja" value={stopa == null ? "—" : `${stopa}%`} sub={`${zatvoreno} prodato · ${propalo} propalo`} />
+          <Plocica label="Stopa zatvaranja" value={stopa == null ? "—" : `${stopa}%`} sub={`${zatvoreno} kupilo · ${propalo} odustalo`} />
         </div>
 
         {/* Grafikon po danu */}

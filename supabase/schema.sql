@@ -14,7 +14,7 @@ create table if not exists leadovi (
   proizvod       text,                 -- start | plus | privat | potporni_zid | oblaganje | ostalo
   izvor          text,                 -- instagram | facebook | viber | whatsapp | sajt | preporuka | ostalo
   info           text,                 -- kontekst za vlasnika (dužina ograde, lokacija, boja, budžet, kad zvati...)
-  status         text default 'nov',   -- nov | nije_se_javio | zvati_kasnije | zainteresovan | ponuda | zatvoren | propao
+  status         text default 'nov',   -- nov | nije_se_javio | zvati_kasnije | dostaviti_ponudu | ponuda (čeka odgovor) | zatvoren (kupio) | propao (odustao)
   podseti_kad    date,                 -- kad ga treba ponovo zvati (za „zvati kasnije")
   ishod_beleska  text,                 -- napomena posle poziva
   dodao          text,                 -- email osobe koja je unela lead (setter)

@@ -1,18 +1,19 @@
 // Zajedničke opcije za leadove — labeli na srpskom, ključevi kao u bazi.
 
 // Ishodi poziva (pipeline). Redosled = tok od novog leada do zatvaranja.
+// Ishodi kako ih je Luka (vlasnik) zadao 23.09.2026.; ključevi zatvoren/propao ostali zbog baze.
 export const STATUSI = [
   { v: "nov", l: "Novi", boja: "#2563eb" },
   { v: "nije_se_javio", l: "Nije se javio", boja: "#d97706" },
-  { v: "zvati_kasnije", l: "Zvati kasnije", boja: "#7c3aed" },
-  { v: "zainteresovan", l: "Zainteresovan", boja: "#0891b2" },
-  { v: "ponuda", l: "Poslata ponuda", boja: "#ca8a04" },
-  { v: "zatvoren", l: "Zatvoren (prodato)", boja: "#15a34a" },
-  { v: "propao", l: "Propao", boja: "#6b7280" },
+  { v: "zvati_kasnije", l: "Pozvati (datum)", boja: "#7c3aed" },
+  { v: "dostaviti_ponudu", l: "Dostaviti ponudu", boja: "#0891b2" },
+  { v: "ponuda", l: "Čeka odgovor na ponudu", boja: "#ca8a04" },
+  { v: "zatvoren", l: "Kupio", boja: "#15a34a" },
+  { v: "propao", l: "Odustao", boja: "#6b7280" },
 ] as const;
 
 // Otvoreni statusi = lead je još „u igri" (za red za zvanje).
-export const OTVORENI = new Set(["nov", "nije_se_javio", "zvati_kasnije", "zainteresovan", "ponuda"]);
+export const OTVORENI = new Set(["nov", "nije_se_javio", "zvati_kasnije", "dostaviti_ponudu", "ponuda"]);
 export const ZATVORENI = new Set(["zatvoren", "propao"]);
 
 export const PROIZVODI = [

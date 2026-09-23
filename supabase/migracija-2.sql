@@ -9,3 +9,6 @@ update leadovi set status_od = coalesce(status_od, updated_at);
 update leadovi set pozvan_kad = updated_at where pozvan_kad is null and status <> 'nov';
 
 create index if not exists idx_leadovi_pozvan on leadovi(pozvan_kad);
+
+-- Ishod „zainteresovan" zamenjen sa „dostaviti_ponudu" (Lukin spisak ishoda).
+update leadovi set status = 'dostaviti_ponudu' where status = 'zainteresovan';

@@ -85,3 +85,9 @@ export async function promeniBelesku(id: string, beleska: string | null): Promis
   await supabaseAdmin.from("leadovi").update({ ishod_beleska: beleska, updated_at: new Date().toISOString() }).eq("id", id);
   revalidatePath("/");
 }
+
+// Datum povratnog poziva direktno sa kartice (kad je ishod „Pozvati (datum)").
+export async function promeniPodsetnik(id: string, datum: string | null): Promise<void> {
+  await supabaseAdmin.from("leadovi").update({ podseti_kad: datum, updated_at: new Date().toISOString() }).eq("id", id);
+  revalidatePath("/");
+}
