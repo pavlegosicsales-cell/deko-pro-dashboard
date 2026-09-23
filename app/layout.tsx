@@ -1,18 +1,22 @@
-import type { Metadata } from "next";
-import { Inter, Outfit } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Inter, Noto_Sans, Outfit } from "next/font/google";
 import "./globals.css";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const outfit = Outfit({ subsets: ["latin"], variable: "--font-outfit", weight: ["500", "600", "700"] });
+// Isti fontovi kao na sajtu: Outfit (display, uppercase), Noto Sans (telo), Inter (h3)
+const noto = Noto_Sans({ subsets: ["latin", "latin-ext"], variable: "--font-noto", weight: ["400", "500", "600", "700"] });
+const outfit = Outfit({ subsets: ["latin", "latin-ext"], variable: "--font-outfit", weight: ["500", "600", "700"] });
+const inter = Inter({ subsets: ["latin", "latin-ext"], variable: "--font-inter", weight: ["600", "700"] });
 
 export const metadata: Metadata = {
   title: "Deko Pro — Leadovi",
   description: "Interni panel — Deko Pro (dekorativni blok)",
 };
 
+export const viewport: Viewport = { themeColor: "#0B1E3B" };
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="sr" className={`${inter.variable} ${outfit.variable} h-full`}>
+    <html lang="sr" className={`${noto.variable} ${outfit.variable} ${inter.variable} h-full`}>
       <body className="min-h-full">{children}</body>
     </html>
   );

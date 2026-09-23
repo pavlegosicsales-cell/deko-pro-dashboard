@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
+import { ArrowIco, Logo } from "@/components/ui";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -33,36 +34,45 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[linear-gradient(160deg,#0B1E3B_0%,#16324f_100%)] px-4">
-      <div className="w-full max-w-sm">
-        <div className="rounded-2xl bg-white p-6 shadow-xl">
-          <div className="mb-5 flex justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/logo-mark.png" alt="Deko Pro" width={256} height={256} className="h-16 w-auto" />
+    <div className="page-head flex min-h-screen items-center justify-center px-4 py-10">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/hero-bg.jpg" alt="" aria-hidden />
+
+      <div className="rise w-full max-w-sm">
+        {/* Logo + wordmark kao u navu sajta */}
+        <div className="mb-6 flex flex-col items-center gap-3">
+          <Logo size={72} />
+          <div className="text-center">
+            <div className="nav-wordmark text-[26px]">Deko Pro</div>
+            <div className="nav-sub mt-1">Interni panel · Leadovi</div>
           </div>
-          <h1 className="h-display text-center text-xl">Deko Pro — Prijava</h1>
-          <p className="mb-5 mt-1 text-center text-sm text-muted">Interni panel za leadove.</p>
+        </div>
 
-          <form onSubmit={posalji} className="space-y-3">
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-muted">Email</span>
-              <input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)}
-                className="w-full rounded-lg border border-line bg-card px-3 py-2.5 text-sm text-ink outline-none focus:border-gold focus:ring-2 focus:ring-gold/30" placeholder="ime@gmail.com" />
+        <div className="card p-6 sm:p-7">
+          <span className="eyebrow">Prijava</span>
+          <h1 className="h-display mt-3 text-[26px]">Uđi u panel</h1>
+          <p className="mt-1 text-sm text-muted">Samo za tim Deko Pro.</p>
+
+          <form onSubmit={posalji} className="mt-5 space-y-4">
+            <label className="field">
+              <span>Email</span>
+              <input type="email" required autoFocus value={email} onChange={(e) => setEmail(e.target.value)} className="inp" placeholder="ime@gmail.com" />
             </label>
-            <label className="block">
-              <span className="mb-1 block text-xs font-medium text-muted">Lozinka</span>
-              <input type="password" required value={lozinka} onChange={(e) => setLozinka(e.target.value)}
-                className="w-full rounded-lg border border-line bg-card px-3 py-2.5 text-sm text-ink outline-none focus:border-gold focus:ring-2 focus:ring-gold/30" placeholder="••••••••" />
+            <label className="field">
+              <span>Lozinka</span>
+              <input type="password" required value={lozinka} onChange={(e) => setLozinka(e.target.value)} className="inp" placeholder="••••••••" />
             </label>
 
-            {greska && <p className="text-sm text-danger">{greska}</p>}
+            {greska && <p className="text-sm font-medium text-danger">{greska}</p>}
 
-            <button type="submit" disabled={radi}
-              className="w-full rounded-lg bg-navy px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-navy-2 disabled:opacity-60">
+            <button type="submit" disabled={radi} className="btn btn-block">
               {radi ? "Prijavljujem…" : "Uđi"}
+              <ArrowIco />
             </button>
           </form>
         </div>
+
+        <p className="mt-5 text-center text-xs text-white/60">Deko Pro · dekorativni blok od 2015.</p>
       </div>
     </div>
   );

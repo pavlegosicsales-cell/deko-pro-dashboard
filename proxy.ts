@@ -7,6 +7,9 @@ import { jeDozvoljen } from "@/lib/auth";
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
+  // Demo režim (Supabase još nije povezan): pusti sve, panel radi na probnim podacima.
+  if (/placeholder/.test(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "")) return response;
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,

@@ -19,6 +19,12 @@ ih; **vlasnik** ih zove i beleži ishod. Optimizovano za **telefon**, optimisti�
 - Fontovi: **Outfit** (display, uppercase naslovi), **Inter** (telo).
 - Logo: `public/logo-mark.png` (256×256, skinut sa sajta).
 - Estetika: arhitektonski blueprint/line-art.
+- **Dizajn panela = dizajn sajta** (23.09.2026.): `app/globals.css` nosi tokene i
+  komponente prepisane iz `styles.css` sajta — plutajući pill nav (glass navy + blur),
+  `.btn` pill sa okruglom ikonicom (strelica se okreće na hover), `.eyebrow`, `.tag`,
+  `.stat` traka (navy / bronza / navy), `.page-head` (navy + foto `public/hero-bg.jpg`
+  + preliv), `.inp` polja 50px/r10. Telo teksta je **Noto Sans** (kao na sajtu), h3 Inter.
+  Sve komponentne klase su u `@layer components` da Tailwind utility klase pobeđuju.
 
 ## Stack
 Next 16.3.5 (App Router) + React 19 + TS + Tailwind v4 + Supabase (@supabase/ssr).
@@ -40,6 +46,11 @@ Jedna glavna strana (`/`) = lista leadova, mobile-first, optimistična.
 - „Zvati kasnije" ima datum + badge kad dospe.
 - Proizvod = padajući spisak (START/PLUS/PRIVAT/potporni/oblaganje/ostalo).
 - Auth: allowlist login (`lib/auth.ts`). Trenutno samo Pavle — **treba dodati mejl vlasnika**.
+
+## Demo režim
+Dok `NEXT_PUBLIC_SUPABASE_URL` sadrži `placeholder`, proxy pušta sve bez logina, a
+`/` prikazuje probne leadove iz `lib/demo.ts` (izmene se ne čuvaju). Čim se upišu
+pravi ključevi, demo se sam gasi.
 
 ## Podešavanje (TODO pre puštanja)
 1. Nov Supabase projekat → popuni `.env.local` (vidi `.env.local.example`).
