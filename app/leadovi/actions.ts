@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { revalidatePath } from "next/cache";
 import { normalizujTelefon } from "@/lib/lead";
+import { normalizujProizvod } from "@/lib/opcije";
 
 export type LeadState = { ok: boolean; msg?: string };
 
@@ -23,7 +24,7 @@ function polja(fd: FormData) {
     ime: s(fd, "ime"),
     prezime: s(fd, "prezime"),
     telefon: normalizujTelefon(s(fd, "telefon")),
-    proizvod: s(fd, "proizvod"),
+    proizvod: normalizujProizvod(s(fd, "proizvod")),
     izvor: s(fd, "izvor"),
     info: s(fd, "info"),
     status: s(fd, "status") ?? "nov",
@@ -48,10 +49,12 @@ export async function izmeniLead(_prev: LeadState, fd: FormData): Promise<LeadSt
   if (!id) return { ok: false, msg: "Nedostaje ID." };
   const p = polja(fd);
   const sad = new Date().toISOString();
-  const izNov = s(fd, "prethodni_status") === "nov" && p.status !== "nov";
-  let { error } = await supabaseAdmin.from("leadovi")
-    .update({ ...p, updated_at: sad, ...(izNov ? { pozvan_kad: sad } : {}) }).eq("id", id);
-  if (error && izNov) ({ error } = await supabaseAdmin.from("leadovi").update({ ...p, updated_at: sad }).eq("id", id));
+  const prethodni = s(fd, "prethodni_status");
+  const promenjen = !!prethodni && prethodni !== p.status;
+  const izNov = prethodni === "nov" && p.status !== "nov";
+  const dodatno = { ...(promenjen ? { status_od: sad } : {}), ...(izNov ? { pozvan_kad: sad } : {}) };
+  let { error } = await supabaseAdmin.from("leadovi").update({ ...p, updated_at: sad, ...dodatno }).eq("id", id);
+  if (error && Object.keys(dodatno).length) ({ error } = await supabaseAdmin.from("leadovi").update({ ...p, updated_at: sad }).eq("id", id));
   if (error) return { ok: false, msg: "Greška: " + error.message };
   revalidatePath("/");
   return { ok: true };
@@ -61,12 +64,11 @@ export async function izmeniLead(_prev: LeadState, fd: FormData): Promise<LeadSt
 export async function promeniStatus(id: string, status: string, izNov?: boolean): Promise<void> {
   const sad = new Date().toISOString();
   const osnovno = { status, updated_at: sad };
-  // prvi izlazak iz „nov" = lead je pozvan; ako kolona još ne postoji (migracija-2), snimi bez nje
-  if (izNov && status !== "nov") {
-    const { error } = await supabaseAdmin.from("leadovi").update({ ...osnovno, pozvan_kad: sad }).eq("id", id);
-    if (!error) { revalidatePath("/"); return; }
-  }
-  await supabaseAdmin.from("leadovi").update(osnovno).eq("id", id);
+  // status_od = od kad je u ovom ishodu; pozvan_kad = prvi izlazak iz „nov" (= pozvan).
+  // Ako kolone još ne postoje (migracija-2 nije pokrenuta), snimi bez njih.
+  const dodatno = { status_od: sad, ...(izNov && status !== "nov" ? { pozvan_kad: sad } : {}) };
+  const { error } = await supabaseAdmin.from("leadovi").update({ ...osnovno, ...dodatno }).eq("id", id);
+  if (error) await supabaseAdmin.from("leadovi").update(osnovno).eq("id", id);
   revalidatePath("/");
 }
 

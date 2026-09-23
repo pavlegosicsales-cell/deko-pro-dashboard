@@ -34,6 +34,13 @@ export const IZVORI = [
   { v: "ostalo", l: "Ostalo" },
 ] as const;
 
+// Proizvod može biti i slobodan tekst: ako se poklapa sa ponuđenim (po ključu ili nazivu) čuva se ključ.
+export const normalizujProizvod = (v: string | null | undefined): string | null => {
+  const t = (v ?? "").trim(); if (!t) return null;
+  const p = PROIZVODI.find((o) => o.v === t || o.l.toLowerCase() === t.toLowerCase());
+  return p ? p.v : t;
+};
+
 export const label = (arr: readonly { v: string; l: string }[], v: string | null | undefined) =>
   arr.find((o) => o.v === v)?.l ?? v ?? "—";
 

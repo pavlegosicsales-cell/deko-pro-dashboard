@@ -8,7 +8,7 @@ import { brojNaDan, danasKljuc, pomeriDan } from "@/lib/analitika";
 import { Card, Stat, ArrowIco, PlusIco, Logo } from "@/components/ui";
 import { Sidebar } from "@/components/Sidebar";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
-import { STATUSI, OTVORENI, PROIZVODI, IZVORI, label } from "@/lib/opcije";
+import { STATUSI, OTVORENI, PROIZVODI, IZVORI, label, normalizujProizvod } from "@/lib/opcije";
 import { telLink, smsLink, waLink, viberLink } from "@/lib/lead";
 import { pre } from "@/lib/format";
 import { dodajLead, izmeniLead, promeniStatus, obrisiLead, promeniBelesku, type LeadState } from "@/app/leadovi/actions";
@@ -17,12 +17,14 @@ export type LeadRow = {
   id: string; ime: string | null; prezime: string | null; telefon: string | null;
   proizvod: string | null; izvor: string | null; info: string | null; status: string;
   podseti_kad: string | null; ishod_beleska: string | null; created_at: string;
-  updated_at?: string | null; pozvan_kad?: string | null;
+  updated_at?: string | null; pozvan_kad?: string | null; status_od?: string | null;
 };
 
 const danasIso = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Belgrade" });
 const punoIme = (l: LeadRow) => [l.ime, l.prezime].filter(Boolean).join(" ") || "Bez imena";
 const jeDospeo = (l: LeadRow, danas: string) => l.status === "zvati_kasnije" && !!l.podseti_kad && l.podseti_kad <= danas;
+// koliko je lead u trenutnom ishodu (status_od; za stare redove pre migracije nema podatka)
+const uIshodu = (l: LeadRow) => (l.status !== "nov" && l.status_od ? pre(l.status_od) : null);
 const datumKratko = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("sr-RS", { day: "2-digit", month: "2-digit" });
 
 export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRow[]; tabelaFali: boolean; demo?: boolean; login?: boolean }) {
@@ -45,7 +47,7 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
   const menjajStatus = (id: string, status: string) => {
     const sad = new Date().toISOString();
     const izNov = opt.find((l) => l.id === id)?.status === "nov" && status !== "nov";
-    if (demo) return setLokalni((a) => a.map((l) => (l.id === id ? { ...l, status, ...(izNov ? { pozvan_kad: sad } : {}) } : l)));
+    if (demo) return setLokalni((a) => a.map((l) => (l.id === id ? { ...l, status, status_od: sad, ...(izNov ? { pozvan_kad: sad } : {}) } : l)));
     start(() => { apply({ id, status }); promeniStatus(id, status, izNov); });
   };
   const menjajBelesku = (id: string, beleska: string) => {
@@ -61,7 +63,7 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
   const demoSacuvaj = async (_p: LeadState, fd: FormData): Promise<LeadState> => {
     const g = (k: string) => { const v = fd.get(k); return typeof v === "string" && v.trim() ? v.trim() : null; };
     const id = g("id");
-    const polja = { ime: g("ime"), prezime: g("prezime"), telefon: g("telefon"), proizvod: g("proizvod"), izvor: g("izvor"), info: g("info") };
+    const polja = { ime: g("ime"), prezime: g("prezime"), telefon: g("telefon"), proizvod: normalizujProizvod(g("proizvod")), izvor: g("izvor"), info: g("info") };
     if (!polja.ime && !polja.prezime && !polja.telefon) return { ok: false, msg: "Unesi bar ime ili telefon." };
     setLokalni((a) => id
       ? a.map((l) => (l.id === id ? { ...l, ...polja, status: g("status") ?? l.status, podseti_kad: g("podseti_kad"), ishod_beleska: g("ishod_beleska") } : l))
@@ -269,7 +271,10 @@ function LeadTabela({ leadovi, danas, onStatus, onBeleska, onEdit, onDelete }: {
                   {l.info ? <p className="whitespace-pre-wrap text-[13px] leading-snug text-ink/85">{l.info}</p> : <span className="text-muted">—</span>}
                   <Beleska id={l.id} vrednost={l.ishod_beleska} onSave={onBeleska} mala />
                 </td>
-                <td className="whitespace-nowrap px-4 py-3 text-xs text-muted">{pre(l.created_at)}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-xs text-muted">
+                  <div>{pre(l.created_at)}</div>
+                  {uIshodu(l) && <div className="text-gold-deep">u ishodu {uIshodu(l)}</div>}
+                </td>
                 <td className="px-4 py-3">
                   <div className="flex gap-1">
                     <MiniAkcija href={telLink(l.telefon)} ima={ima} title="Pozovi" primarno icon={<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />} />
@@ -288,8 +293,8 @@ function LeadTabela({ leadovi, danas, onStatus, onBeleska, onEdit, onDelete }: {
                 </td>
                 <td className="px-2 py-3">
                   <div className="flex items-center">
-                    <button onClick={() => onEdit(l)} className="grid h-8 w-8 place-items-center rounded-full text-muted hover:bg-wash hover:text-navy" aria-label="Izmeni">
-                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+                    <button onClick={() => onEdit(l)} className="grid h-10 w-10 place-items-center rounded-full border border-line bg-white text-navy transition-colors hover:border-navy hover:bg-navy hover:text-white" aria-label="Izmeni" title="Izmeni">
+                      <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
                     </button>
                     <button onClick={() => { if (confirm(`Obrisati lead — ${punoIme(l)}?`)) onDelete(l.id); }} className="grid h-8 w-8 place-items-center rounded-full text-muted hover:bg-danger/8 hover:text-danger" aria-label="Obriši">
                       <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
@@ -327,10 +332,13 @@ function LeadKartica({ l, danas, onStatus, onBeleska, onEdit, onDelete }: { l: L
             ? <a href={telLink(l.telefon)} className="font-display text-[15px] font-semibold tracking-[.01em] text-gold-deep hover:text-navy">{l.telefon}</a>
             : <span className="text-sm text-muted">bez broja</span>}
         </div>
-        <div className="flex shrink-0 items-center gap-0.5">
-          <span className="mr-1 text-[11px] text-muted">{pre(l.created_at)}</span>
-          <button onClick={onEdit} className="grid h-8 w-8 place-items-center rounded-full text-muted hover:bg-wash hover:text-navy" aria-label="Izmeni">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
+        <div className="flex shrink-0 items-center gap-1">
+          <div className="mr-1 text-right text-[11px] leading-tight text-muted">
+            <div>dodat {pre(l.created_at)}</div>
+            {uIshodu(l) && <div className="text-gold-deep">u ishodu {uIshodu(l)}</div>}
+          </div>
+          <button onClick={onEdit} className="grid h-10 w-10 place-items-center rounded-full border border-line bg-white text-navy transition-colors hover:border-navy hover:bg-navy hover:text-white" aria-label="Izmeni" title="Izmeni">
+            <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4z" /></svg>
           </button>
           <button onClick={() => { if (confirm(`Obrisati lead — ${punoIme(l)}?`)) onDelete(); }} className="grid h-8 w-8 place-items-center rounded-full text-muted hover:bg-danger/8 hover:text-danger" aria-label="Obriši">
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
@@ -446,10 +454,11 @@ function LeadModal({ lead, onClose, akcija }: { lead?: LeadRow; onClose: () => v
 
             <div className="grid grid-cols-2 gap-3">
               <Field label="Proizvod">
-                <select name="proizvod" defaultValue={lead?.proizvod ?? ""} className="inp">
-                  <option value="">—</option>
-                  {PROIZVODI.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
-                </select>
+                {/* izbor iz spiska ili slobodan unos (datalist) */}
+                <input name="proizvod" list="proizvodi" defaultValue={lead?.proizvod ? label(PROIZVODI, lead.proizvod) : ""} className="inp" placeholder="Izaberi ili upiši…" autoComplete="off" />
+                <datalist id="proizvodi">
+                  {PROIZVODI.map((o) => <option key={o.v} value={o.l} />)}
+                </datalist>
               </Field>
               <Field label="Izvor">
                 <select name="izvor" defaultValue={lead?.izvor ?? ""} className="inp">
@@ -459,7 +468,7 @@ function LeadModal({ lead, onClose, akcija }: { lead?: LeadRow; onClose: () => v
               </Field>
             </div>
 
-            <Field label="Informacije za vlasnika (pred poziv)">
+            <Field label="Informacije pred poziv">
               <textarea name="info" defaultValue={lead?.info ?? ""} rows={3} className="inp" placeholder="Dužina i visina ograde, lokacija, boja, budžet, kad da ga zove…" />
             </Field>
 

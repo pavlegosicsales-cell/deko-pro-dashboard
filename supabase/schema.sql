@@ -19,6 +19,7 @@ create table if not exists leadovi (
   ishod_beleska  text,                 -- napomena posle poziva
   dodao          text,                 -- email osobe koja je unela lead (setter)
   pozvan_kad     timestamptz,          -- kad je prvi put pomeren iz „nov" (= pozvan)
+  status_od      timestamptz,          -- od kad je u trenutnom ishodu
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now()
 );
