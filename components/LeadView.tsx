@@ -26,14 +26,35 @@ export function LeadView({ leadovi, tabelaFali, demo }: { leadovi: LeadRow[]; ta
   const [modal, setModal] = useState(false);
   const [izmeni, setIzmeni] = useState<LeadRow | null>(null);
 
+  // Demo (bez baze): izmene žive u lokalnom state-u umesto na serveru.
+  const [lokalni, setLokalni] = useState<LeadRow[]>(leadovi);
+  const osnova = demo ? lokalni : leadovi;
+
   const [opt, apply] = useOptimistic(
-    leadovi,
+    osnova,
     (state: LeadRow[], a: { id: string; status?: string; del?: boolean }) =>
       a.del ? state.filter((l) => l.id !== a.id) : state.map((l) => (l.id === a.id ? { ...l, status: a.status! } : l)),
   );
   const [, start] = useTransition();
-  const menjajStatus = (id: string, status: string) => start(() => { apply({ id, status }); promeniStatus(id, status); });
-  const obrisi = (id: string) => start(() => { apply({ id, del: true }); obrisiLead(id); });
+  const menjajStatus = (id: string, status: string) => {
+    if (demo) return setLokalni((a) => a.map((l) => (l.id === id ? { ...l, status } : l)));
+    start(() => { apply({ id, status }); promeniStatus(id, status); });
+  };
+  const obrisi = (id: string) => {
+    if (demo) return setLokalni((a) => a.filter((l) => l.id !== id));
+    start(() => { apply({ id, del: true }); obrisiLead(id); });
+  };
+  // Lokalno čuvanje forme u demo režimu (isti potpis kao server akcije)
+  const demoSacuvaj = async (_p: LeadState, fd: FormData): Promise<LeadState> => {
+    const g = (k: string) => { const v = fd.get(k); return typeof v === "string" && v.trim() ? v.trim() : null; };
+    const id = g("id");
+    const polja = { ime: g("ime"), prezime: g("prezime"), telefon: g("telefon"), proizvod: g("proizvod"), izvor: g("izvor"), info: g("info") };
+    if (!polja.ime && !polja.prezime && !polja.telefon) return { ok: false, msg: "Unesi bar ime ili telefon." };
+    setLokalni((a) => id
+      ? a.map((l) => (l.id === id ? { ...l, ...polja, status: g("status") ?? l.status, podseti_kad: g("podseti_kad"), ishod_beleska: g("ishod_beleska") } : l))
+      : [{ id: "d" + Date.now(), ...polja, status: "nov", podseti_kad: null, ishod_beleska: null, created_at: new Date().toISOString() }, ...a]);
+    return { ok: true };
+  };
 
   const danas = danasIso();
   const qq = q.trim().toLowerCase();
@@ -70,7 +91,8 @@ export function LeadView({ leadovi, tabelaFali, demo }: { leadovi: LeadRow[]; ta
       <section className="page-head">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/hero-bg.jpg" alt="" aria-hidden />
-        <div className="mx-auto w-full max-w-3xl px-4 pb-6 pt-[calc(var(--nav-h)+28px)] sm:pt-[calc(var(--nav-h)+40px)]">
+        <div className="mx-auto w-full max-w-3xl px-4 pb-6 pt-[calc(var(--nav-h)+28px)] sm:pt-[calc(var(--nav-h)+40px)] lg:max-w-6xl lg:px-6 lg:pb-8">
+          <div className="lg:flex lg:items-end lg:justify-between lg:gap-10">
           <div className="on-dark rise flex flex-col items-start gap-3">
             <span className="eyebrow">
               <span className="eyebrow-ico">
@@ -85,16 +107,17 @@ export function LeadView({ leadovi, tabelaFali, demo }: { leadovi: LeadRow[]; ta
           </div>
 
           {/* Stat traka — navy / bronza / navy kao na sajtu */}
-          <div className="rise mt-6 grid grid-cols-3 gap-2.5 sm:gap-4" style={{ animationDelay: ".12s" }}>
+          <div className="rise mt-6 grid grid-cols-3 gap-2.5 sm:gap-4 lg:mt-0 lg:w-[560px] lg:shrink-0" style={{ animationDelay: ".12s" }}>
             <Stat label="U redu" value={String(uRedu)} icon={<><path d="M8 6h13M8 12h13M8 18h13" /><path d="M3 6h.01M3 12h.01M3 18h.01" /></>} />
             <Stat label="Dospelo danas" value={String(dospeloDanas)} alarm={dospeloDanas > 0}
               icon={<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>} />
             <Stat label="Zatvoreno" value={String(zatvoreno)} icon={<><path d="M20 6 9 17l-5-5" /></>} />
           </div>
+          </div>
         </div>
       </section>
 
-      <main className="mx-auto w-full max-w-3xl px-4 py-5 sm:py-7">
+      <main className="mx-auto w-full max-w-3xl px-4 py-5 sm:py-7 lg:max-w-6xl lg:px-6 lg:py-8">
         {demo && (
           <div className="card mb-4 border-l-4 border-l-gold p-4 text-sm">
             <p className="h3 text-[15px]">Probni podaci</p>
@@ -108,8 +131,9 @@ export function LeadView({ leadovi, tabelaFali, demo }: { leadovi: LeadRow[]; ta
           </div>
         )}
 
-        {/* Filteri: tag pilovi kao na sajtu */}
-        <div className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none]">
+        {/* Filteri: tag pilovi kao na sajtu; na desktopu pretraga stoji desno u istom redu */}
+        <div className="lg:mb-5 lg:flex lg:items-center lg:justify-between lg:gap-6">
+        <div className="-mx-4 mb-3 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] lg:m-0 lg:flex-wrap lg:p-0">
           {tabovi.map((t) => (
             <button key={t.v} onClick={() => setView(t.v)} className={`tag tag-filter shrink-0 ${view === t.v ? "tag-accent" : ""}`}>
               {t.l}
@@ -118,9 +142,10 @@ export function LeadView({ leadovi, tabelaFali, demo }: { leadovi: LeadRow[]; ta
           ))}
         </div>
 
-        <div className="relative mb-4">
+        <div className="relative mb-4 lg:m-0 lg:w-80 lg:shrink-0">
           <svg className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Pretraga: ime, telefon, proizvod…" className="inp pl-11" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Pretraga: ime, telefon, proizvod…" className="inp pl-11 lg:min-h-[44px] lg:py-2 lg:text-[14px]" />
+        </div>
         </div>
 
         {filtrirani.length === 0 ? (
@@ -132,7 +157,7 @@ export function LeadView({ leadovi, tabelaFali, demo }: { leadovi: LeadRow[]; ta
             )}
           </Card>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2 lg:gap-4">
             {filtrirani.map((l) => (
               <LeadKartica key={l.id} l={l} danas={danas} onStatus={menjajStatus} onEdit={() => setIzmeni(l)} onDelete={() => obrisi(l.id)} />
             ))}
@@ -148,8 +173,8 @@ export function LeadView({ leadovi, tabelaFali, demo }: { leadovi: LeadRow[]; ta
         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
       </button>
 
-      {modal && <LeadModal onClose={() => setModal(false)} />}
-      {izmeni && <LeadModal lead={izmeni} onClose={() => setIzmeni(null)} />}
+      {modal && <LeadModal onClose={() => setModal(false)} akcija={demo ? demoSacuvaj : undefined} />}
+      {izmeni && <LeadModal lead={izmeni} onClose={() => setIzmeni(null)} akcija={demo ? demoSacuvaj : undefined} />}
     </div>
   );
 }
@@ -160,7 +185,7 @@ function TopBar({ onDodaj }: { onDodaj: () => void }) {
   const odjava = async () => { await supabaseBrowser().auth.signOut(); router.replace("/login"); router.refresh(); };
   return (
     <header className="pointer-events-none fixed inset-x-0 top-3 z-40 sm:top-5">
-      <div className="pointer-events-auto mx-auto w-full max-w-3xl px-3 sm:px-4">
+      <div className="pointer-events-auto mx-auto w-full max-w-3xl px-3 sm:px-4 lg:max-w-6xl lg:px-6">
         <div className="nav-bar">
           <div className="flex min-w-0 items-center gap-2.5">
             <Logo size={40} />
@@ -256,8 +281,9 @@ function Akcija({ href, ima, label, icon, primarno, blank }: { href: string; ima
 /* ---------------- Modal (dodaj / izmeni) ---------------- */
 const pocetno: LeadState = { ok: false };
 
-function LeadModal({ lead, onClose }: { lead?: LeadRow; onClose: () => void }) {
-  const [state, formAction, pending] = useActionState(lead ? izmeniLead : dodajLead, pocetno);
+type Akcija = (p: LeadState, fd: FormData) => Promise<LeadState>;
+function LeadModal({ lead, onClose, akcija }: { lead?: LeadRow; onClose: () => void; akcija?: Akcija }) {
+  const [state, formAction, pending] = useActionState(akcija ?? (lead ? izmeniLead : dodajLead), pocetno);
 
   useEffect(() => { if (state.ok) onClose(); }, [state.ok, onClose]);
   useEffect(() => {
