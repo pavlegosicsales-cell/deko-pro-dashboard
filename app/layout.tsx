@@ -12,7 +12,7 @@ export const metadata: Metadata = {
   description: "Interni panel — Deko Pro (dekorativni blok)",
 };
 
-export const viewport: Viewport = { themeColor: "#0B1E3B" };
+export const viewport: Viewport = { themeColor: "#0B1E3B", width: "device-width", initialScale: 1, viewportFit: "cover" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
