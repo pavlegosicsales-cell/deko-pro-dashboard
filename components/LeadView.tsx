@@ -40,7 +40,7 @@ const POGLEDI = {
 type Pogled = keyof typeof POGLEDI;
 const datumKratko = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("sr-RS", { day: "2-digit", month: "2-digit" });
 
-export function LeadView({ leadovi, tabelaFali, demo, login, migracijaFali }: { leadovi: LeadRow[]; tabelaFali: boolean; demo?: boolean; login?: boolean; migracijaFali?: boolean }) {
+export function LeadView({ leadovi, tabelaFali, demo, login, migracijaFali }: { leadovi: LeadRow[]; tabelaFali: boolean; demo?: boolean; login?: boolean; migracijaFali?: { fajl: string; sta: string } | null }) {
   const [greska, setGreska] = useState<string | null>(null);
   const [view, setView] = useState<Pogled>("pozvati");
   const [q, setQ] = useState("");
@@ -188,7 +188,7 @@ export function LeadView({ leadovi, tabelaFali, demo, login, migracijaFali }: { 
         {migracijaFali && (
           <div className="card mb-4 border-l-4 border-l-warn p-4 text-sm">
             <p className="h3 text-[15px] text-warn">Baza čeka migraciju</p>
-            <p className="mt-1 text-ink">Zvezdica, zarada, obuhvat i vreme u ishodu se <b>ne čuvaju</b> dok se u Supabase SQL editoru ne pokrenu <code className="rounded bg-wash px-1">supabase/migracija-2.sql</code> i <code className="rounded bg-wash px-1">migracija-3.sql</code>. Sve ostalo radi.</p>
+            <p className="mt-1 text-ink">Ne čuva se: <b>{migracijaFali.sta}</b>. Pokreni <code className="rounded bg-wash px-1">supabase/{migracijaFali.fajl}</code> u Supabase SQL editoru. Sve ostalo radi.</p>
           </div>
         )}
         {greska && (
