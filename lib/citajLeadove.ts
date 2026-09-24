@@ -6,9 +6,10 @@ const DODATNE = ["pozvan_kad", "status_od", "prioritet", "zarada_rsd"]; // iz mi
 const PUNO = `${OSNOVNO}, ${DODATNE.join(", ")}`;
 
 // Čita sve leadove; ako kolona pozvan_kad još ne postoji (migracija-2 nije pokrenuta), čita bez nje.
-export async function citajLeadove(): Promise<{ leadovi: LeadRow[]; error: string | null }> {
+export async function citajLeadove(): Promise<{ leadovi: LeadRow[]; error: string | null; migracijaFali: boolean }> {
   const citaj = (kolone: string) => supabaseAdmin.from("leadovi").select(kolone).order("created_at", { ascending: false });
   let { data, error } = await citaj(PUNO);
-  if (error && DODATNE.some((k) => error!.message.includes(k))) ({ data, error } = await citaj(OSNOVNO));
-  return { leadovi: (data ?? []) as unknown as LeadRow[], error: error?.message ?? null };
+  let migracijaFali = false;
+  if (error && DODATNE.some((k) => error!.message.includes(k))) { migracijaFali = true; ({ data, error } = await citaj(OSNOVNO)); }
+  return { leadovi: (data ?? []) as unknown as LeadRow[], error: error?.message ?? null, migracijaFali };
 }

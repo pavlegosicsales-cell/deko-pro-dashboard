@@ -276,7 +276,8 @@ body {
 .kat:active { transform: scale(.985); }
 .kat-akcent { background: var(--color-flame-deep); border-color: var(--color-flame-deep); }
 .kat-akcent:hover { background: #9a7838; }
-.kat-aktivna, .kat-akcent.kat-aktivna { background: #fff; border-color: #fff; color: var(--color-ink); box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+.kat.kat-aktivna, .kat.kat-aktivna:hover, .kat.kat-akcent.kat-aktivna, .kat.kat-akcent.kat-aktivna:hover { background: #fff; border-color: #fff; color: var(--color-ink); box-shadow: 0 8px 24px rgba(0,0,0,.18); }
+@media (hover: none) { .kat:hover { background: transparent; } .kat-akcent:hover { background: var(--color-flame-deep); } }
 .kat-ico { width: 26px; height: 26px; flex: none; color: rgba(255,255,255,.75); }
 .kat-akcent .kat-ico { color: rgba(255,255,255,.9); }
 .kat-aktivna .kat-ico { color: var(--color-flame-deep); }

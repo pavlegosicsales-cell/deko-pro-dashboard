@@ -40,7 +40,8 @@ const POGLEDI = {
 type Pogled = keyof typeof POGLEDI;
 const datumKratko = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("sr-RS", { day: "2-digit", month: "2-digit" });
 
-export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRow[]; tabelaFali: boolean; demo?: boolean; login?: boolean }) {
+export function LeadView({ leadovi, tabelaFali, demo, login, migracijaFali }: { leadovi: LeadRow[]; tabelaFali: boolean; demo?: boolean; login?: boolean; migracijaFali?: boolean }) {
+  const [greska, setGreska] = useState<string | null>(null);
   const [view, setView] = useState<Pogled>("pozvati");
   const [q, setQ] = useState("");
   const [modal, setModal] = useState(false);
@@ -57,35 +58,38 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
         : state.map((l) => (l.id === a.id ? { ...l, ...(a.status !== undefined ? { status: a.status } : {}), ...(a.beleska !== undefined ? { ishod_beleska: a.beleska } : {}), ...(a.datum !== undefined ? { podseti_kad: a.datum } : {}), ...(a.prioritet !== undefined ? { prioritet: a.prioritet } : {}), ...(a.zarada !== undefined ? { zarada_rsd: a.zarada } : {}) } : l)),
   );
   const [, start] = useTransition();
+  // Optimistična izmena + poziv servera; ako server javi grešku, prikaži je (ekran se sam vrati na staro).
+  const snimi = (a: Parameters<typeof apply>[0], akcija: () => Promise<LeadState>) =>
+    start(async () => { apply(a); const r = await akcija(); if (!r.ok) setGreska(r.msg ?? "Nije sačuvano."); else setGreska(null); });
   const menjajStatus = (id: string, status: string) => {
     const sad = new Date().toISOString();
     const izNov = opt.find((l) => l.id === id)?.status === "nov" && status !== "nov";
     if (demo) return setLokalni((a) => a.map((l) => (l.id === id ? { ...l, status, status_od: sad, ...(izNov ? { pozvan_kad: sad } : {}) } : l)));
-    start(() => { apply({ id, status }); promeniStatus(id, status, izNov); });
+    snimi({ id, status }, () => promeniStatus(id, status, izNov));
   };
   const menjajBelesku = (id: string, beleska: string) => {
     const b = beleska.trim() || null;
     if (demo) return setLokalni((a) => a.map((l) => (l.id === id ? { ...l, ishod_beleska: b } : l)));
-    start(() => { apply({ id, beleska: b }); promeniBelesku(id, b); });
+    snimi({ id, beleska: b }, () => promeniBelesku(id, b));
   };
   const menjajDatum = (id: string, datum: string) => {
     const d = datum || null;
     if (demo) return setLokalni((a) => a.map((l) => (l.id === id ? { ...l, podseti_kad: d } : l)));
-    start(() => { apply({ id, datum: d }); promeniPodsetnik(id, d); });
+    snimi({ id, datum: d }, () => promeniPodsetnik(id, d));
   };
   const menjajPrioritet = (id: string, prioritet: boolean) => {
     if (demo) return setLokalni((a) => a.map((l) => (l.id === id ? { ...l, prioritet } : l)));
-    start(() => { apply({ id, prioritet }); promeniPrioritet(id, prioritet); });
+    snimi({ id, prioritet }, () => promeniPrioritet(id, prioritet));
   };
   const menjajZaradu = (id: string, zarada: string) => {
     const z = zarada.trim() === "" ? null : Number(zarada.replace(/[^\d.]/g, ""));
     if (z !== null && isNaN(z)) return;
     if (demo) return setLokalni((a) => a.map((l) => (l.id === id ? { ...l, zarada_rsd: z } : l)));
-    start(() => { apply({ id, zarada: z }); promeniZaradu(id, z); });
+    snimi({ id, zarada: z }, () => promeniZaradu(id, z));
   };
   const obrisi = (id: string) => {
     if (demo) return setLokalni((a) => a.filter((l) => l.id !== id));
-    start(() => { apply({ id, del: true }); obrisiLead(id); });
+    snimi({ id, del: true }, () => obrisiLead(id));
   };
   // Lokalno čuvanje forme u demo režimu (isti potpis kao server akcije)
   const demoSacuvaj = async (_p: LeadState, fd: FormData): Promise<LeadState> => {
@@ -179,6 +183,18 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
           <div className="card mb-4 border-l-4 border-l-gold p-4 text-sm">
             <p className="h3 text-[15px]">Probni podaci</p>
             <p className="mt-1 text-muted">Supabase još nije povezan, pa se izmene ne čuvaju. Popuni <code className="rounded bg-wash px-1 text-ink">.env.local</code> i pokreni <code className="rounded bg-wash px-1 text-ink">supabase/schema.sql</code>.</p>
+          </div>
+        )}
+        {migracijaFali && (
+          <div className="card mb-4 border-l-4 border-l-warn p-4 text-sm">
+            <p className="h3 text-[15px] text-warn">Baza čeka migraciju</p>
+            <p className="mt-1 text-ink">Zvezdica, zarada i vreme u ishodu se <b>ne čuvaju</b> dok se u Supabase SQL editoru ne pokrene <code className="rounded bg-wash px-1">supabase/migracija-2.sql</code>. Sve ostalo radi.</p>
+          </div>
+        )}
+        {greska && (
+          <div role="alert" className="card mb-4 flex items-start justify-between gap-3 border-l-4 border-l-danger p-4 text-sm">
+            <p className="text-ink">{greska}</p>
+            <button onClick={() => setGreska(null)} className="shrink-0 text-muted hover:text-ink" aria-label="Zatvori">x</button>
           </div>
         )}
         {tabelaFali && (

@@ -12,8 +12,8 @@ const demo = JE_DEMO;
 export default async function Home() {
   if (demo) return <LeadView leadovi={DEMO_LEADOVI} tabelaFali={false} demo />;
 
-  const { leadovi, error } = await citajLeadove();
+  const { leadovi, error, migracijaFali } = await citajLeadove();
   const tabelaFali = !!error && /does not exist|schema cache|relation/i.test(error);
 
-  return <LeadView leadovi={leadovi} tabelaFali={tabelaFali} login={TRAZI_LOGIN} />;
+  return <LeadView leadovi={leadovi} tabelaFali={tabelaFali} login={TRAZI_LOGIN} migracijaFali={migracijaFali} />;
 }
