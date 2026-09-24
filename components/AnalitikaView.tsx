@@ -6,7 +6,7 @@ import type { LeadRow } from "@/components/LeadView";
 import { Sidebar } from "@/components/Sidebar";
 import { Logo } from "@/components/ui";
 import { Sat } from "@/components/Sat";
-import { OTVORENI, IZVORI, label } from "@/lib/opcije";
+import { OTVORENI, SVI_IZVORI, label } from "@/lib/opcije";
 import { poDanu, danasKljuc, pomeriDan, brojNaDan, pozvanoNaDan, danKratko, danIme, danKljuc, type DanStat } from "@/lib/analitika";
 import { rsd } from "@/lib/format";
 
@@ -36,7 +36,7 @@ export function AnalitikaView({ leadovi }: { leadovi: LeadRow[] }) {
   const prosek = kupci.length ? Math.round(zaradaUkupno / kupci.length) : 0;
 
   // po izvoru (svi leadovi)
-  const poIzvoru = IZVORI.map((i) => ({ ...i, n: leadovi.filter((l) => l.izvor === i.v).length })).filter((i) => i.n > 0).sort((a, b) => b.n - a.n);
+  const poIzvoru = SVI_IZVORI.map((i) => ({ ...i, n: leadovi.filter((l) => l.izvor === i.v).length })).filter((i) => i.n > 0).sort((a, b) => b.n - a.n);
   const maxIzvor = Math.max(1, ...poIzvoru.map((i) => i.n));
 
   return (
@@ -137,7 +137,7 @@ export function AnalitikaView({ leadovi }: { leadovi: LeadRow[] }) {
               {poIzvoru.length === 0 && <p className="text-sm text-muted">Još nema podataka.</p>}
               {poIzvoru.map((i) => (
                 <div key={i.v}>
-                  <div className="mb-1 flex justify-between text-sm"><span className="text-ink">{label(IZVORI, i.v)}</span><span className="tabular-nums text-muted">{i.n}</span></div>
+                  <div className="mb-1 flex justify-between text-sm"><span className="text-ink">{label(SVI_IZVORI, i.v)}</span><span className="tabular-nums text-muted">{i.n}</span></div>
                   <div className="h-2 rounded-full bg-wash"><div className="h-2 rounded-full" style={{ width: `${(i.n / maxIzvor) * 100}%`, background: BOJA_NOVI }} /></div>
                 </div>
               ))}

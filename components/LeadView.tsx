@@ -8,7 +8,7 @@ import { brojNaDan, danasKljuc, pomeriDan } from "@/lib/analitika";
 import { Card, ArrowIco, PlusIco, Logo } from "@/components/ui";
 import { Sidebar } from "@/components/Sidebar";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
-import { STATUSI, OTVORENI, PROIZVODI, IZVORI, OBUHVATI, obuhvatKratko, label, normalizujProizvod, DRUGO } from "@/lib/opcije";
+import { STATUSI, OTVORENI, PROIZVODI, IZVORI, SVI_IZVORI, OBUHVATI, obuhvatKratko, label, normalizujProizvod, DRUGO } from "@/lib/opcije";
 import { telLink, smsLink, waLink, viberLink } from "@/lib/lead";
 import { pre, rsd } from "@/lib/format";
 import { dodajLead, izmeniLead, promeniStatus, obrisiLead, promeniBelesku, promeniPodsetnik, promeniPrioritet, promeniZaradu, type LeadState } from "@/app/leadovi/actions";
@@ -346,7 +346,7 @@ function LeadTabela({ leadovi, danas, onStatus, onBeleska, onDatum, onPrioritet,
                     {obuhvatKratko(l.obuhvat) && <span className={`tag ${l.obuhvat === "kljuc_u_ruke" ? "tag-accent" : ""}`}>{obuhvatKratko(l.obuhvat)}</span>}
                   </div>
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap">{l.izvor ? <span className="tag tag-gold">{label(IZVORI, l.izvor)}</span> : <span className="text-muted">—</span>}</td>
+                <td className="px-4 py-3 whitespace-nowrap">{l.izvor ? <span className="tag tag-gold">{label(SVI_IZVORI, l.izvor)}</span> : <span className="text-muted">—</span>}</td>
                 <td className="max-w-[360px] px-4 py-3">
                   {l.info ? <p className="whitespace-pre-wrap text-[13px] leading-snug text-ink/85">{l.info}</p> : <span className="text-muted">—</span>}
                   <Beleska id={l.id} vrednost={l.ishod_beleska} onSave={onBeleska} mala />
@@ -436,7 +436,7 @@ function LeadKartica({ l, danas, onStatus, onBeleska, onDatum, onPrioritet, onZa
       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
         {l.proizvod && <span className="tag tag-navy">{label(PROIZVODI, l.proizvod).replace(/\s*\(.*\)$/, "")}</span>}
         {obuhvatKratko(l.obuhvat) && <span className={`tag ${l.obuhvat === "kljuc_u_ruke" ? "tag-accent" : ""}`}>{obuhvatKratko(l.obuhvat)}</span>}
-        {l.izvor && <span className="tag tag-gold">{label(IZVORI, l.izvor)}</span>}
+        {l.izvor && <span className="tag tag-gold">{label(SVI_IZVORI, l.izvor)}</span>}
         {l.podseti_kad && <span className={`tag ${dospeo ? "tag-warn" : ""}`}>{dospeo ? "Dospelo" : "Zvati"} {datumKratko(l.podseti_kad)}</span>}
       </div>
 

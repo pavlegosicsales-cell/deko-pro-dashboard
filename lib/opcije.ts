@@ -40,14 +40,22 @@ export const OBUHVATI = [
 ] as const;
 export const obuhvatKratko = (v: string | null | undefined) => OBUHVATI.find((o) => o.v === v)?.k ?? null;
 
+// Izvori za ručni unos. „sajt" ne nudimo u formi: lead sa sajta stiže sam preko /api/lead.
+// Viber/WhatsApp su kanali za kontakt (dugmad na kartici), ne izvori (odluka Pavla, 24.09.2026.).
 export const IZVORI = [
   { v: "instagram", l: "Instagram" },
   { v: "facebook", l: "Facebook" },
-  { v: "viber", l: "Viber" },
-  { v: "whatsapp", l: "WhatsApp" },
-  { v: "sajt", l: "Sajt (forma)" },
+  { v: "kupujemprodajem", l: "KupujemProdajem" },
   { v: "preporuka", l: "Preporuka" },
   { v: "ostalo", l: "Ostalo" },
+] as const;
+
+// Svi poznati izvori (i stari / automatski) — samo za prikaz oznake na kartici i u analitici.
+export const SVI_IZVORI = [
+  ...IZVORI,
+  { v: "sajt", l: "Sajt (forma)" },
+  { v: "viber", l: "Viber" },
+  { v: "whatsapp", l: "WhatsApp" },
 ] as const;
 
 // Proizvod može biti i slobodan tekst: ako se poklapa sa ponuđenim (po ključu ili nazivu) čuva se ključ.
