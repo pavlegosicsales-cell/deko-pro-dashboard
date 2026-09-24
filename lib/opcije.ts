@@ -19,17 +19,27 @@ export const ZATVORENI = new Set(["zatvoren", "propao"]);
 // Po context/business details: modeli ograde (START/PLUS/PRIVAT), obuhvat (samo materijal,
 // sa prevozom, ključ u ruke) i elementi. Poslednja opcija DRUGO = slobodan tekst.
 export const DRUGO = "__drugo";
+// ŠTA GRADI (grana wizarda). Ograda otvara dužinu, ispunu i model; ostalo traži količinu i opis.
 export const PROIZVODI = [
-  { v: "start", l: "Ograda START (polje 0,8 m · stub 1,6 m)" },
-  { v: "plus", l: "Ograda PLUS (polje 0,8 m · stub 1,6 m, stubni blok + kape)" },
-  { v: "privat", l: "Ograda PRIVAT (polje 1,8 m · stub 2,0 m)" },
-  { v: "po_meri", l: "Ograda po meri (drugačije mere)" },
-  { v: "dekorativni_blok", l: "Samo blokovi (bez modela)" },
-  { v: "zavrsni_elementi", l: "Stubni blok / kape / okapnice" },
-  { v: "oblaganje", l: "Dekorativna obloga (fasada)" },
-  { v: "potporni_zid", l: "Potporni zid" },
-  { v: "ostalo", l: "Nije siguran / još ne zna" },
+  { v: "ograda", l: "Ograda", opis: "Dužina, samo blokovi ili sa panelima, model" },
+  { v: "potporni_zid", l: "Potporni zid", opis: "Dužina i visina zida" },
+  { v: "oblaganje", l: "Oblaganje / fasada", opis: "Kvadratura" },
 ] as const;
+// Stare vrednosti proizvoda (pre wizarda) — samo za prikaz oznake.
+export const SVI_PROIZVODI = [
+  ...PROIZVODI,
+  { v: "start", l: "Ograda START" }, { v: "plus", l: "Ograda PLUS" }, { v: "privat", l: "Ograda PRIVAT" }, { v: "po_meri", l: "Ograda po meri" },
+  { v: "dekorativni_blok", l: "Blokovi" }, { v: "zavrsni_elementi", l: "Stubni blok / kape / okapnice" }, { v: "ostalo", l: "Nije siguran" },
+] as const;
+
+// MODEL ograde po sajtu (mere). Poželjno; pola kupaca ne zna.
+export const MODELI = [
+  { v: "start", l: "START (polje 0,8 · stub 1,6)" },
+  { v: "plus", l: "PLUS (0,8 · 1,6, stubni blok)" },
+  { v: "privat", l: "PRIVAT (1,8 · 2,0)" },
+  { v: "po_meri", l: "Po meri" },
+] as const;
+export const modelLabel = (v: string | null | undefined) => MODELI.find((o) => o.v === v)?.l.replace(/\s*\(.*\)$/, "") ?? null;
 
 // Obuhvat = šta kupac kupuje (business details, deo 5). Važi za svaki model.
 export const OBUHVATI = [
@@ -50,7 +60,9 @@ export const BOJE = ["Natur siva", "Žuta", "Braon", "Oranž", "Crvena", "Zelena
 
 // Poželjni detalji za ponudu (JSON kolona `detalji`). Redosled = redosled u formi i na kartici.
 export const DETALJI = [
+  { k: "model", l: "Model", tip: "tekst" },
   { k: "boja", l: "Boja bloka", tip: "boja" },
+  { k: "kolicina", l: "Količina", tip: "tekst" },
   { k: "visina_stuba", l: "Visina stuba", tip: "m" },
   { k: "visina_polja", l: "Visina polja", tip: "m" },
   { k: "razmak_stubova", l: "Razmak stubova", tip: "m" },
@@ -60,18 +72,25 @@ export const DETALJI = [
   { k: "br_okapnica", l: "Okapnica", tip: "kom" },
   { k: "spec_materijala", l: "Specifikacija materijala", tip: "tekst" },
   { k: "budzet", l: "Okvirni budžet", tip: "tekst" },
+  { k: "pristup", l: "Pristup za kamion / istovar", tip: "tekst" },
 ] as const;
 export type Detalji = Partial<Record<(typeof DETALJI)[number]["k"], string>>;
 
-// Šta Luka traži kao obavezno pre poziva (business details + Lukina poruka 24.09.2026.)
-export const OBAVEZNO = [
-  { k: "ime", l: "ime" },
-  { k: "telefon", l: "telefon" },
-  { k: "lokacija", l: "lokacija" },
-  { k: "obuhvat", l: "obuhvat" },
-  { k: "duzina_m", l: "dužina" },
-  { k: "ispuna", l: "model" },
-] as const;
+// Šta Luka traži kao obavezno pre poziva (Lukina poruka 24.09.2026.). Dužina i
+// „samo blokovi / sa panelima" važe samo kad gradi ogradu.
+export function staFali(l: { ime?: string | null; prezime?: string | null; telefon?: string | null; lokacija?: string | null; obuhvat?: string | null; proizvod?: string | null; duzina_m?: number | null; ispuna?: string | null }): string[] {
+  const f: string[] = [];
+  if (!l.ime && !l.prezime) f.push("ime");
+  if (!l.telefon) f.push("telefon");
+  if (!l.lokacija) f.push("lokacija");
+  if (!l.obuhvat || l.obuhvat === "nepoznato") f.push("obuhvat");
+  if (!l.proizvod) f.push("šta gradi");
+  if (l.proizvod === "ograda") {
+    if (l.duzina_m == null) f.push("dužina");
+    if (!l.ispuna) f.push("samo blokovi / sa panelima");
+  }
+  return f;
+}
 
 export const obuhvatKratko = (v: string | null | undefined) => OBUHVATI.find((o) => o.v === v)?.k ?? null;
 
