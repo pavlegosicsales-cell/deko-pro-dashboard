@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import type { LeadRow } from "@/components/LeadView";
 import { ArrowIco } from "@/components/ui";
-import { STATUSI, IZVORI, OBUHVATI, PROIZVODI, MODELI_OGRADE, MODELI, BOJE, DETALJI, DRUGO, staFali } from "@/lib/opcije";
+import { STATUSI, IZVORI, OBUHVATI, PROIZVODI, MODELI_OGRADE, MODELI, BOJE, DETALJI, DRUGO, staFali, TEMPERATURE, TIPOVI_KUPCA, ROKOVI, RAZLOZI, predloziTemperaturu } from "@/lib/opcije";
 import { dodajLead, izmeniLead, type LeadState } from "@/app/leadovi/actions";
 
 /*
@@ -27,6 +27,7 @@ type V = {
   duzina_m: string; ispuna: string;
   d: Record<string, string>;
   info: string; status: string; podseti_kad: string; ishod_beleska: string;
+  temperatura: string; tip_kupca: string; rok: string; razlog_odustajanja: string;
 };
 
 const izLeada = (l?: LeadRow): V => {
@@ -37,6 +38,7 @@ const izLeada = (l?: LeadRow): V => {
     duzina_m: l?.duzina_m != null ? String(l.duzina_m) : "", ispuna: l?.ispuna ?? "",
     d: { ...(l?.detalji as Record<string, string> | null | undefined ?? {}) },
     info: l?.info ?? "", status: l?.status ?? "nov", podseti_kad: l?.podseti_kad ?? "", ishod_beleska: l?.ishod_beleska ?? "",
+    temperatura: l?.temperatura ?? "", tip_kupca: l?.tip_kupca ?? "", rok: l?.rok ?? "", razlog_odustajanja: l?.razlog_odustajanja ?? "",
   };
 };
 
@@ -68,10 +70,14 @@ export function LeadWizard({ lead, onClose, akcija, pocetniKorak = 0 }: { lead?:
     duzina_m: v.duzina_m ? parseFloat(v.duzina_m.replace(",", ".")) || null : null, ispuna: v.ispuna,
   });
 
+  const predlog = predloziTemperaturu({ rok: v.rok, duzina_m: v.duzina_m ? parseFloat(v.duzina_m.replace(",", ".")) || null : null, lokacija: v.lokacija, obuhvat: v.obuhvat });
+  const temp = v.temperatura || predlog; // dok Pavle ne izabere ručno, važi predlog
+
   const sacuvaj = () => {
     const fd = new FormData();
     if (lead) { fd.set("id", lead.id); fd.set("prethodni_status", lead.status); }
-    for (const k of ["ime", "prezime", "telefon", "lokacija", "izvor", "obuhvat", "proizvod", "proizvod_tekst", "duzina_m", "ispuna", "info", "status", "podseti_kad", "ishod_beleska"] as const) fd.set(k, v[k]);
+    for (const k of ["ime", "prezime", "telefon", "lokacija", "izvor", "obuhvat", "proizvod", "proizvod_tekst", "duzina_m", "ispuna", "info", "status", "podseti_kad", "ishod_beleska", "temperatura", "tip_kupca", "rok", "razlog_odustajanja"] as const) fd.set(k, v[k]);
+    fd.set("temperatura", temp);
     for (const { k } of DETALJI) if (v.d[k]) fd.set("d_" + k, v.d[k]);
     start(() => formAction(fd));
   };
@@ -189,8 +195,33 @@ export function LeadWizard({ lead, onClose, akcija, pocetniKorak = 0 }: { lead?:
                 <div className="rounded-[10px] border border-ok/30 bg-ok/5 px-3 py-2.5 text-sm text-ok">Ima sve što Luki treba pred poziv.</div>
               )}
 
+              <Field label="Kad bi radio">
+                <div className="flex flex-wrap gap-1.5">
+                  {ROKOVI.map((o) => <Cip key={o.v} on={v.rok === o.v} onClick={() => set("rok", v.rok === o.v ? "" : o.v)}>{o.l}</Cip>)}
+                </div>
+              </Field>
+
+              <Field label={v.temperatura ? "Kvalitet leada" : "Kvalitet leada (predlog iz podataka, promeni ako misliš drugačije)"}>
+                <div className="grid grid-cols-3 gap-2">
+                  {TEMPERATURE.map((t) => (
+                    <button key={t.v} type="button" onClick={() => set("temperatura", t.v)} aria-pressed={temp === t.v} title={t.opis}
+                      className={`rounded-[10px] border px-2 py-2 text-center text-sm font-semibold transition-colors ${temp === t.v ? "text-white" : "border-line bg-white text-ink hover:border-accent"}`}
+                      style={temp === t.v ? { background: t.boja, borderColor: t.boja } : undefined}>
+                      {t.l}
+                    </button>
+                  ))}
+                </div>
+              </Field>
+
+              <Field label="Tip kupca (ako možeš da proceniš; Luka doteruje posle poziva)">
+                <div className="flex flex-wrap gap-1.5">
+                  {TIPOVI_KUPCA.map((o) => <Cip key={o.v} on={v.tip_kupca === o.v} onClick={() => set("tip_kupca", v.tip_kupca === o.v ? "" : o.v)}>{o.l}</Cip>)}
+                </div>
+                {v.tip_kupca && <p className="mt-1 text-xs text-muted">{TIPOVI_KUPCA.find((o) => o.v === v.tip_kupca)?.opis}</p>}
+              </Field>
+
               <Field label="Informacije pred poziv">
-                <textarea value={v.info} onChange={(e) => set("info", e.target.value)} rows={3} className="inp" placeholder="Kad da ga zove, šta ga muči, ko odlučuje, rok…" />
+                <textarea value={v.info} onChange={(e) => set("info", e.target.value)} rows={3} className="inp" placeholder="Kad da ga zove, šta ga muči, ko odlučuje…" />
               </Field>
 
               <details className="rounded-[10px] border border-dashed border-line" open={Object.entries(v.d).some(([k, x]) => x && !["model", "boja", "kolicina", "spec_materijala"].includes(k))}>
@@ -216,6 +247,14 @@ export function LeadWizard({ lead, onClose, akcija, pocetniKorak = 0 }: { lead?:
                     </Field>
                     <Field label="Pozvati kog datuma"><input type="date" value={v.podseti_kad} onChange={(e) => set("podseti_kad", e.target.value)} className="inp" /></Field>
                   </div>
+                  {v.status === "propao" && (
+                    <Field label="Zašto je odustao" obavezno>
+                      <select value={v.razlog_odustajanja} onChange={(e) => set("razlog_odustajanja", e.target.value)} className="inp">
+                        <option value="">—</option>
+                        {RAZLOZI.map((r) => <option key={r.v} value={r.v}>{r.l}</option>)}
+                      </select>
+                    </Field>
+                  )}
                   <Field label="Beleška posle poziva"><textarea value={v.ishod_beleska} onChange={(e) => set("ishod_beleska", e.target.value)} rows={2} className="inp" /></Field>
                 </>
               )}

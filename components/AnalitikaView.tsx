@@ -6,7 +6,7 @@ import type { LeadRow } from "@/components/LeadView";
 import { Sidebar } from "@/components/Sidebar";
 import { Logo } from "@/components/ui";
 import { Sat } from "@/components/Sat";
-import { OTVORENI, SVI_IZVORI, label } from "@/lib/opcije";
+import { OTVORENI, SVI_IZVORI, TIPOVI_KUPCA, TEMPERATURE, RAZLOZI, label } from "@/lib/opcije";
 import { poDanu, danasKljuc, pomeriDan, brojNaDan, pozvanoNaDan, danKratko, danIme, danKljuc, type DanStat } from "@/lib/analitika";
 import { rsd } from "@/lib/format";
 
@@ -34,6 +34,19 @@ export function AnalitikaView({ leadovi }: { leadovi: LeadRow[] }) {
   const mesec = danas.slice(0, 7);
   const zaradaMesec = kupci.filter((l) => danKljuc(l.status_od ?? l.created_at).startsWith(mesec)).reduce((s, l) => s + (Number(l.zarada_rsd) || 0), 0);
   const prosek = kupci.length ? Math.round(zaradaUkupno / kupci.length) : 0;
+
+  // Kvalifikacija: stopa zatvaranja po preseku (izvor / tip kupca / temperatura) + razlozi odustajanja
+  const presek = (kljuc: (l: LeadRow) => string | null | undefined, opcije: readonly { v: string; l: string }[]) =>
+    opcije.map((o) => {
+      const g = leadovi.filter((l) => kljuc(l) === o.v);
+      const k = g.filter((l) => l.status === "zatvoren").length, p = g.filter((l) => l.status === "propao").length;
+      return { l: o.l, n: g.length, k, p, stopa: k + p > 0 ? Math.round((k / (k + p)) * 100) : null, zarada: g.reduce((s, l) => s + (l.status === "zatvoren" ? Number(l.zarada_rsd) || 0 : 0), 0) };
+    }).filter((r) => r.n > 0).sort((a, b) => b.n - a.n);
+  const poTipu = presek((l) => l.tip_kupca, TIPOVI_KUPCA);
+  const poTemp = presek((l) => l.temperatura, TEMPERATURE);
+  const poIzvoruStopa = presek((l) => l.izvor, SVI_IZVORI);
+  const razlozi = RAZLOZI.map((r) => ({ l: r.l, n: leadovi.filter((l) => l.status === "propao" && l.razlog_odustajanja === r.v).length })).filter((r) => r.n > 0).sort((a, b) => b.n - a.n);
+  const maxRazlog = Math.max(1, ...razlozi.map((r) => r.n));
 
   // po izvoru (svi leadovi)
   const poIzvoru = SVI_IZVORI.map((i) => ({ ...i, n: leadovi.filter((l) => l.izvor === i.v).length })).filter((i) => i.n > 0).sort((a, b) => b.n - a.n);
@@ -106,6 +119,26 @@ export function AnalitikaView({ leadovi }: { leadovi: LeadRow[] }) {
           <Grafikon serija={serija} />
         </div>
 
+        {/* Kvalifikacija (Lukin zahtev): ko donosi posao */}
+        <div className="mt-4 grid gap-4 lg:grid-cols-3">
+          <Presek naslov="Po tipu kupca" redovi={poTipu} />
+          <Presek naslov="Po kvalitetu leada" redovi={poTemp} />
+          <Presek naslov="Po izvoru" redovi={poIzvoruStopa} />
+        </div>
+        <div className="card mt-4 p-4 sm:p-5">
+          <h2 className="h3 text-[16px]">Zašto odustaju</h2>
+          <p className="text-xs text-muted">Razlog se upisuje kad lead ode u „Odustao“.</p>
+          <div className="mt-3 flex flex-col gap-2.5">
+            {razlozi.length === 0 && <p className="text-sm text-muted">Još nema odustalih sa razlogom.</p>}
+            {razlozi.map((r) => (
+              <div key={r.l}>
+                <div className="mb-1 flex justify-between text-sm"><span className="text-ink">{r.l}</span><span className="tabular-nums text-muted">{r.n}</span></div>
+                <div className="h-2 rounded-full bg-wash"><div className="h-2 rounded-full" style={{ width: `${(r.n / maxRazlog) * 100}%`, background: BOJA_POZVANI }} /></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="mt-4 grid gap-4 lg:grid-cols-2">
           {/* Tabela po danu */}
           <div className="card overflow-hidden">
@@ -145,6 +178,38 @@ export function AnalitikaView({ leadovi }: { leadovi: LeadRow[] }) {
           </div>
         </div>
       </main>
+    </div>
+  );
+}
+
+/* Presek: koliko leadova, koliko kupilo/odustalo, stopa zatvaranja i zarada po grupi. */
+function Presek({ naslov, redovi }: { naslov: string; redovi: { l: string; n: number; k: number; p: number; stopa: number | null; zarada: number }[] }) {
+  return (
+    <div className="card overflow-hidden">
+      <div className="px-4 pt-3.5"><h2 className="h3 text-[15px]">{naslov}</h2></div>
+      <table className="mt-2 w-full text-sm">
+        <thead>
+          <tr className="border-b border-line bg-wash/70 text-left text-[10px] uppercase tracking-wider text-muted">
+            <th className="px-4 py-2 font-semibold">Grupa</th>
+            <th className="px-2 py-2 text-right font-semibold">Lead.</th>
+            <th className="px-2 py-2 text-right font-semibold">Kupili</th>
+            <th className="px-2 py-2 text-right font-semibold">Stopa</th>
+            <th className="px-4 py-2 text-right font-semibold">Zarada</th>
+          </tr>
+        </thead>
+        <tbody>
+          {redovi.length === 0 && <tr><td colSpan={5} className="px-4 py-3 text-muted">Još nema podataka.</td></tr>}
+          {redovi.map((r) => (
+            <tr key={r.l} className="border-b border-line last:border-0">
+              <td className="px-4 py-2 text-ink">{r.l}</td>
+              <td className="px-2 py-2 text-right tabular-nums">{r.n}</td>
+              <td className="px-2 py-2 text-right tabular-nums">{r.k}{r.p ? <span className="text-muted"> / {r.p}</span> : null}</td>
+              <td className="px-2 py-2 text-right tabular-nums">{r.stopa == null ? "—" : `${r.stopa}%`}</td>
+              <td className="px-4 py-2 text-right tabular-nums text-muted">{r.zarada ? rsd(r.zarada) : "—"}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
     </div>
   );
 }

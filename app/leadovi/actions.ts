@@ -28,7 +28,7 @@ function detaljiIzForme(fd: FormData): Record<string, string> | null {
   return Object.keys(d).length ? d : null;
 }
 // Kolone iz kasnijih migracija; ako neka fali, snimi bez svih njih (bolje delimično nego ništa).
-const KASNIJE = ["obuhvat", "lokacija", "duzina_m", "ispuna", "detalji"] as const;
+const KASNIJE = ["obuhvat", "lokacija", "duzina_m", "ispuna", "detalji", "temperatura", "tip_kupca", "rok", "razlog_odustajanja"] as const;
 const bezKasnijih = <T extends Record<string, unknown>>(p: T) => Object.fromEntries(Object.entries(p).filter(([k]) => !(KASNIJE as readonly string[]).includes(k)));
 const faliKolona = (msg: string) => KASNIJE.some((k) => msg.includes(k));
 
@@ -44,6 +44,10 @@ function polja(fd: FormData) {
     ispuna: s(fd, "ispuna"),
     detalji: detaljiIzForme(fd),
     izvor: s(fd, "izvor"),
+    temperatura: s(fd, "temperatura"),
+    tip_kupca: s(fd, "tip_kupca"),
+    rok: s(fd, "rok"),
+    razlog_odustajanja: s(fd, "status") === "propao" ? s(fd, "razlog_odustajanja") : null,
     info: s(fd, "info"),
     status: s(fd, "status") ?? "nov",
     podseti_kad: s(fd, "podseti_kad"),
@@ -126,3 +130,10 @@ export async function promeniPrioritet(id: string, prioritet: boolean): Promise<
 
 // Zarada (RSD) kad je ishod „Kupio", sa kartice.
 export async function promeniZaradu(id: string, zarada: number | null): Promise<LeadState> { return brzaIzmena(id, { zarada_rsd: zarada }); }
+
+// Kvalifikacija sa kartice (Luka menja iz koraka u korak): temperatura, tip kupca, razlog odustajanja.
+const KVALIFIKACIJA = new Set(["temperatura", "tip_kupca", "rok", "razlog_odustajanja"]);
+export async function promeniKvalifikaciju(id: string, polje: string, vrednost: string | null): Promise<LeadState> {
+  if (!KVALIFIKACIJA.has(polje)) return { ok: false, msg: "Nepoznato polje." };
+  return brzaIzmena(id, { [polje]: vrednost });
+}

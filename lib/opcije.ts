@@ -128,3 +128,52 @@ export const BIZNIS = {
   pun: "Dekorativni blok Deko Pro",
   telefon: "062 253 140",
 };
+
+// ===== Kvalifikacija (Lukin zahtev 24.09.2026.): temperatura, tip kupca, rok, razlog odustajanja =====
+
+// Kvalitet leada = „dobar / loš / sranje", pristojno nazvano. Pavle daje prvu ocenu, Luka menja posle poziva.
+export const TEMPERATURE = [
+  { v: "vruc", l: "Vruć", boja: "#B3261E", opis: "Rok do mesec dana, ima mere, zna šta hoće" },
+  { v: "topao", l: "Topao", boja: "#A8823A", opis: "1–3 meseca, ozbiljan, skuplja podatke" },
+  { v: "hladan", l: "Hladan", boja: "#5A7096", opis: "Samo pita cenu, istražuje" },
+] as const;
+export const temperatura = (v: string | null | undefined) => TEMPERATURE.find((t) => t.v === v) ?? null;
+
+// Tip kupca po Lukinoj podeli (Pavlovi nazivi, 24.09.2026.). Interno, kupac ovo ne vidi.
+export const TIPOVI_KUPCA = [
+  { v: "srednja_klasa", l: "Srednja klasa", opis: "Predgrađe, pita cenu po metru, poredi, pominje suprugu" },
+  { v: "dijaspora", l: "Dijaspora", opis: "Broj iz DE/AT/CH, „biću dole za Božić“" },
+  { v: "bogatas", l: "Bogataš", opis: "Elitna lokacija, kratke poruke, pita termin a ne cenu" },
+  { v: "preporuka", l: "Preporuka", opis: "„Jel si ti Luka?“, „kum mi je rekao“" },
+  { v: "status_selo", l: "Seljak (status)", opis: "Selo, „hoću najveću ogradu“, ne pita cenu" },
+  { v: "materijal", l: "Kupac materijala", opis: "Pita težinu, lepljenje, cenu po komadu, „imam majstora“" },
+] as const;
+
+// Željeni rok. Od novembra ugradnja ide na prolećne termine (zidanje staje ispod ~5 °C).
+export const ROKOVI = [
+  { v: "odmah", l: "Odmah" },
+  { v: "1_3_meseca", l: "1–3 meseca" },
+  { v: "prolece", l: "Proleće" },
+  { v: "ne_zna", l: "Ne zna" },
+] as const;
+
+// Razlog odustajanja, obavezan kad ishod postane „Odustao".
+export const RAZLOZI = [
+  { v: "cena", l: "Cena" },
+  { v: "izabrao_drugog", l: "Izabrao drugog" },
+  { v: "odlozio", l: "Odložio" },
+  { v: "komsija_pravila", l: "Komšija / pravila" },
+  { v: "ne_javlja_se", l: "Ne javlja se" },
+  { v: "van_zone", l: "Van zone" },
+  { v: "samo_istrazivao", l: "Samo istraživao" },
+  { v: "drugo", l: "Drugo" },
+] as const;
+
+// Predlog temperature iz podataka koje Pavle već unese (može da se pregazi ručno).
+export function predloziTemperaturu(x: { rok?: string | null; duzina_m?: number | null; lokacija?: string | null; obuhvat?: string | null }): "vruc" | "topao" | "hladan" {
+  const imaPodatke = x.duzina_m != null && !!x.lokacija;
+  if (x.rok === "odmah") return imaPodatke ? "vruc" : "topao";
+  if (x.rok === "1_3_meseca") return "topao";
+  if (x.rok === "prolece") return imaPodatke ? "topao" : "hladan";
+  return imaPodatke || x.obuhvat === "kljuc_u_ruke" ? "topao" : "hladan";
+}

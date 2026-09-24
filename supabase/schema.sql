@@ -17,6 +17,10 @@ create table if not exists leadovi (
   duzina_m       numeric,              -- ukupna dužina ograde u metrima (obavezno)
   ispuna         text,                 -- samo_blokovi | blokovi_paneli (model po Luki, obavezno)
   detalji        jsonb,                -- poželjno: boja, visine, razmak, broj blokova/kapa/okapnica, spec, budžet
+  temperatura    text,                 -- vruc | topao | hladan (kvalitet leada)
+  tip_kupca      text,                 -- srednja_klasa | dijaspora | bogatas | preporuka | status_selo | materijal
+  rok            text,                 -- odmah | 1_3_meseca | prolece | ne_zna
+  razlog_odustajanja text,             -- cena | izabrao_drugog | odlozio | komsija_pravila | ne_javlja_se | van_zone | samo_istrazivao | drugo
   izvor          text,                 -- instagram | facebook | viber | whatsapp | sajt | preporuka | ostalo
   info           text,                 -- kontekst za vlasnika (dužina ograde, lokacija, boja, budžet, kad zvati...)
   status         text default 'nov',   -- nov | nije_se_javio | zvati_kasnije | dostaviti_ponudu | ponuda (čeka odgovor) | zatvoren (kupio) | propao (odustao)

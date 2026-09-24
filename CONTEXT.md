@@ -59,6 +59,12 @@ Jedna glavna strana (`/`) = lista leadova, mobile-first, optimistična.
   količina, opis) → 4 Za Luku (poželjni detalji, info, ishod kod izmene, spisak šta fali).
   Svaki korak ima „Pitaj kupca: …" sa Lukinom formulacijom. Grana je „šta gradi", NE obuhvat. `staFali()` u lib/opcije.ts je jedini
   izvor istine za oznaku „Nepotpun". `#novi` u URL-u otvara wizard odmah, `#novi:N` na koraku N.
+- **Kvalifikacija** (Lukin zahtev, 24.09.2026., migracija-5): `temperatura` vruć/topao/hladan
+  (Pavle daje predlog u wizardu, auto-predlog iz roka+podataka, Luka menja tapom na kartici),
+  `tip_kupca` (srednja_klasa / dijaspora / bogatas / preporuka / status_selo / materijal, Pavlovi
+  nazivi), `rok` (odmah / 1–3 meseca / proleće / ne zna), `razlog_odustajanja` obavezan kod
+  „Odustao" (crven dok se ne izabere). Prioritetni uključuju vruće. Analitika: stopa zatvaranja
+  i zarada po tipu / kvalitetu / izvoru + razlozi odustajanja.
 - Zvezdica (`prioritet`) na svakom leadu; `zarada_rsd` se upisuje inline kad je „Kupio".
   Analitika ima zaradu ovog meseca i ukupno. Strana `/analitika`.
 - `/api/lead` — javni endpoint (token-opcioni) za buduću formu sa sajta (izvor="sajt").
