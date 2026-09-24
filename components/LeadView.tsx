@@ -5,19 +5,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Sat } from "@/components/Sat";
 import { brojNaDan, danasKljuc, pomeriDan } from "@/lib/analitika";
-import { Card, Stat, ArrowIco, PlusIco, Logo } from "@/components/ui";
+import { Card, ArrowIco, PlusIco, Logo } from "@/components/ui";
 import { Sidebar } from "@/components/Sidebar";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { STATUSI, OTVORENI, PROIZVODI, IZVORI, label, normalizujProizvod } from "@/lib/opcije";
 import { telLink, smsLink, waLink, viberLink } from "@/lib/lead";
-import { pre } from "@/lib/format";
-import { dodajLead, izmeniLead, promeniStatus, obrisiLead, promeniBelesku, promeniPodsetnik, type LeadState } from "@/app/leadovi/actions";
+import { pre, rsd } from "@/lib/format";
+import { dodajLead, izmeniLead, promeniStatus, obrisiLead, promeniBelesku, promeniPodsetnik, promeniPrioritet, promeniZaradu, type LeadState } from "@/app/leadovi/actions";
 
 export type LeadRow = {
   id: string; ime: string | null; prezime: string | null; telefon: string | null;
   proizvod: string | null; izvor: string | null; info: string | null; status: string;
   podseti_kad: string | null; ishod_beleska: string | null; created_at: string;
   updated_at?: string | null; pozvan_kad?: string | null; status_od?: string | null;
+  prioritet?: boolean | null; zarada_rsd?: number | null;
 };
 
 const danasIso = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Belgrade" });
@@ -25,10 +26,22 @@ const punoIme = (l: LeadRow) => [l.ime, l.prezime].filter(Boolean).join(" ") || 
 const jeDospeo = (l: LeadRow, danas: string) => l.status === "zvati_kasnije" && !!l.podseti_kad && l.podseti_kad <= danas;
 // koliko je lead u trenutnom ishodu (status_od; za stare redove pre migracije nema podatka)
 const uIshodu = (l: LeadRow) => (l.status !== "nov" && l.status_od ? pre(l.status_od) : null);
+// Lukine kategorije (gornje kartice = filteri). „Pozvati" = svi koje tek treba zvati.
+const POGLEDI = {
+  pozvati: (l: LeadRow, danas: string) => l.status === "nov" || l.status === "nije_se_javio" || jeDospeo(l, danas),
+  prioritet: (l: LeadRow, danas: string) => OTVORENI.has(l.status) && (!!l.prioritet || jeDospeo(l, danas)),
+  dostaviti_ponudu: (l: LeadRow) => l.status === "dostaviti_ponudu",
+  ponuda: (l: LeadRow) => l.status === "ponuda",
+  kupci: (l: LeadRow) => l.status === "zatvoren",
+  zakazani: (l: LeadRow, danas: string) => l.status === "zvati_kasnije" && !jeDospeo(l, danas),
+  odustali: (l: LeadRow) => l.status === "propao",
+  svi: () => true,
+} as const;
+type Pogled = keyof typeof POGLEDI;
 const datumKratko = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("sr-RS", { day: "2-digit", month: "2-digit" });
 
 export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRow[]; tabelaFali: boolean; demo?: boolean; login?: boolean }) {
-  const [view, setView] = useState<string>("red"); // "red" (za zvanje) | status | "svi"
+  const [view, setView] = useState<Pogled>("pozvati");
   const [q, setQ] = useState("");
   const [modal, setModal] = useState(false);
   const [izmeni, setIzmeni] = useState<LeadRow | null>(null);
@@ -39,9 +52,9 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
 
   const [opt, apply] = useOptimistic(
     osnova,
-    (state: LeadRow[], a: { id: string; status?: string; beleska?: string | null; datum?: string | null; del?: boolean }) =>
+    (state: LeadRow[], a: { id: string; status?: string; beleska?: string | null; datum?: string | null; prioritet?: boolean; zarada?: number | null; del?: boolean }) =>
       a.del ? state.filter((l) => l.id !== a.id)
-        : state.map((l) => (l.id === a.id ? { ...l, ...(a.status !== undefined ? { status: a.status } : {}), ...(a.beleska !== undefined ? { ishod_beleska: a.beleska } : {}), ...(a.datum !== undefined ? { podseti_kad: a.datum } : {}) } : l)),
+        : state.map((l) => (l.id === a.id ? { ...l, ...(a.status !== undefined ? { status: a.status } : {}), ...(a.beleska !== undefined ? { ishod_beleska: a.beleska } : {}), ...(a.datum !== undefined ? { podseti_kad: a.datum } : {}), ...(a.prioritet !== undefined ? { prioritet: a.prioritet } : {}), ...(a.zarada !== undefined ? { zarada_rsd: a.zarada } : {}) } : l)),
   );
   const [, start] = useTransition();
   const menjajStatus = (id: string, status: string) => {
@@ -59,6 +72,16 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
     const d = datum || null;
     if (demo) return setLokalni((a) => a.map((l) => (l.id === id ? { ...l, podseti_kad: d } : l)));
     start(() => { apply({ id, datum: d }); promeniPodsetnik(id, d); });
+  };
+  const menjajPrioritet = (id: string, prioritet: boolean) => {
+    if (demo) return setLokalni((a) => a.map((l) => (l.id === id ? { ...l, prioritet } : l)));
+    start(() => { apply({ id, prioritet }); promeniPrioritet(id, prioritet); });
+  };
+  const menjajZaradu = (id: string, zarada: string) => {
+    const z = zarada.trim() === "" ? null : Number(zarada.replace(/[^\d.]/g, ""));
+    if (z !== null && isNaN(z)) return;
+    if (demo) return setLokalni((a) => a.map((l) => (l.id === id ? { ...l, zarada_rsd: z } : l)));
+    start(() => { apply({ id, zarada: z }); promeniZaradu(id, z); });
   };
   const obrisi = (id: string) => {
     if (demo) return setLokalni((a) => a.filter((l) => l.id !== id));
@@ -81,34 +104,35 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
 
   const filtrirani = useMemo(() => {
     let arr = opt;
-    if (view === "red") arr = arr.filter((l) => OTVORENI.has(l.status));
-    else if (view !== "svi") arr = arr.filter((l) => l.status === view);
+    arr = arr.filter((l) => POGLEDI[view](l, danas));
     if (qq) arr = arr.filter((l) => [l.ime, l.prezime, l.telefon, l.info, l.proizvod].some((x) => (x || "").toLowerCase().includes(qq)));
 
-    if (view === "red") {
-      // dospeli povratni pozivi gore, pa najstariji nov-ovi (zove se redom)
+    if (view === "pozvati" || view === "prioritet") {
+      // zvezdica i dospeli povratni pozivi gore, pa najstariji prvi (zove se redom)
       return [...arr].sort((a, b) => {
-        const ad = jeDospeo(a, danas), bd = jeDospeo(b, danas);
-        if (ad !== bd) return ad ? -1 : 1;
+        const ap = (a.prioritet ? 2 : 0) + (jeDospeo(a, danas) ? 1 : 0), bp = (b.prioritet ? 2 : 0) + (jeDospeo(b, danas) ? 1 : 0);
+        if (ap !== bp) return bp - ap;
         return a.created_at.localeCompare(b.created_at);
       });
     }
+    if (view === "zakazani") return [...arr].sort((a, b) => (a.podseti_kad ?? "").localeCompare(b.podseti_kad ?? ""));
     return [...arr].sort((a, b) => b.created_at.localeCompare(a.created_at));
   }, [opt, view, qq, danas]);
 
-  const uRedu = opt.filter((l) => OTVORENI.has(l.status)).length;
   const stigloDanas = brojNaDan(opt, danasKljuc());
   const stigloJuce = brojNaDan(opt, pomeriDan(danasKljuc(), -1));
-  const dospeloDanas = opt.filter((l) => jeDospeo(l, danas)).length;
-  const zatvoreno = opt.filter((l) => l.status === "zatvoren").length;
-
-  const brojPo = (v: string) => (v === "red" ? uRedu : v === "svi" ? opt.length : opt.filter((l) => l.status === v).length);
-  const tabovi = [{ v: "red", l: "Aktivni" }, ...STATUSI.map((s) => ({ v: s.v, l: s.l })), { v: "svi", l: "Svi" }];
+  const broj = (p: Pogled) => opt.filter((l) => POGLEDI[p](l, danas)).length;
+  const zarada = opt.filter((l) => l.status === "zatvoren").reduce((s, l) => s + (Number(l.zarada_rsd) || 0), 0);
+  const nNovi = opt.filter((l) => l.status === "nov").length;
+  const nNije = opt.filter((l) => l.status === "nije_se_javio").length;
+  const nDospeli = opt.filter((l) => jeDospeo(l, danas)).length;
+  const nZvezda = opt.filter((l) => OTVORENI.has(l.status) && !!l.prioritet).length;
+  const nazivPogleda: Record<Pogled, string> = { pozvati: "Pozvati", prioritet: "Prioritetni", dostaviti_ponudu: "Dostaviti ponudu", ponuda: "Čeka odgovor na ponudu", kupci: "Kupci", zakazani: "Zakazani pozivi", odustali: "Odustali", svi: "Svi leadovi" };
 
   return (
     <div className="min-h-screen bg-wash lg:pl-64">
       <TopBar onDodaj={() => setModal(true)} login={login} />
-      <Sidebar uRedu={uRedu} onDodaj={() => setModal(true)} login={login} />
+      <Sidebar uRedu={broj("pozvati")} onDodaj={() => setModal(true)} login={login} />
 
       {/* Page head: navy + foto + preliv, kao naslovne trake unutrašnjih strana sajta */}
       <section className="page-head">
@@ -124,17 +148,27 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
               Interni panel
             </span>
             <h1 className="h2 lg:text-[34px]">Leadovi</h1>
-            <Sat className="text-sm text-white/70" />
+            <div className="text-sm text-white/70">
+              <Sat />
+              <span className="mx-2 text-white/30">|</span>
+              stiglo danas <b className="text-gold">{stigloDanas}</b>, juče <b className="text-white">{stigloJuce}</b>
+            </div>
           </div>
 
-          {/* Stat traka — navy / bronza / navy kao na sajtu */}
-          <div className="rise mt-6 grid grid-cols-6 gap-2.5 sm:gap-3 lg:mt-0 lg:w-[760px] lg:shrink-0 lg:grid-cols-5" style={{ animationDelay: ".12s" }}>
-            <Stat label="Stiglo danas" value={String(stigloDanas)} icon={<><path d="M12 5v14M5 12h14" /></>} />
-            <Stat label="Stiglo juče" value={String(stigloJuce)} icon={<><path d="M3 12a9 9 0 1 0 3-6.7" /><path d="M3 4v5h5" /></>} />
-            <Stat label="Aktivni" value={String(uRedu)} icon={<><path d="M8 6h13M8 12h13M8 18h13" /><path d="M3 6h.01M3 12h.01M3 18h.01" /></>} />
-            <Stat label="Povratni poziv danas" value={String(dospeloDanas)}
+          {/* Lukine kategorije: kartice su dugmad, klik filtrira listu ispod */}
+          <div className="rise mt-6 grid grid-cols-2 gap-2.5 sm:gap-3 lg:mt-0 lg:w-[820px] lg:shrink-0 lg:grid-cols-5" style={{ animationDelay: ".12s" }}>
+            <Kartica p="pozvati" akcent aktivan={view === "pozvati"} onClick={setView} label="Pozvati" n={broj("pozvati")}
+              sub={`${nNovi} nov${nNovi === 1 ? "" : "ih"}${nNije ? ` · ${nNije} nije se javio` : ""}${nDospeli ? ` · ${nDospeli} povratn${nDospeli === 1 ? "i" : "a"}` : ""}`}
+              icon={<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />} />
+            <Kartica p="prioritet" akcent aktivan={view === "prioritet"} onClick={setView} label="Prioritetni" n={broj("prioritet")}
+              sub={`${nDospeli} za danas${nZvezda ? ` · ${nZvezda} sa zvezdicom` : ""}`}
+              icon={<path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />} />
+            <Kartica p="dostaviti_ponudu" aktivan={view === "dostaviti_ponudu"} onClick={setView} label="Dostaviti ponudu" n={broj("dostaviti_ponudu")}
+              icon={<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M9 13h6M9 17h6" /></>} />
+            <Kartica p="ponuda" aktivan={view === "ponuda"} onClick={setView} label="Čeka odgovor" n={broj("ponuda")}
               icon={<><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></>} />
-            <Stat label="Kupili" value={String(zatvoreno)} icon={<><path d="M20 6 9 17l-5-5" /></>} />
+            <Kartica p="kupci" aktivan={view === "kupci"} onClick={setView} label="Kupci" n={broj("kupci")} sub={zarada > 0 ? rsd(zarada) : undefined}
+              icon={<><path d="M20 6 9 17l-5-5" /></>} />
           </div>
           </div>
         </div>
@@ -154,13 +188,13 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
           </div>
         )}
 
-        {/* Filteri: tag pilovi kao na sajtu; na desktopu pretraga stoji desno u istom redu */}
-        <div className="lg:mb-5 lg:flex lg:items-center lg:justify-between lg:gap-6">
-        <div className="mb-3 flex flex-wrap gap-2 lg:m-0">
-          {tabovi.map((t) => (
-            <button key={t.v} onClick={() => setView(t.v)} className={`tag tag-filter ${view === t.v ? "tag-accent" : ""}`}>
-              {t.l}
-              <span className={`rounded-full px-1.5 text-[11px] leading-[18px] ${view === t.v ? "bg-white/15 text-white" : "bg-wash text-muted"}`}>{brojPo(t.v)}</span>
+        {/* Naslov pogleda + sitni linkovi (Zakazani / Odustali / Svi); pretraga desno na desktopu */}
+        <div className="mb-4 lg:flex lg:items-center lg:justify-between lg:gap-6">
+        <div className="mb-3 flex flex-wrap items-baseline gap-x-4 gap-y-1 lg:m-0">
+          <h2 className="h3 text-[17px]">{nazivPogleda[view]} <span className="text-muted">({filtrirani.length})</span></h2>
+          {(["zakazani", "odustali", "svi"] as Pogled[]).map((p) => (
+            <button key={p} onClick={() => setView(p)} className={`text-[13px] underline-offset-4 transition-colors hover:text-navy ${view === p ? "font-semibold text-navy underline" : "text-muted"}`}>
+              {nazivPogleda[p]} ({broj(p)})
             </button>
           ))}
         </div>
@@ -183,11 +217,11 @@ export function LeadView({ leadovi, tabelaFali, demo, login }: { leadovi: LeadRo
           <>
             <div className="flex flex-col gap-3 lg:hidden">
               {filtrirani.map((l) => (
-                <LeadKartica key={l.id} l={l} danas={danas} onStatus={menjajStatus} onBeleska={menjajBelesku} onDatum={menjajDatum} onEdit={() => setIzmeni(l)} onDelete={() => obrisi(l.id)} />
+                <LeadKartica key={l.id} l={l} danas={danas} onStatus={menjajStatus} onBeleska={menjajBelesku} onDatum={menjajDatum} onPrioritet={menjajPrioritet} onZarada={menjajZaradu} onEdit={() => setIzmeni(l)} onDelete={() => obrisi(l.id)} />
               ))}
             </div>
             <div className="hidden lg:block">
-              <LeadTabela leadovi={filtrirani} danas={danas} onStatus={menjajStatus} onBeleska={menjajBelesku} onDatum={menjajDatum} onEdit={setIzmeni} onDelete={obrisi} />
+              <LeadTabela leadovi={filtrirani} danas={danas} onStatus={menjajStatus} onBeleska={menjajBelesku} onDatum={menjajDatum} onPrioritet={menjajPrioritet} onZarada={menjajZaradu} onEdit={setIzmeni} onDelete={obrisi} />
             </div>
           </>
         )}
@@ -240,7 +274,24 @@ function TopBar({ onDodaj, login }: { onDodaj: () => void; login?: boolean }) {
 }
 
 /* ---------------- Tabela (desktop) ---------------- */
-function LeadTabela({ leadovi, danas, onStatus, onBeleska, onDatum, onEdit, onDelete }: { leadovi: LeadRow[]; danas: string; onStatus: (id: string, s: string) => void; onBeleska: (id: string, b: string) => void; onDatum: (id: string, d: string) => void; onEdit: (l: LeadRow) => void; onDelete: (id: string) => void }) {
+type Handleri = { onStatus: (id: string, s: string) => void; onBeleska: (id: string, b: string) => void; onDatum: (id: string, d: string) => void; onPrioritet: (id: string, p: boolean) => void; onZarada: (id: string, z: string) => void };
+
+/* Gornja kartica-filter (Lukina kategorija) */
+function Kartica({ p, label, n, sub, icon, akcent, aktivan, onClick }: { p: Pogled; label: string; n: number; sub?: string; icon: React.ReactNode; akcent?: boolean; aktivan: boolean; onClick: (p: Pogled) => void }) {
+  return (
+    <button type="button" onClick={() => onClick(p)} aria-pressed={aktivan}
+      className={`kat ${akcent ? "kat-akcent" : ""} ${aktivan ? "kat-aktivna" : ""} ${p === "pozvati" ? "col-span-2 lg:col-span-1" : ""}`}>
+      <span className="kat-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">{icon}</svg></span>
+      <span className="min-w-0">
+        <span className="kat-num">{n}</span>
+        <span className="kat-label">{label}</span>
+        {sub && <span className="kat-sub">{sub}</span>}
+      </span>
+    </button>
+  );
+}
+
+function LeadTabela({ leadovi, danas, onStatus, onBeleska, onDatum, onPrioritet, onZarada, onEdit, onDelete }: { leadovi: LeadRow[]; danas: string; onEdit: (l: LeadRow) => void; onDelete: (id: string) => void } & Handleri) {
   return (
     <Card className="overflow-hidden">
       <table className="w-full text-sm">
@@ -264,7 +315,10 @@ function LeadTabela({ leadovi, danas, onStatus, onBeleska, onDatum, onEdit, onDe
             return (
               <tr key={l.id} className={`border-b border-line align-top transition-colors last:border-0 hover:bg-wash/60 ${dospeo ? "bg-gold/8" : ""}`}>
                 <td className="px-4 py-3">
-                  <div className="font-alt font-bold tracking-[-.02em] text-ink">{punoIme(l)}</div>
+                  <div className="flex items-center gap-1.5">
+                    <Zvezda on={!!l.prioritet} onClick={() => onPrioritet(l.id, !l.prioritet)} />
+                    <span className="font-alt font-bold tracking-[-.02em] text-ink">{punoIme(l)}</span>
+                  </div>
                   {l.telefon
                     ? <a href={telLink(l.telefon)} className="font-display text-[14px] font-semibold text-gold-deep hover:text-navy">{l.telefon}</a>
                     : <span className="text-xs text-muted">bez broja</span>}
@@ -298,6 +352,7 @@ function LeadTabela({ leadovi, danas, onStatus, onBeleska, onDatum, onEdit, onDe
                   {l.status === "zvati_kasnije" && (
                     <input type="date" value={l.podseti_kad ?? ""} onChange={(e) => onDatum(l.id, e.target.value)} className="inp inp-sm mt-1.5 w-full" aria-label="Kog datuma pozvati" />
                   )}
+                  {l.status === "zatvoren" && <Zarada id={l.id} vrednost={l.zarada_rsd} onSave={onZarada} mala />}
                 </td>
                 <td className="px-2 py-3">
                   <div className="flex items-center">
@@ -326,7 +381,7 @@ function MiniAkcija({ href, ima, title, icon, primarno, blank }: { href: string;
 }
 
 /* ---------------- Kartica leada ---------------- */
-function LeadKartica({ l, danas, onStatus, onBeleska, onDatum, onEdit, onDelete }: { l: LeadRow; danas: string; onStatus: (id: string, s: string) => void; onBeleska: (id: string, b: string) => void; onDatum: (id: string, d: string) => void; onEdit: () => void; onDelete: () => void }) {
+function LeadKartica({ l, danas, onStatus, onBeleska, onDatum, onPrioritet, onZarada, onEdit, onDelete }: { l: LeadRow; danas: string; onEdit: () => void; onDelete: () => void } & Handleri) {
   const st = STATUSI.find((s) => s.v === l.status);
   const dospeo = jeDospeo(l, danas);
   const ima = !!l.telefon;
@@ -335,7 +390,10 @@ function LeadKartica({ l, danas, onStatus, onBeleska, onDatum, onEdit, onDelete 
     <Card className={`p-4 ${dospeo ? "card-due" : ""}`}>
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <div className="h3 truncate">{punoIme(l)}</div>
+          <div className="flex items-center gap-1.5">
+            <Zvezda on={!!l.prioritet} onClick={() => onPrioritet(l.id, !l.prioritet)} />
+            <div className="h3 truncate">{punoIme(l)}</div>
+          </div>
           {l.telefon
             ? <a href={telLink(l.telefon)} className="font-display text-[15px] font-semibold tracking-[.01em] text-gold-deep hover:text-navy">{l.telefon}</a>
             : <span className="text-sm text-muted">bez broja</span>}
@@ -388,8 +446,37 @@ function LeadKartica({ l, danas, onStatus, onBeleska, onDatum, onEdit, onDelete 
           <input type="date" value={l.podseti_kad ?? ""} onChange={(e) => onDatum(l.id, e.target.value)} className="inp inp-sm min-w-0 flex-1" aria-label="Kog datuma pozvati" />
         </label>
       )}
+      {l.status === "zatvoren" && <Zarada id={l.id} vrednost={l.zarada_rsd} onSave={onZarada} />}
       <Beleska id={l.id} vrednost={l.ishod_beleska} onSave={onBeleska} />
     </Card>
+  );
+}
+
+/* Zvezdica: prioritetan lead (preporuka, premium, hitno). Klik pali/gasi. */
+function Zvezda({ on, onClick }: { on: boolean; onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} aria-pressed={on} aria-label={on ? "Skini prioritet" : "Označi kao prioritet"} title={on ? "Prioritet" : "Označi kao prioritet"}
+      className={`grid h-7 w-7 shrink-0 place-items-center rounded-full transition-colors ${on ? "text-gold-deep" : "text-line hover:text-gold"}`}>
+      <svg viewBox="0 0 24 24" width="18" height="18" fill={on ? "currentColor" : "none"} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round"><path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" /></svg>
+    </button>
+  );
+}
+
+/* Zarada (RSD) kad je „Kupio": čuva se na blur / Enter. */
+function Zarada({ id, vrednost, onSave, mala }: { id: string; vrednost: number | null | undefined; onSave: (id: string, z: string) => void; mala?: boolean }) {
+  const poc = vrednost == null ? "" : String(vrednost);
+  const [t, setT] = useState(poc);
+  const [zadnje, setZadnje] = useState(poc);
+  if (poc !== zadnje) { setZadnje(poc); setT(poc); }
+  const sacuvaj = () => { if (t.trim() !== poc) onSave(id, t); };
+  return (
+    <label className={`flex items-center gap-2.5 ${mala ? "mt-1.5" : "mt-2"}`}>
+      <span className="micro shrink-0 text-[11px] text-muted">Zarada</span>
+      <input inputMode="numeric" value={t} onChange={(e) => setT(e.target.value)} onBlur={sacuvaj}
+        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
+        placeholder="0" className="inp inp-sm min-w-0 flex-1 text-right tabular-nums" aria-label="Zarada u dinarima" />
+      <span className="text-xs text-muted">RSD</span>
+    </label>
   );
 }
 

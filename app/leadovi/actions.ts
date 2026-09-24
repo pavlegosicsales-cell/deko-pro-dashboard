@@ -91,3 +91,15 @@ export async function promeniPodsetnik(id: string, datum: string | null): Promis
   await supabaseAdmin.from("leadovi").update({ podseti_kad: datum, updated_at: new Date().toISOString() }).eq("id", id);
   revalidatePath("/");
 }
+
+// Zvezdica (prioritet) sa kartice.
+export async function promeniPrioritet(id: string, prioritet: boolean): Promise<void> {
+  await supabaseAdmin.from("leadovi").update({ prioritet, updated_at: new Date().toISOString() }).eq("id", id);
+  revalidatePath("/");
+}
+
+// Zarada (RSD) kad je ishod „Kupio", sa kartice.
+export async function promeniZaradu(id: string, zarada: number | null): Promise<void> {
+  await supabaseAdmin.from("leadovi").update({ zarada_rsd: zarada, updated_at: new Date().toISOString() }).eq("id", id);
+  revalidatePath("/");
+}

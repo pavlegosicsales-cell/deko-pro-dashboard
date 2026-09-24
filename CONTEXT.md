@@ -50,7 +50,11 @@ Jedna glavna strana (`/`) = lista leadova, mobile-first, optimistična.
   odgovor na ponudu" → `zatvoren` „Kupio" / `propao` „Odustao".
 - Filter „Aktivni" (otvoreni), po statusu, „Svi" + pretraga. Red za zvanje:
   dospeli povratni pozivi gore, pa najstariji novi (zove se redom).
-- KPI: Stiglo danas / Stiglo juče / Aktivni / Povratni poziv danas / Kupili. Strana `/analitika`.
+- Gornje kartice = Lukine kategorije i ujedno filteri (24.09.2026.): Pozvati (novi + nije se
+  javio + dospeli povratni), Prioritetni (zvezdica + dospeli), Dostaviti ponudu, Čeka odgovor,
+  Kupci (+ zbir zarade). Sitno: Zakazani / Odustali / Svi. Sat + „stiglo danas/juče" pod naslovom.
+- Zvezdica (`prioritet`) na svakom leadu; `zarada_rsd` se upisuje inline kad je „Kupio".
+  Analitika ima zaradu ovog meseca i ukupno. Strana `/analitika`.
 - `/api/lead` — javni endpoint (token-opcioni) za buduću formu sa sajta (izvor="sajt").
 
 ## Odluke (default-ovane, potvrditi sa Pavleom)

@@ -7,7 +7,8 @@ import { Sidebar } from "@/components/Sidebar";
 import { Logo } from "@/components/ui";
 import { Sat } from "@/components/Sat";
 import { OTVORENI, IZVORI, label } from "@/lib/opcije";
-import { poDanu, danasKljuc, pomeriDan, brojNaDan, pozvanoNaDan, danKratko, danIme, type DanStat } from "@/lib/analitika";
+import { poDanu, danasKljuc, pomeriDan, brojNaDan, pozvanoNaDan, danKratko, danIme, danKljuc, type DanStat } from "@/lib/analitika";
+import { rsd } from "@/lib/format";
 
 // Boje serija: validirane (dataviz validator, light surface): plava = novi, bronza = pozvani
 const BOJA_NOVI = "#2F5DA8";
@@ -26,6 +27,13 @@ export function AnalitikaView({ leadovi }: { leadovi: LeadRow[] }) {
   const zatvoreno = leadovi.filter((l) => l.status === "zatvoren").length;
   const propalo = leadovi.filter((l) => l.status === "propao").length;
   const stopa = zatvoreno + propalo > 0 ? Math.round((zatvoreno / (zatvoreno + propalo)) * 100) : null;
+
+  // zarada: ukupno i ovog meseca (po datumu ulaska u „Kupio" = status_od, rezerva created_at)
+  const kupci = leadovi.filter((l) => l.status === "zatvoren");
+  const zaradaUkupno = kupci.reduce((s, l) => s + (Number(l.zarada_rsd) || 0), 0);
+  const mesec = danas.slice(0, 7);
+  const zaradaMesec = kupci.filter((l) => danKljuc(l.status_od ?? l.created_at).startsWith(mesec)).reduce((s, l) => s + (Number(l.zarada_rsd) || 0), 0);
+  const prosek = kupci.length ? Math.round(zaradaUkupno / kupci.length) : 0;
 
   // po izvoru (svi leadovi)
   const poIzvoru = IZVORI.map((i) => ({ ...i, n: leadovi.filter((l) => l.izvor === i.v).length })).filter((i) => i.n > 0).sort((a, b) => b.n - a.n);
@@ -70,6 +78,12 @@ export function AnalitikaView({ leadovi }: { leadovi: LeadRow[] }) {
           <Plocica label="Pozvano danas" value={pozvanoNaDan(leadovi, danas)} sub={`juče ${pozvanoNaDan(leadovi, juce)}`} />
           <Plocica label={`Novih za ${dana} dana`} value={ukNovi} sub={`pozvano ${ukPozvani}`} />
           <Plocica label="Stopa zatvaranja" value={stopa == null ? "—" : `${stopa}%`} sub={`${zatvoreno} kupilo · ${propalo} odustalo`} />
+        </div>
+
+        {/* Zarada (Lukin zahtev: kad lead ode u „Kupio", upiše se iznos) */}
+        <div className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
+          <Plocica label="Zarada ovog meseca" value={rsd(zaradaMesec)} sub={`${kupci.filter((l) => danKljuc(l.status_od ?? l.created_at).startsWith(mesec)).length} kupaca`} zlato />
+          <Plocica label="Zarada ukupno" value={rsd(zaradaUkupno)} sub={`${kupci.length} kupaca · prosek ${rsd(prosek)}`} />
         </div>
 
         {/* Grafikon po danu */}
@@ -135,11 +149,11 @@ export function AnalitikaView({ leadovi }: { leadovi: LeadRow[] }) {
   );
 }
 
-function Plocica({ label, value, sub }: { label: string; value: number | string; sub?: string }) {
+function Plocica({ label, value, sub, zlato }: { label: string; value: number | string; sub?: string; zlato?: boolean }) {
   return (
-    <div className="card p-4">
+    <div className={`card p-4 ${zlato ? "border-l-4 border-l-gold" : ""}`}>
       <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">{label}</div>
-      <div className="mt-1 font-display text-[30px] font-bold leading-none text-navy tabular-nums">{value}</div>
+      <div className={`mt-1 font-display font-bold leading-none tabular-nums ${typeof value === "string" && value.length > 8 ? "text-[22px]" : "text-[30px]"} ${zlato ? "text-gold-deep" : "text-navy"}`}>{value}</div>
       {sub && <div className="mt-1.5 text-xs text-muted">{sub}</div>}
     </div>
   );

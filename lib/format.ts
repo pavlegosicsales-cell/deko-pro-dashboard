@@ -1,6 +1,8 @@
 export const brojFmt = (n: number | null | undefined) =>
   n == null ? "0" : new Intl.NumberFormat("sr-RS").format(Number(n));
 
+export const rsd = (n: number | null | undefined) => (n == null ? "0" : new Intl.NumberFormat("sr-RS", { maximumFractionDigits: 0 }).format(Number(n))) + " RSD";
+
 export const datumFmt = (d: string | null | undefined) => {
   if (!d) return "—";
   const dt = new Date(d);

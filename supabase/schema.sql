@@ -20,6 +20,8 @@ create table if not exists leadovi (
   dodao          text,                 -- email osobe koja je unela lead (setter)
   pozvan_kad     timestamptz,          -- kad je prvi put pomeren iz „nov" (= pozvan)
   status_od      timestamptz,          -- od kad je u trenutnom ishodu
+  prioritet      boolean default false, -- zvezdica: hitan lead (preporuka, premium…)
+  zarada_rsd     numeric,               -- upisuje se kad ishod postane „Kupio"
   created_at     timestamptz not null default now(),
   updated_at     timestamptz not null default now()
 );
