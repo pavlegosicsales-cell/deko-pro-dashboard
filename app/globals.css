@@ -353,3 +353,10 @@ select.inp-sm { padding-right: 36px; }
 .rise { animation: rise .55s var(--ease-out) both; }
 @media (prefers-reduced-motion: reduce) { .rise { animation: none; } }
 }
+
+/* iOS Safari zumira stranu kad se fokusira polje sa fontom < 16px, i zum ostane posle
+   zatvaranja forme (bela traka desno). Na telefonu sva polja idu na 16px.
+   Van slojeva namerno: nelayerovano pravilo pobeđuje Tailwind utility klase. */
+@media (max-width: 1023px) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px; }
+}
