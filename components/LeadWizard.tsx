@@ -10,10 +10,10 @@ import { dodajLead, izmeniLead, type LeadState } from "@/app/leadovi/actions";
   Wizard za unos leada (Lukin spisak informacija pred poziv), korak po korak da stane na telefon:
     1 Kontakt      ime, prezime, telefon, lokacija, izvor
     2 Šta kupuje   obuhvat: samo blokovi / blokovi + prevoz / ključ u ruke   (tap = dalje)
-    3 Šta gradi    ograda / potporni zid / oblaganje / drugo                  (tap = dalje)
-    4 Ograda       dužina*, ispuna* (samo blokovi / + paneli), model, boja
-      ili Materijal (kad nije ograda): boja, količina, opis
-    5 Za Luku      poželjni detalji + informacije pred poziv (+ ishod kod izmene) + šta fali
+    3 Ograda       PRETPOSTAVLJA ogradu (Luka: 90% upita). dužina*, ispuna* (samo blokovi /
+                   + paneli), model, boja. Sitan prekidač „Nije ograda?" (potporni zid /
+                   oblaganje / drugo) zameni pitanja sa: boja, količina, opis.
+    4 Za Luku      poželjni detalji + informacije pred poziv (+ ishod kod izmene) + šta fali
   Grana je „šta gradi", ne obuhvat: dužina/ispuna/model se traže za ogradu bez obzira
   kako kupuje. Obuhvat samo dodaje „pristup za kamion" kad je uključen prevoz.
 */
@@ -33,7 +33,7 @@ const izLeada = (l?: LeadRow): V => {
   const poznat = !l?.proizvod || PROIZVODI.some((o) => o.v === l.proizvod);
   return {
     ime: l?.ime ?? "", prezime: l?.prezime ?? "", telefon: l?.telefon ?? "", lokacija: l?.lokacija ?? "", izvor: l?.izvor ?? "",
-    obuhvat: l?.obuhvat ?? "", proizvod: l ? (poznat ? l.proizvod ?? "" : DRUGO) : "", proizvod_tekst: poznat ? "" : l?.proizvod ?? "",
+    obuhvat: l?.obuhvat ?? "", proizvod: l ? (poznat ? l.proizvod ?? "" : DRUGO) : "ograda", proizvod_tekst: poznat ? "" : l?.proizvod ?? "",
     duzina_m: l?.duzina_m != null ? String(l.duzina_m) : "", ispuna: l?.ispuna ?? "",
     d: { ...(l?.detalji as Record<string, string> | null | undefined ?? {}) },
     info: l?.info ?? "", status: l?.status ?? "nov", podseti_kad: l?.podseti_kad ?? "", ishod_beleska: l?.ishod_beleska ?? "",
@@ -58,7 +58,7 @@ export function LeadWizard({ lead, onClose, akcija, pocetniKorak = 0 }: { lead?:
 
   const ograda = v.proizvod === "ograda";
   const prevoz = v.obuhvat === "materijal_prevoz" || v.obuhvat === "kljuc_u_ruke";
-  const koraci = useMemo(() => ["Kontakt", "Šta kupuje", "Šta gradi", ograda ? "Ograda" : "Materijal", "Za Luku"], [ograda]);
+  const koraci = useMemo(() => ["Kontakt", "Šta kupuje", ograda ? "Ograda" : "Materijal", "Za Luku"], [ograda]);
   const zadnji = korak === koraci.length - 1;
 
   // šta fali od Lukinog obaveznog spiska (isti kriterijum kao oznaka „Nepotpun" na kartici)
@@ -105,6 +105,7 @@ export function LeadWizard({ lead, onClose, akcija, pocetniKorak = 0 }: { lead?:
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-5">
           {korak === 0 && (
             <div className="space-y-4">
+              <Pitaj>Ime i mesto gde se radi, plus telefon za Luku.</Pitaj>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Ime"><input value={v.ime} onChange={(e) => set("ime", e.target.value)} autoFocus className="inp" /></Field>
                 <Field label="Prezime"><input value={v.prezime} onChange={(e) => set("prezime", e.target.value)} className="inp" /></Field>
@@ -121,7 +122,7 @@ export function LeadWizard({ lead, onClose, akcija, pocetniKorak = 0 }: { lead?:
 
           {korak === 1 && (
             <div className="space-y-2.5">
-              <p className="text-sm text-muted">Šta kupac hoće od nas?</p>
+              <Pitaj>„Da li vas zanima samo materijal, ili i prevoz i ugradnja?“</Pitaj>
               {OBUHVATI.filter((o) => o.v !== "nepoznato").map((o) => (
                 <Kartica key={o.v} on={v.obuhvat === o.v} onClick={() => izaberi("obuhvat", o.v)} naslov={o.k} opis={o.l} />
               ))}
@@ -129,21 +130,10 @@ export function LeadWizard({ lead, onClose, akcija, pocetniKorak = 0 }: { lead?:
             </div>
           )}
 
-          {korak === 2 && (
-            <div className="space-y-2.5">
-              <p className="text-sm text-muted">Šta gradi od blokova?</p>
-              {PROIZVODI.map((o) => (
-                <Kartica key={o.v} on={v.proizvod === o.v} onClick={() => izaberi("proizvod", o.v)} naslov={o.l} opis={o.opis} />
-              ))}
-              <Kartica on={v.proizvod === DRUGO} onClick={() => set("proizvod", DRUGO)} naslov="Nešto drugo" opis="Upiši šta" mala />
-              {v.proizvod === DRUGO && (
-                <input value={v.proizvod_tekst} onChange={(e) => set("proizvod_tekst", e.target.value)} autoFocus className="inp" placeholder="npr. pomoćni objekat, letnja kuhinja…" />
-              )}
-            </div>
-          )}
-
-          {korak === 3 && ograda && (
+          {korak === 2 && ograda && (
             <div className="space-y-4">
+              <Pitaj>„Kakvu vrstu ograde želite?“ Ako kaže da ne zida ogradu, prebaci ovde:</Pitaj>
+              <StaGradi v={v} set={set} />
               <Field label="Ukupna dužina ograde (m)" obavezno>
                 <input value={v.duzina_m} onChange={(e) => set("duzina_m", e.target.value)} inputMode="decimal" autoFocus className="inp" placeholder="npr. 28" />
               </Field>
@@ -166,10 +156,15 @@ export function LeadWizard({ lead, onClose, akcija, pocetniKorak = 0 }: { lead?:
             </div>
           )}
 
-          {korak === 3 && !ograda && (
+          {korak === 2 && !ograda && (
             <div className="space-y-4">
+              <Pitaj>„Šta tačno radite i koliko vam materijala treba?“</Pitaj>
+              <StaGradi v={v} set={set} />
+              {v.proizvod === DRUGO && (
+                <input value={v.proizvod_tekst} onChange={(e) => set("proizvod_tekst", e.target.value)} autoFocus className="inp" placeholder="Šta gradi? npr. pomoćni objekat, letnja kuhinja…" />
+              )}
               <Field label="Boja bloka (ako zna)">
-                <select value={v.d.boja ?? ""} onChange={(e) => setD("boja", e.target.value)} className="inp" autoFocus>
+                <select value={v.d.boja ?? ""} onChange={(e) => setD("boja", e.target.value)} className="inp">
                   <option value="">—</option>
                   {BOJE.map((b) => <option key={b} value={b}>{b}</option>)}
                 </select>
@@ -183,8 +178,9 @@ export function LeadWizard({ lead, onClose, akcija, pocetniKorak = 0 }: { lead?:
             </div>
           )}
 
-          {korak === 4 && (
+          {korak === 3 && (
             <div className="space-y-4">
+              <Pitaj>„Kad vam odgovara da vas Luka pozove?“ Sve ostalo je bonus za ponudu.</Pitaj>
               {fali.length > 0 ? (
                 <div className="rounded-[10px] border border-warn/30 bg-warn/5 px-3 py-2.5 text-sm">
                   <b className="text-warn">Nepotpun za Luku.</b> Fali: {fali.join(", ")}. Može da se sačuva i dopuni kasnije.
@@ -238,6 +234,27 @@ export function LeadWizard({ lead, onClose, akcija, pocetniKorak = 0 }: { lead?:
             : <button type="button" onClick={dalje} className="btn btn-sm">Dalje<ArrowIco /></button>}
         </div>
       </div>
+    </div>
+  );
+}
+
+/* Sitan podsetnik šta pitati kupca u prepisci (Lukine formulacije). */
+function Pitaj({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="flex items-start gap-2 rounded-[10px] bg-wash px-3 py-2 text-[13px] leading-snug text-muted">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0 text-gold-deep"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+      <span><b className="font-semibold text-ink">Pitaj kupca:</b> {children}</span>
+    </p>
+  );
+}
+
+/* „Šta gradi" kao sitan prekidač na vrhu koraka: pretpostavka je ograda, ostalo je izuzetak. */
+function StaGradi({ v, set }: { v: V; set: (k: keyof V, val: string) => void }) {
+  const opcije = [...PROIZVODI.map((o) => ({ v: o.v, l: o.l })), { v: DRUGO, l: "Drugo" }];
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-[13px]">
+      <span className="text-muted">Gradi:</span>
+      {opcije.map((o) => <Cip key={o.v} on={v.proizvod === o.v} onClick={() => set("proizvod", o.v)}>{o.l}</Cip>)}
     </div>
   );
 }

@@ -54,9 +54,10 @@ Jedna glavna strana (`/`) = lista leadova, mobile-first, optimistična.
   javio + dospeli povratni), Prioritetni (zvezdica + dospeli), Dostaviti ponudu, Čeka odgovor,
   Kupci (+ zbir zarade). Sitno: Zakazani / Odustali / Svi. Sat + „stiglo danas/juče" pod naslovom.
 - **Unos leada = wizard** (`components/LeadWizard.tsx`, 24.09.2026.): 1 Kontakt → 2 Šta kupuje
-  (obuhvat) → 3 Šta gradi (ograda / potporni zid / oblaganje / drugo) → 4 Ograda (dužina*, ispuna*,
-  model, boja) ili Materijal (boja, količina, opis) → 5 Za Luku (poželjni detalji, info, ishod kod
-  izmene, spisak šta fali). Grana je „šta gradi", NE obuhvat. `staFali()` u lib/opcije.ts je jedini
+  (obuhvat) → 3 Ograda (pretpostavka, Luka: 90% upita; dužina*, ispuna*, model, boja; sitan
+  prekidač „Gradi: ograda / potporni zid / oblaganje / drugo" zameni pitanja u Materijal: boja,
+  količina, opis) → 4 Za Luku (poželjni detalji, info, ishod kod izmene, spisak šta fali).
+  Svaki korak ima „Pitaj kupca: …" sa Lukinom formulacijom. Grana je „šta gradi", NE obuhvat. `staFali()` u lib/opcije.ts je jedini
   izvor istine za oznaku „Nepotpun". `#novi` u URL-u otvara wizard odmah, `#novi:N` na koraku N.
 - Zvezdica (`prioritet`) na svakom leadu; `zarada_rsd` se upisuje inline kad je „Kupio".
   Analitika ima zaradu ovog meseca i ukupno. Strana `/analitika`.
