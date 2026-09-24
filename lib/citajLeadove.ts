@@ -6,6 +6,7 @@ const OSNOVNO = "id, ime, prezime, telefon, proizvod, izvor, info, status, podse
 const MIGRACIJE: { fajl: string; kolone: string[]; sta: string }[] = [
   { fajl: "migracija-2.sql", kolone: ["pozvan_kad", "status_od", "prioritet", "zarada_rsd"], sta: "zvezdica, zarada i vreme u ishodu" },
   { fajl: "migracija-3.sql", kolone: ["obuhvat"], sta: "obuhvat (materijal / prevoz / ključ u ruke)" },
+  { fajl: "migracija-4.sql", kolone: ["lokacija", "duzina_m", "ispuna", "detalji"], sta: "lokacija, dužina, model i detalji za ponudu" },
 ];
 const DODATNE = MIGRACIJE.flatMap((m) => m.kolone);
 const PUNO = `${OSNOVNO}, ${DODATNE.join(", ")}`;

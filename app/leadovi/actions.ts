@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { revalidatePath } from "next/cache";
 import { normalizujTelefon } from "@/lib/lead";
-import { normalizujProizvod, DRUGO } from "@/lib/opcije";
+import { normalizujProizvod, DRUGO, DETALJI } from "@/lib/opcije";
 
 export type LeadState = { ok: boolean; msg?: string };
 
@@ -19,6 +19,19 @@ async function mojEmail(): Promise<string | null> {
   catch { return null; }
 }
 
+// „28", „28,5", „28 m" -> 28.5; prazno -> null
+const broj = (v: string | null) => { if (!v) return null; const n = parseFloat(v.replace(",", ".").replace(/[^\d.]/g, "")); return isNaN(n) ? null : n; };
+// Poželjni detalji: samo popunjena polja, kao JSON (null ako nema nijednog)
+function detaljiIzForme(fd: FormData): Record<string, string> | null {
+  const d: Record<string, string> = {};
+  for (const { k } of DETALJI) { const v = s(fd, "d_" + k); if (v) d[k] = v; }
+  return Object.keys(d).length ? d : null;
+}
+// Kolone iz kasnijih migracija; ako neka fali, snimi bez svih njih (bolje delimično nego ništa).
+const KASNIJE = ["obuhvat", "lokacija", "duzina_m", "ispuna", "detalji"] as const;
+const bezKasnijih = <T extends Record<string, unknown>>(p: T) => Object.fromEntries(Object.entries(p).filter(([k]) => !(KASNIJE as readonly string[]).includes(k)));
+const faliKolona = (msg: string) => KASNIJE.some((k) => msg.includes(k));
+
 function polja(fd: FormData) {
   return {
     ime: s(fd, "ime"),
@@ -26,6 +39,10 @@ function polja(fd: FormData) {
     telefon: normalizujTelefon(s(fd, "telefon")),
     proizvod: s(fd, "proizvod") === DRUGO ? normalizujProizvod(s(fd, "proizvod_tekst")) : s(fd, "proizvod"),
     obuhvat: s(fd, "obuhvat"),
+    lokacija: s(fd, "lokacija"),
+    duzina_m: broj(s(fd, "duzina_m")),
+    ispuna: s(fd, "ispuna"),
+    detalji: detaljiIzForme(fd),
     izvor: s(fd, "izvor"),
     info: s(fd, "info"),
     status: s(fd, "status") ?? "nov",
@@ -40,8 +57,8 @@ export async function dodajLead(_prev: LeadState, fd: FormData): Promise<LeadSta
 
   const dodao = await mojEmail();
   let { error } = await supabaseAdmin.from("leadovi").insert({ ...p, dodao });
-  // kolona obuhvat fali (migracija-3 nije pokrenuta): snimi bez nje, ostalo ne sme da propadne
-  if (error && /obuhvat/.test(error.message)) { const { obuhvat: _o, ...bez } = p; void _o; ({ error } = await supabaseAdmin.from("leadovi").insert({ ...bez, dodao })); }
+  // kolona iz kasnije migracije fali: snimi bez njih, ostalo ne sme da propadne
+  if (error && faliKolona(error.message)) ({ error } = await supabaseAdmin.from("leadovi").insert({ ...bezKasnijih(p), dodao }));
   if (error) return { ok: false, msg: jeTabelaFali(error.message) ? PORUKA_MIGRACIJA : "Greška: " + error.message };
 
   revalidatePath("/");
@@ -58,7 +75,7 @@ export async function izmeniLead(_prev: LeadState, fd: FormData): Promise<LeadSt
   const izNov = prethodni === "nov" && p.status !== "nov";
   const dodatno = { ...(promenjen ? { status_od: sad } : {}), ...(izNov ? { pozvan_kad: sad } : {}) };
   let { error } = await supabaseAdmin.from("leadovi").update({ ...p, updated_at: sad, ...dodatno }).eq("id", id);
-  if (error && /obuhvat/.test(error.message)) { const { obuhvat: _o, ...bez } = p; void _o; ({ error } = await supabaseAdmin.from("leadovi").update({ ...bez, updated_at: sad, ...dodatno }).eq("id", id)); }
+  if (error && faliKolona(error.message)) ({ error } = await supabaseAdmin.from("leadovi").update({ ...bezKasnijih(p), updated_at: sad, ...dodatno }).eq("id", id));
   if (error && Object.keys(dodatno).length) ({ error } = await supabaseAdmin.from("leadovi").update({ ...p, updated_at: sad }).eq("id", id));
   if (error) return { ok: false, msg: "Greška: " + error.message };
   revalidatePath("/");

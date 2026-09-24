@@ -13,6 +13,10 @@ create table if not exists leadovi (
   telefon        text,                 -- normalizovan (0XXXXXXXX)
   proizvod       text,                 -- start | plus | privat | po_meri | dekorativni_blok | zavrsni_elementi | oblaganje | potporni_zid | ostalo | slobodan tekst
   obuhvat        text,                 -- materijal | materijal_prevoz | kljuc_u_ruke | nepoznato
+  lokacija       text,                 -- mesto gde se radi ograda (obavezno za Luku)
+  duzina_m       numeric,              -- ukupna dužina ograde u metrima (obavezno)
+  ispuna         text,                 -- samo_blokovi | blokovi_paneli (model po Luki, obavezno)
+  detalji        jsonb,                -- poželjno: boja, visine, razmak, broj blokova/kapa/okapnica, spec, budžet
   izvor          text,                 -- instagram | facebook | viber | whatsapp | sajt | preporuka | ostalo
   info           text,                 -- kontekst za vlasnika (dužina ograde, lokacija, boja, budžet, kad zvati...)
   status         text default 'nov',   -- nov | nije_se_javio | zvati_kasnije | dostaviti_ponudu | ponuda (čeka odgovor) | zatvoren (kupio) | propao (odustao)

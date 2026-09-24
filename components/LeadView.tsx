@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useTransition, useOptimistic, useActionState, useEffect } from "react";
+import { Fragment, useState, useMemo, useTransition, useOptimistic, useActionState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Sat } from "@/components/Sat";
@@ -8,14 +8,15 @@ import { brojNaDan, danasKljuc, pomeriDan } from "@/lib/analitika";
 import { Card, ArrowIco, PlusIco, Logo } from "@/components/ui";
 import { Sidebar } from "@/components/Sidebar";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
-import { STATUSI, OTVORENI, PROIZVODI, IZVORI, SVI_IZVORI, OBUHVATI, obuhvatKratko, label, normalizujProizvod, DRUGO } from "@/lib/opcije";
+import { STATUSI, OTVORENI, PROIZVODI, IZVORI, SVI_IZVORI, OBUHVATI, MODELI_OGRADE, BOJE, DETALJI, OBAVEZNO, obuhvatKratko, modelKratko, label, normalizujProizvod, DRUGO, type Detalji } from "@/lib/opcije";
 import { telLink, smsLink, waLink, viberLink } from "@/lib/lead";
 import { pre, rsd } from "@/lib/format";
 import { dodajLead, izmeniLead, promeniStatus, obrisiLead, promeniBelesku, promeniPodsetnik, promeniPrioritet, promeniZaradu, type LeadState } from "@/app/leadovi/actions";
 
 export type LeadRow = {
   id: string; ime: string | null; prezime: string | null; telefon: string | null;
-  proizvod: string | null; obuhvat?: string | null; izvor: string | null; info: string | null; status: string;
+  proizvod: string | null; obuhvat?: string | null; lokacija?: string | null; duzina_m?: number | null; ispuna?: string | null; detalji?: Detalji | null;
+  izvor: string | null; info: string | null; status: string;
   podseti_kad: string | null; ishod_beleska: string | null; created_at: string;
   updated_at?: string | null; pozvan_kad?: string | null; status_od?: string | null;
   prioritet?: boolean | null; zarada_rsd?: number | null;
@@ -38,6 +39,11 @@ const POGLEDI = {
   svi: () => true,
 } as const;
 type Pogled = keyof typeof POGLEDI;
+// Šta od Lukinog obaveznog spiska fali (za oznaku „Nepotpun")
+const fali = (l: LeadRow) => OBAVEZNO.filter(({ k }) => {
+  const v = (l as unknown as Record<string, unknown>)[k];
+  return v == null || v === "" || (k === "obuhvat" && v === "nepoznato");
+}).map((o) => o.l);
 const datumKratko = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("sr-RS", { day: "2-digit", month: "2-digit" });
 
 export function LeadView({ leadovi, tabelaFali, demo, login, migracijaFali }: { leadovi: LeadRow[]; tabelaFali: boolean; demo?: boolean; login?: boolean; migracijaFali?: { fajl: string; sta: string } | null }) {
@@ -95,7 +101,9 @@ export function LeadView({ leadovi, tabelaFali, demo, login, migracijaFali }: { 
   const demoSacuvaj = async (_p: LeadState, fd: FormData): Promise<LeadState> => {
     const g = (k: string) => { const v = fd.get(k); return typeof v === "string" && v.trim() ? v.trim() : null; };
     const id = g("id");
-    const polja = { ime: g("ime"), prezime: g("prezime"), telefon: g("telefon"), proizvod: g("proizvod") === DRUGO ? normalizujProizvod(g("proizvod_tekst")) : g("proizvod"), obuhvat: g("obuhvat"), izvor: g("izvor"), info: g("info") };
+    const polja = { ime: g("ime"), prezime: g("prezime"), telefon: g("telefon"), proizvod: g("proizvod") === DRUGO ? normalizujProizvod(g("proizvod_tekst")) : g("proizvod"), obuhvat: g("obuhvat"), lokacija: g("lokacija"), duzina_m: g("duzina_m") ? parseFloat(g("duzina_m")!.replace(",", ".")) || null : null, ispuna: g("ispuna"),
+      detalji: (() => { const d: Record<string, string> = {}; for (const { k } of DETALJI) { const v = g("d_" + k); if (v) d[k] = v; } return Object.keys(d).length ? (d as Detalji) : null; })(),
+      izvor: g("izvor"), info: g("info") };
     if (!polja.ime && !polja.prezime && !polja.telefon) return { ok: false, msg: "Unesi bar ime ili telefon." };
     setLokalni((a) => id
       ? a.map((l) => (l.id === id ? { ...l, ...polja, status: g("status") ?? l.status, podseti_kad: g("podseti_kad"), ishod_beleska: g("ishod_beleska") } : l))
@@ -347,8 +355,10 @@ function LeadTabela({ leadovi, danas, onStatus, onBeleska, onDatum, onPrioritet,
                   </div>
                 </td>
                 <td className="px-4 py-3 whitespace-nowrap">{l.izvor ? <span className="tag tag-gold">{label(SVI_IZVORI, l.izvor)}</span> : <span className="text-muted">—</span>}</td>
-                <td className="max-w-[360px] px-4 py-3">
-                  {l.info ? <p className="whitespace-pre-wrap text-[13px] leading-snug text-ink/85">{l.info}</p> : <span className="text-muted">—</span>}
+                <td className="max-w-[380px] px-4 py-3">
+                  <ZaPoziv l={l} />
+                  {fali(l).length > 0 && <div className="mt-1"><span className="tag tag-warn">Nepotpun: {fali(l).join(", ")}</span></div>}
+                  {l.info ? <p className="mt-1 whitespace-pre-wrap text-[13px] leading-snug text-ink/85">{l.info}</p> : null}
                   <Beleska id={l.id} vrednost={l.ishod_beleska} onSave={onBeleska} mala />
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 text-xs text-muted">
@@ -433,7 +443,9 @@ function LeadKartica({ l, danas, onStatus, onBeleska, onDatum, onPrioritet, onZa
         </div>
       </div>
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+      <ZaPoziv l={l} />
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {fali(l).length > 0 && <span className="tag tag-warn" title={"Fali: " + fali(l).join(", ")}>Nepotpun: {fali(l).join(", ")}</span>}
         {l.proizvod && <span className="tag tag-navy">{label(PROIZVODI, l.proizvod).replace(/\s*\(.*\)$/, "")}</span>}
         {obuhvatKratko(l.obuhvat) && <span className={`tag ${l.obuhvat === "kljuc_u_ruke" ? "tag-accent" : ""}`}>{obuhvatKratko(l.obuhvat)}</span>}
         {l.izvor && <span className="tag tag-gold">{label(SVI_IZVORI, l.izvor)}</span>}
@@ -573,17 +585,30 @@ function LeadModal({ lead, onClose, akcija }: { lead?: LeadRow; onClose: () => v
               <Field label="Prezime"><input name="prezime" defaultValue={lead?.prezime ?? ""} className="inp" /></Field>
             </div>
 
-            <Field label="Telefon"><input name="telefon" defaultValue={lead?.telefon ?? ""} inputMode="tel" className="inp" placeholder="06x xxx xxxx" /></Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Telefon"><input name="telefon" defaultValue={lead?.telefon ?? ""} inputMode="tel" className="inp" placeholder="06x xxx xxxx" /></Field>
+              <Field label="Lokacija"><input name="lokacija" defaultValue={lead?.lokacija ?? ""} className="inp" placeholder="Mesto gde se radi" /></Field>
+            </div>
 
-            <ProizvodPolje pocetno={lead?.proizvod ?? null} />
+            <Field label="Obuhvat (šta kupuje)">
+              <select name="obuhvat" defaultValue={lead?.obuhvat ?? ""} className="inp">
+                <option value="">—</option>
+                {OBUHVATI.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+              </select>
+            </Field>
 
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Obuhvat (šta kupuje)">
-                <select name="obuhvat" defaultValue={lead?.obuhvat ?? ""} className="inp">
+              <Field label="Dužina ograde (m)"><input name="duzina_m" defaultValue={lead?.duzina_m ?? ""} inputMode="decimal" className="inp" placeholder="npr. 28" /></Field>
+              <Field label="Model ograde">
+                <select name="ispuna" defaultValue={lead?.ispuna ?? ""} className="inp">
                   <option value="">—</option>
-                  {OBUHVATI.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+                  {MODELI_OGRADE.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
                 </select>
               </Field>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <ProizvodPolje pocetno={lead?.proizvod ?? null} />
               <Field label="Izvor">
                 <select name="izvor" defaultValue={lead?.izvor ?? ""} className="inp">
                   <option value="">—</option>
@@ -593,8 +618,10 @@ function LeadModal({ lead, onClose, akcija }: { lead?: LeadRow; onClose: () => v
             </div>
 
             <Field label="Informacije pred poziv">
-              <textarea name="info" defaultValue={lead?.info ?? ""} rows={3} className="inp" placeholder="Dužina i visina ograde, lokacija, boja, budžet, kad da ga zove…" />
+              <textarea name="info" defaultValue={lead?.info ?? ""} rows={2} className="inp" placeholder="Kad da ga zove, šta ga muči, ko odlučuje…" />
             </Field>
+
+            <DetaljiPolja pocetno={lead?.detalji ?? null} />
 
             {lead && (
               <>
@@ -621,6 +648,66 @@ function LeadModal({ lead, onClose, akcija }: { lead?: LeadRow; onClose: () => v
             </button>
           </div>
         </form>
+      </div>
+    </div>
+  );
+}
+
+/* Jedan red za Luku pred poziv: lokacija · dužina · model ograde, + sklopivi poželjni detalji. */
+function ZaPoziv({ l }: { l: LeadRow }) {
+  const [otvoreno, setOtvoreno] = useState(false);
+  const glavno = [l.lokacija, l.duzina_m != null ? `${l.duzina_m} m` : null, modelKratko(l.ispuna)].filter(Boolean);
+  const d = l.detalji ?? {};
+  const det = DETALJI.filter(({ k }) => d[k]).map(({ k, l: naziv, tip }) => ({ naziv, v: d[k] + (tip === "m" ? " m" : tip === "kom" ? " kom" : "") }));
+  if (!glavno.length && !det.length) return null;
+  return (
+    <div className="mt-2 text-[13px] leading-snug">
+      {glavno.length > 0 && (
+        <div className="flex flex-wrap items-center gap-x-1.5 text-ink">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-gold-deep"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" /><circle cx="12" cy="10" r="3" /></svg>
+          <span className="font-medium">{glavno.join(" · ")}</span>
+        </div>
+      )}
+      {det.length > 0 && (
+        <>
+          <button type="button" onClick={() => setOtvoreno((o) => !o)} className="mt-0.5 text-xs text-muted underline-offset-2 hover:text-navy hover:underline">
+            {otvoreno ? "Sakrij detalje" : `Detalji za ponudu (${det.length})`}
+          </button>
+          {otvoreno && (
+            <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 rounded-[10px] bg-wash px-3 py-2 text-xs">
+              {det.map((x) => (<Fragment key={x.naziv}><dt className="text-muted">{x.naziv}</dt><dd className="text-ink">{x.v}</dd></Fragment>))}
+            </dl>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* Poželjni detalji u formi: sklopljeno dok ih nema, otvori se jednim tapom. */
+function DetaljiPolja({ pocetno }: { pocetno: Detalji | null }) {
+  const ima = !!pocetno && Object.values(pocetno).some(Boolean);
+  const [otvoreno, setOtvoreno] = useState(ima);
+  return (
+    <div className="rounded-[10px] border border-dashed border-line">
+      <button type="button" onClick={() => setOtvoreno((o) => !o)} className="flex w-full items-center justify-between px-3 py-2.5 text-left text-sm font-semibold text-ink">
+        Detalji za ponudu <span className="font-normal text-muted">(poželjno)</span>
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-muted transition-transform ${otvoreno ? "rotate-180" : ""}`}><path d="m6 9 6 6 6-6" /></svg>
+      </button>
+      {/* polja su uvek u DOM-u (hidden) da forma pošalje vrednosti i kad je sklopljeno */}
+      <div className={`${otvoreno ? "grid" : "hidden"} grid-cols-2 gap-3 border-t border-line px-3 py-3`}>
+        {DETALJI.map(({ k, l, tip }) => (
+          <Field key={k} label={l + (tip === "m" ? " (m)" : tip === "kom" ? " (kom)" : "")}>
+            {tip === "boja" ? (
+              <select name={"d_" + k} defaultValue={pocetno?.[k] ?? ""} className="inp inp-sm">
+                <option value="">—</option>
+                {BOJE.map((b) => <option key={b} value={b}>{b}</option>)}
+              </select>
+            ) : (
+              <input name={"d_" + k} defaultValue={pocetno?.[k] ?? ""} inputMode={tip === "tekst" ? undefined : "decimal"} className={`inp inp-sm ${tip === "tekst" ? "col-span-2" : ""}`} />
+            )}
+          </Field>
+        ))}
       </div>
     </div>
   );

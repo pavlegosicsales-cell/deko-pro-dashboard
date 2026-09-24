@@ -38,6 +38,41 @@ export const OBUHVATI = [
   { v: "kljuc_u_ruke", l: "Ključ u ruke (materijal + prevoz + ugradnja)", k: "Ključ u ruke" },
   { v: "nepoznato", l: "Još ne zna", k: "Obuhvat?" },
 ] as const;
+// Model ograde po Luki: samo od blokova, ili blokovi + paneli (ispune).
+export const MODELI_OGRADE = [
+  { v: "samo_blokovi", l: "Samo od blokova", k: "samo blokovi" },
+  { v: "blokovi_paneli", l: "Blokovi + paneli", k: "blokovi + paneli" },
+] as const;
+export const modelKratko = (v: string | null | undefined) => MODELI_OGRADE.find((o) => o.v === v)?.k ?? null;
+
+// Boje bloka iz cenovnika (business details, deo 4).
+export const BOJE = ["Natur siva", "Žuta", "Braon", "Oranž", "Crvena", "Zelena", "Crna", "Kapučino", "Multikolor Rok", "Multikolor Rast"] as const;
+
+// Poželjni detalji za ponudu (JSON kolona `detalji`). Redosled = redosled u formi i na kartici.
+export const DETALJI = [
+  { k: "boja", l: "Boja bloka", tip: "boja" },
+  { k: "visina_stuba", l: "Visina stuba", tip: "m" },
+  { k: "visina_polja", l: "Visina polja", tip: "m" },
+  { k: "razmak_stubova", l: "Razmak stubova", tip: "m" },
+  { k: "br_blokova", l: "Zidnih blokova", tip: "kom" },
+  { k: "br_stubnih", l: "Stubnih blokova", tip: "kom" },
+  { k: "br_kapa", l: "Kapa", tip: "kom" },
+  { k: "br_okapnica", l: "Okapnica", tip: "kom" },
+  { k: "spec_materijala", l: "Specifikacija materijala", tip: "tekst" },
+  { k: "budzet", l: "Okvirni budžet", tip: "tekst" },
+] as const;
+export type Detalji = Partial<Record<(typeof DETALJI)[number]["k"], string>>;
+
+// Šta Luka traži kao obavezno pre poziva (business details + Lukina poruka 24.09.2026.)
+export const OBAVEZNO = [
+  { k: "ime", l: "ime" },
+  { k: "telefon", l: "telefon" },
+  { k: "lokacija", l: "lokacija" },
+  { k: "obuhvat", l: "obuhvat" },
+  { k: "duzina_m", l: "dužina" },
+  { k: "ispuna", l: "model" },
+] as const;
+
 export const obuhvatKratko = (v: string | null | undefined) => OBUHVATI.find((o) => o.v === v)?.k ?? null;
 
 // Izvori za ručni unos. „sajt" ne nudimo u formi: lead sa sajta stiže sam preko /api/lead.
