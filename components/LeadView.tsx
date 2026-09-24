@@ -372,7 +372,7 @@ function LeadTabela({ leadovi, danas, onStatus, onBeleska, onDatum, onPrioritet,
                 <td className="px-4 py-3 whitespace-nowrap">{l.izvor ? <span className="tag tag-gold">{label(SVI_IZVORI, l.izvor)}</span> : <span className="text-muted">—</span>}</td>
                 <td className="max-w-[380px] px-4 py-3">
                   <ZaPoziv l={l} />
-                  {fali(l).length > 0 && <div className="mt-1"><span className="tag tag-warn">Nepotpun: {fali(l).join(", ")}</span></div>}
+                  {fali(l).length > 0 && <div className="mt-1"><span className="tag tag-warn max-w-full whitespace-normal text-left leading-snug">Nepotpun: {fali(l).join(", ")}</span></div>}
                   {l.info ? <p className="mt-1 whitespace-pre-wrap text-[13px] leading-snug text-ink/85">{l.info}</p> : null}
                   <Beleska id={l.id} vrednost={l.ishod_beleska} onSave={onBeleska} mala />
                 </td>
@@ -466,7 +466,7 @@ function LeadKartica({ l, danas, onStatus, onBeleska, onDatum, onPrioritet, onZa
         {l.tip_kupca && <span className="tag">{label(TIPOVI_KUPCA, l.tip_kupca)}</span>}
         {l.rok && <span className="tag">{label(ROKOVI, l.rok)}</span>}
         {l.status === "propao" && l.razlog_odustajanja && <span className="tag">Razlog: {label(RAZLOZI, l.razlog_odustajanja)}</span>}
-        {fali(l).length > 0 && <span className="tag tag-warn" title={"Fali: " + fali(l).join(", ")}>Nepotpun: {fali(l).join(", ")}</span>}
+        {fali(l).length > 0 && <span className="tag tag-warn max-w-full whitespace-normal text-left leading-snug" title={"Fali: " + fali(l).join(", ")}>Nepotpun: {fali(l).join(", ")}</span>}
         {l.proizvod && <span className="tag tag-navy">{label(SVI_PROIZVODI, l.proizvod).replace(/\s*\(.*\)$/, "")}</span>}
         {obuhvatKratko(l.obuhvat) && <span className={`tag ${l.obuhvat === "kljuc_u_ruke" ? "tag-accent" : ""}`}>{obuhvatKratko(l.obuhvat)}</span>}
         {l.izvor && <span className="tag tag-gold">{label(SVI_IZVORI, l.izvor)}</span>}
