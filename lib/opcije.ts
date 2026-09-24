@@ -16,14 +16,20 @@ export const STATUSI = [
 export const OTVORENI = new Set(["nov", "nije_se_javio", "zvati_kasnije", "dostaviti_ponudu", "ponuda"]);
 export const ZATVORENI = new Set(["zatvoren", "propao"]);
 
+// Po context/business details: modeli ograde (START/PLUS/PRIVAT), obuhvat (samo materijal,
+// sa prevozom, ključ u ruke) i elementi. Poslednja opcija DRUGO = slobodan tekst.
+export const DRUGO = "__drugo";
 export const PROIZVODI = [
-  { v: "start", l: "Ograda START" },
-  { v: "plus", l: "Ograda PLUS" },
-  { v: "privat", l: "Ograda PRIVAT" },
+  { v: "start", l: "Ograda START (polje 0,8 m · stub 1,6 m)" },
+  { v: "plus", l: "Ograda PLUS (polje 0,8 m · stub 1,6 m, stubni blok + kape)" },
+  { v: "privat", l: "Ograda PRIVAT (polje 1,8 m · stub 2,0 m)" },
+  { v: "kljuc_u_ruke", l: "Ograda ključ u ruke (materijal + prevoz + ugradnja)" },
+  { v: "dekorativni_blok", l: "Samo blokovi (materijal, preuzimanje u Mladenovcu)" },
+  { v: "materijal_prevoz", l: "Blokovi sa prevozom i istovarom" },
+  { v: "zavrsni_elementi", l: "Stubni blok / kape / okapnice" },
+  { v: "oblaganje", l: "Dekorativna obloga (fasada)" },
   { v: "potporni_zid", l: "Potporni zid" },
-  { v: "oblaganje", l: "Oblaganje / fasada" },
-  { v: "dekorativni_blok", l: "Dekorativni blok" },
-  { v: "ostalo", l: "Ostalo / nije sigurno" },
+  { v: "ostalo", l: "Nije siguran / još ne zna" },
 ] as const;
 
 export const IZVORI = [

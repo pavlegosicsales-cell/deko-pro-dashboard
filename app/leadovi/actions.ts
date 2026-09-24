@@ -4,7 +4,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { supabaseServer } from "@/lib/supabaseServer";
 import { revalidatePath } from "next/cache";
 import { normalizujTelefon } from "@/lib/lead";
-import { normalizujProizvod } from "@/lib/opcije";
+import { normalizujProizvod, DRUGO } from "@/lib/opcije";
 
 export type LeadState = { ok: boolean; msg?: string };
 
@@ -24,7 +24,7 @@ function polja(fd: FormData) {
     ime: s(fd, "ime"),
     prezime: s(fd, "prezime"),
     telefon: normalizujTelefon(s(fd, "telefon")),
-    proizvod: normalizujProizvod(s(fd, "proizvod")),
+    proizvod: s(fd, "proizvod") === DRUGO ? normalizujProizvod(s(fd, "proizvod_tekst")) : s(fd, "proizvod"),
     izvor: s(fd, "izvor"),
     info: s(fd, "info"),
     status: s(fd, "status") ?? "nov",

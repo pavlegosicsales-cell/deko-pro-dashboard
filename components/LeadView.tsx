@@ -8,7 +8,7 @@ import { brojNaDan, danasKljuc, pomeriDan } from "@/lib/analitika";
 import { Card, ArrowIco, PlusIco, Logo } from "@/components/ui";
 import { Sidebar } from "@/components/Sidebar";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
-import { STATUSI, OTVORENI, PROIZVODI, IZVORI, label, normalizujProizvod } from "@/lib/opcije";
+import { STATUSI, OTVORENI, PROIZVODI, IZVORI, label, normalizujProizvod, DRUGO } from "@/lib/opcije";
 import { telLink, smsLink, waLink, viberLink } from "@/lib/lead";
 import { pre, rsd } from "@/lib/format";
 import { dodajLead, izmeniLead, promeniStatus, obrisiLead, promeniBelesku, promeniPodsetnik, promeniPrioritet, promeniZaradu, type LeadState } from "@/app/leadovi/actions";
@@ -95,7 +95,7 @@ export function LeadView({ leadovi, tabelaFali, demo, login, migracijaFali }: { 
   const demoSacuvaj = async (_p: LeadState, fd: FormData): Promise<LeadState> => {
     const g = (k: string) => { const v = fd.get(k); return typeof v === "string" && v.trim() ? v.trim() : null; };
     const id = g("id");
-    const polja = { ime: g("ime"), prezime: g("prezime"), telefon: g("telefon"), proizvod: normalizujProizvod(g("proizvod")), izvor: g("izvor"), info: g("info") };
+    const polja = { ime: g("ime"), prezime: g("prezime"), telefon: g("telefon"), proizvod: g("proizvod") === DRUGO ? normalizujProizvod(g("proizvod_tekst")) : g("proizvod"), izvor: g("izvor"), info: g("info") };
     if (!polja.ime && !polja.prezime && !polja.telefon) return { ok: false, msg: "Unesi bar ime ili telefon." };
     setLokalni((a) => id
       ? a.map((l) => (l.id === id ? { ...l, ...polja, status: g("status") ?? l.status, podseti_kad: g("podseti_kad"), ishod_beleska: g("ishod_beleska") } : l))
@@ -570,13 +570,7 @@ function LeadModal({ lead, onClose, akcija }: { lead?: LeadRow; onClose: () => v
             <Field label="Telefon"><input name="telefon" defaultValue={lead?.telefon ?? ""} inputMode="tel" className="inp" placeholder="06x xxx xxxx" /></Field>
 
             <div className="grid grid-cols-2 gap-3">
-              <Field label="Proizvod">
-                {/* izbor iz spiska ili slobodan unos (datalist) */}
-                <input name="proizvod" list="proizvodi" defaultValue={lead?.proizvod ? label(PROIZVODI, lead.proizvod) : ""} className="inp" placeholder="Izaberi ili upiši…" autoComplete="off" />
-                <datalist id="proizvodi">
-                  {PROIZVODI.map((o) => <option key={o.v} value={o.l} />)}
-                </datalist>
-              </Field>
+              <ProizvodPolje pocetno={lead?.proizvod ?? null} />
               <Field label="Izvor">
                 <select name="izvor" defaultValue={lead?.izvor ?? ""} className="inp">
                   <option value="">—</option>
@@ -616,6 +610,24 @@ function LeadModal({ lead, onClose, akcija }: { lead?: LeadRow; onClose: () => v
         </form>
       </div>
     </div>
+  );
+}
+
+/* Proizvod: padajući meni po dokumentu + „Drugo (upiši sam)" koje otvori polje za tekst. */
+function ProizvodPolje({ pocetno }: { pocetno: string | null }) {
+  const poznat = !pocetno || PROIZVODI.some((o) => o.v === pocetno);
+  const [izbor, setIzbor] = useState<string>(poznat ? (pocetno ?? "") : DRUGO);
+  return (
+    <Field label="Proizvod">
+      <select name="proizvod" value={izbor} onChange={(e) => setIzbor(e.target.value)} className="inp">
+        <option value="">—</option>
+        {PROIZVODI.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+        <option value={DRUGO}>Drugo (upiši sam)…</option>
+      </select>
+      {izbor === DRUGO && (
+        <input name="proizvod_tekst" defaultValue={poznat ? "" : pocetno ?? ""} autoFocus className="inp mt-2" placeholder="Upiši šta traži…" />
+      )}
+    </Field>
   );
 }
 
