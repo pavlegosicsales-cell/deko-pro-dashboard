@@ -25,6 +25,7 @@ function polja(fd: FormData) {
     prezime: s(fd, "prezime"),
     telefon: normalizujTelefon(s(fd, "telefon")),
     proizvod: s(fd, "proizvod") === DRUGO ? normalizujProizvod(s(fd, "proizvod_tekst")) : s(fd, "proizvod"),
+    obuhvat: s(fd, "obuhvat"),
     izvor: s(fd, "izvor"),
     info: s(fd, "info"),
     status: s(fd, "status") ?? "nov",
@@ -37,7 +38,10 @@ export async function dodajLead(_prev: LeadState, fd: FormData): Promise<LeadSta
   const p = polja(fd);
   if (!p.ime && !p.prezime && !p.telefon) return { ok: false, msg: "Unesi bar ime ili telefon." };
 
-  const { error } = await supabaseAdmin.from("leadovi").insert({ ...p, dodao: await mojEmail() });
+  const dodao = await mojEmail();
+  let { error } = await supabaseAdmin.from("leadovi").insert({ ...p, dodao });
+  // kolona obuhvat fali (migracija-3 nije pokrenuta): snimi bez nje, ostalo ne sme da propadne
+  if (error && /obuhvat/.test(error.message)) { const { obuhvat: _o, ...bez } = p; void _o; ({ error } = await supabaseAdmin.from("leadovi").insert({ ...bez, dodao })); }
   if (error) return { ok: false, msg: jeTabelaFali(error.message) ? PORUKA_MIGRACIJA : "Greška: " + error.message };
 
   revalidatePath("/");
@@ -54,6 +58,7 @@ export async function izmeniLead(_prev: LeadState, fd: FormData): Promise<LeadSt
   const izNov = prethodni === "nov" && p.status !== "nov";
   const dodatno = { ...(promenjen ? { status_od: sad } : {}), ...(izNov ? { pozvan_kad: sad } : {}) };
   let { error } = await supabaseAdmin.from("leadovi").update({ ...p, updated_at: sad, ...dodatno }).eq("id", id);
+  if (error && /obuhvat/.test(error.message)) { const { obuhvat: _o, ...bez } = p; void _o; ({ error } = await supabaseAdmin.from("leadovi").update({ ...bez, updated_at: sad, ...dodatno }).eq("id", id)); }
   if (error && Object.keys(dodatno).length) ({ error } = await supabaseAdmin.from("leadovi").update({ ...p, updated_at: sad }).eq("id", id));
   if (error) return { ok: false, msg: "Greška: " + error.message };
   revalidatePath("/");
@@ -80,7 +85,7 @@ export async function obrisiLead(id: string): Promise<LeadState> {
 }
 
 const PORUKA_MIGRACIJA = "Baza još nije podešena — pokreni supabase/schema.sql u Supabase SQL editoru.";
-const PORUKA_MIGRACIJA_2 = "Nije sačuvano: bazi fali kolona iz supabase/migracija-2.sql. Pokreni je u Supabase SQL editoru.";
+const PORUKA_MIGRACIJA_2 = "Nije sačuvano: bazi fali kolona iz supabase/migracija-2.sql ili migracija-3.sql. Pokreni ih u Supabase SQL editoru.";
 const jeTabelaFali = (msg?: string | null) => !!msg && /does not exist|schema cache|relation/i.test(msg);
 const jeKolonaFali = (msg?: string | null) => !!msg && /column .* does not exist|schema cache/i.test(msg);
 const rezultat = (msg?: string | null): LeadState =>

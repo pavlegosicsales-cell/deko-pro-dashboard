@@ -2,7 +2,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { LeadRow } from "@/components/LeadView";
 
 const OSNOVNO = "id, ime, prezime, telefon, proizvod, izvor, info, status, podseti_kad, ishod_beleska, created_at, updated_at";
-const DODATNE = ["pozvan_kad", "status_od", "prioritet", "zarada_rsd"]; // iz migracija-2
+const DODATNE = ["pozvan_kad", "status_od", "prioritet", "zarada_rsd", "obuhvat"]; // iz migracija-2 i -3
 const PUNO = `${OSNOVNO}, ${DODATNE.join(", ")}`;
 
 // Čita sve leadove; ako kolona pozvan_kad još ne postoji (migracija-2 nije pokrenuta), čita bez nje.

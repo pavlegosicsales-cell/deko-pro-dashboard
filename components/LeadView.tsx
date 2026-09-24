@@ -8,14 +8,14 @@ import { brojNaDan, danasKljuc, pomeriDan } from "@/lib/analitika";
 import { Card, ArrowIco, PlusIco, Logo } from "@/components/ui";
 import { Sidebar } from "@/components/Sidebar";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
-import { STATUSI, OTVORENI, PROIZVODI, IZVORI, label, normalizujProizvod, DRUGO } from "@/lib/opcije";
+import { STATUSI, OTVORENI, PROIZVODI, IZVORI, OBUHVATI, obuhvatKratko, label, normalizujProizvod, DRUGO } from "@/lib/opcije";
 import { telLink, smsLink, waLink, viberLink } from "@/lib/lead";
 import { pre, rsd } from "@/lib/format";
 import { dodajLead, izmeniLead, promeniStatus, obrisiLead, promeniBelesku, promeniPodsetnik, promeniPrioritet, promeniZaradu, type LeadState } from "@/app/leadovi/actions";
 
 export type LeadRow = {
   id: string; ime: string | null; prezime: string | null; telefon: string | null;
-  proizvod: string | null; izvor: string | null; info: string | null; status: string;
+  proizvod: string | null; obuhvat?: string | null; izvor: string | null; info: string | null; status: string;
   podseti_kad: string | null; ishod_beleska: string | null; created_at: string;
   updated_at?: string | null; pozvan_kad?: string | null; status_od?: string | null;
   prioritet?: boolean | null; zarada_rsd?: number | null;
@@ -95,7 +95,7 @@ export function LeadView({ leadovi, tabelaFali, demo, login, migracijaFali }: { 
   const demoSacuvaj = async (_p: LeadState, fd: FormData): Promise<LeadState> => {
     const g = (k: string) => { const v = fd.get(k); return typeof v === "string" && v.trim() ? v.trim() : null; };
     const id = g("id");
-    const polja = { ime: g("ime"), prezime: g("prezime"), telefon: g("telefon"), proizvod: g("proizvod") === DRUGO ? normalizujProizvod(g("proizvod_tekst")) : g("proizvod"), izvor: g("izvor"), info: g("info") };
+    const polja = { ime: g("ime"), prezime: g("prezime"), telefon: g("telefon"), proizvod: g("proizvod") === DRUGO ? normalizujProizvod(g("proizvod_tekst")) : g("proizvod"), obuhvat: g("obuhvat"), izvor: g("izvor"), info: g("info") };
     if (!polja.ime && !polja.prezime && !polja.telefon) return { ok: false, msg: "Unesi bar ime ili telefon." };
     setLokalni((a) => id
       ? a.map((l) => (l.id === id ? { ...l, ...polja, status: g("status") ?? l.status, podseti_kad: g("podseti_kad"), ishod_beleska: g("ishod_beleska") } : l))
@@ -188,7 +188,7 @@ export function LeadView({ leadovi, tabelaFali, demo, login, migracijaFali }: { 
         {migracijaFali && (
           <div className="card mb-4 border-l-4 border-l-warn p-4 text-sm">
             <p className="h3 text-[15px] text-warn">Baza čeka migraciju</p>
-            <p className="mt-1 text-ink">Zvezdica, zarada i vreme u ishodu se <b>ne čuvaju</b> dok se u Supabase SQL editoru ne pokrene <code className="rounded bg-wash px-1">supabase/migracija-2.sql</code>. Sve ostalo radi.</p>
+            <p className="mt-1 text-ink">Zvezdica, zarada, obuhvat i vreme u ishodu se <b>ne čuvaju</b> dok se u Supabase SQL editoru ne pokrenu <code className="rounded bg-wash px-1">supabase/migracija-2.sql</code> i <code className="rounded bg-wash px-1">migracija-3.sql</code>. Sve ostalo radi.</p>
           </div>
         )}
         {greska && (
@@ -340,7 +340,12 @@ function LeadTabela({ leadovi, danas, onStatus, onBeleska, onDatum, onPrioritet,
                     : <span className="text-xs text-muted">bez broja</span>}
                   {l.podseti_kad && <div className="mt-1"><span className={`tag ${dospeo ? "tag-warn" : ""}`}>{dospeo ? "Dospelo" : "Zvati"} {datumKratko(l.podseti_kad)}</span></div>}
                 </td>
-                <td className="px-4 py-3 whitespace-nowrap">{l.proizvod ? <span className="tag tag-navy">{label(PROIZVODI, l.proizvod)}</span> : <span className="text-muted">—</span>}</td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-wrap gap-1">
+                    {l.proizvod ? <span className="tag tag-navy">{label(PROIZVODI, l.proizvod).replace(/\s*\(.*\)$/, "")}</span> : <span className="text-muted">—</span>}
+                    {obuhvatKratko(l.obuhvat) && <span className={`tag ${l.obuhvat === "kljuc_u_ruke" ? "tag-accent" : ""}`}>{obuhvatKratko(l.obuhvat)}</span>}
+                  </div>
+                </td>
                 <td className="px-4 py-3 whitespace-nowrap">{l.izvor ? <span className="tag tag-gold">{label(IZVORI, l.izvor)}</span> : <span className="text-muted">—</span>}</td>
                 <td className="max-w-[360px] px-4 py-3">
                   {l.info ? <p className="whitespace-pre-wrap text-[13px] leading-snug text-ink/85">{l.info}</p> : <span className="text-muted">—</span>}
@@ -429,7 +434,8 @@ function LeadKartica({ l, danas, onStatus, onBeleska, onDatum, onPrioritet, onZa
       </div>
 
       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-        {l.proizvod && <span className="tag tag-navy">{label(PROIZVODI, l.proizvod)}</span>}
+        {l.proizvod && <span className="tag tag-navy">{label(PROIZVODI, l.proizvod).replace(/\s*\(.*\)$/, "")}</span>}
+        {obuhvatKratko(l.obuhvat) && <span className={`tag ${l.obuhvat === "kljuc_u_ruke" ? "tag-accent" : ""}`}>{obuhvatKratko(l.obuhvat)}</span>}
         {l.izvor && <span className="tag tag-gold">{label(IZVORI, l.izvor)}</span>}
         {l.podseti_kad && <span className={`tag ${dospeo ? "tag-warn" : ""}`}>{dospeo ? "Dospelo" : "Zvati"} {datumKratko(l.podseti_kad)}</span>}
       </div>
@@ -569,8 +575,15 @@ function LeadModal({ lead, onClose, akcija }: { lead?: LeadRow; onClose: () => v
 
             <Field label="Telefon"><input name="telefon" defaultValue={lead?.telefon ?? ""} inputMode="tel" className="inp" placeholder="06x xxx xxxx" /></Field>
 
+            <ProizvodPolje pocetno={lead?.proizvod ?? null} />
+
             <div className="grid grid-cols-2 gap-3">
-              <ProizvodPolje pocetno={lead?.proizvod ?? null} />
+              <Field label="Obuhvat (šta kupuje)">
+                <select name="obuhvat" defaultValue={lead?.obuhvat ?? ""} className="inp">
+                  <option value="">—</option>
+                  {OBUHVATI.map((o) => <option key={o.v} value={o.v}>{o.l}</option>)}
+                </select>
+              </Field>
               <Field label="Izvor">
                 <select name="izvor" defaultValue={lead?.izvor ?? ""} className="inp">
                   <option value="">—</option>

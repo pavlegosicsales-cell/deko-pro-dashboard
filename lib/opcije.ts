@@ -23,14 +23,22 @@ export const PROIZVODI = [
   { v: "start", l: "Ograda START (polje 0,8 m · stub 1,6 m)" },
   { v: "plus", l: "Ograda PLUS (polje 0,8 m · stub 1,6 m, stubni blok + kape)" },
   { v: "privat", l: "Ograda PRIVAT (polje 1,8 m · stub 2,0 m)" },
-  { v: "kljuc_u_ruke", l: "Ograda ključ u ruke (materijal + prevoz + ugradnja)" },
-  { v: "dekorativni_blok", l: "Samo blokovi (materijal, preuzimanje u Mladenovcu)" },
-  { v: "materijal_prevoz", l: "Blokovi sa prevozom i istovarom" },
+  { v: "po_meri", l: "Ograda po meri (drugačije mere)" },
+  { v: "dekorativni_blok", l: "Samo blokovi (bez modela)" },
   { v: "zavrsni_elementi", l: "Stubni blok / kape / okapnice" },
   { v: "oblaganje", l: "Dekorativna obloga (fasada)" },
   { v: "potporni_zid", l: "Potporni zid" },
   { v: "ostalo", l: "Nije siguran / još ne zna" },
 ] as const;
+
+// Obuhvat = šta kupac kupuje (business details, deo 5). Važi za svaki model.
+export const OBUHVATI = [
+  { v: "materijal", l: "Samo materijal (preuzima u Mladenovcu)", k: "Materijal" },
+  { v: "materijal_prevoz", l: "Materijal sa prevozom i istovarom", k: "Sa prevozom" },
+  { v: "kljuc_u_ruke", l: "Ključ u ruke (materijal + prevoz + ugradnja)", k: "Ključ u ruke" },
+  { v: "nepoznato", l: "Još ne zna", k: "Obuhvat?" },
+] as const;
+export const obuhvatKratko = (v: string | null | undefined) => OBUHVATI.find((o) => o.v === v)?.k ?? null;
 
 export const IZVORI = [
   { v: "instagram", l: "Instagram" },
