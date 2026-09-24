@@ -4,6 +4,15 @@ Interni panel za **leadove** firme Deko Pro. Pravi ga PATO (Pavle). Pavle je
 **call setter** — filtrira leadove kroz Instagram/Facebook/Viber poruke i upisuje
 ih; **vlasnik** ih zove i beleži ishod. Optimizovano za **telefon**, optimistično i brzo.
 
+## Izvor istine o biznisu
+`context/business details` (24.09.2026.) — ceo poslovni kontekst: firme (Deko Pro brend,
+PromoBet proizvođač/pravno lice, Gradi Lako izvođač), ljudi i ovlašćenja (Pavle setter,
+Luka Jovanović vlasnik zatvara), proizvodi i cenovnik (RSD/kom; partnerske cene su INTERNE),
+obuhvat ponude (materijal / sa prevozom / ključ u ruke), modeli START/PLUS/PRIVAT, tipovi
+kupca (6), predlog modela podataka, pravila follow-upa, KPI, zaštita podataka, otvorena
+pitanja **[potvrditi]**. Pročitati pre svake veće izmene. Ishodi u kodu su Lukini (7),
+ne pipeline iz dokumenta (10) — vidi „Faza 1".
+
 ## Klijent — Deko Pro
 - Proizvodnja + prodaja + transport + ugradnja ograda i potpornih zidova od
   **dekorativnog betonskog bloka** (turnkey). Od 2015. Cela Srbija, sopstveni transport.

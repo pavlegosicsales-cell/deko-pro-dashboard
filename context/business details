@@ -1,0 +1,296 @@
+# Deko Pro – business details za lead dashboard
+
+> Kontekst za Claude Code. Stanje: 24.09.2026.
+> Izvori: zvanični dokumenti firme (cenovnik, tehnički list, ponude, obaveze i odgovornosti), Lukin priručnik (nastao uz AI, po vlasniku oko 90% tačan) i Pavlov opis posla.
+> Oznaka **[potvrditi]** znači da podatak još nije potvrdio vlasnik. Ne ugrađuj ga kao konačnu vrednost; drži ga podesivim (config).
+
+---
+
+## 1. Šta je dashboard
+
+Interni alat za **Pavla (marketing + call setter)** i **Luku (vlasnik, zatvara prodaju)**.
+
+Tok posla:
+
+1. Upit stiže preko Instagrama, Facebooka (DM, komentar, Meta lead forma), telefona, Vibera ili preporuke.
+2. **Pavle** odgovara, prikuplja podatke, kvalifikuje upit i upisuje ga u dashboard.
+3. **Pavle** predaje upit Luki.
+4. **Luka** zove kupca, pravi ponudu i zatvara posao.
+5. Obojica prate ishod: ponuda, follow-up, prihvaćeno ili izgubljeno i zašto.
+
+Cilj: nijedan upit se ne gubi, Luka pre poziva vidi sve podatke, a na kraju meseca se vidi koji izvor i tip kupca donosi poslove.
+
+---
+
+## 2. Firma
+
+| Ime | Uloga |
+|---|---|
+| **Deko Pro** (Deko Pro Blok) | Prodajni i marketinški brend za dekorativne betonske blokove za ograde. Instagram: @dekorativni_blok_deko_pro. Facebook stranica: „Dekorativni blok". |
+| **PromoBet** | Proizvođač i pravno lice koje izdaje ponude za materijal. Radnja za proizvodnju proizvoda od betona, građevinske usluge i trgovinu. Ive Andrića 1, Mladenovac. PIB 108962996, MB 63826782. |
+| **Gradi Lako** | Partner izvođač iz Beograda: ugradnja, ekipe, prateći radovi. Izdaje posebnu ponudu za radove (u EUR). gradilakooffice@gmail.com, @gradi_lako |
+
+- Telefon za upite: **062 253 140**
+- Mejl na ponudama: komercijalapromobet@gmail.com (u IG biou stoji promobet35@gmail.com; koji je javni **[potvrditi]**)
+- Tržište: Srbija; tačna teritorija dostave i ugradnje **[potvrditi]**
+- Posluje od 2015. (po IG biou)
+
+### Ljudi i ovlašćenja
+
+| Osoba | Uloga | Sme |
+|---|---|---|
+| **Pavle Gošić** | Marketing (IG/FB, reklame, sadržaj) i call setter | Odgovara na pitanja o proizvodu i javnom cenovniku, prikuplja podatke, upisuje i kvalifikuje upite, zakazuje sledeći kontakt |
+| **Luka Jovanović** | Vlasnik, komercijala | Zove i zatvara, izdaje ponude, odobrava popust, partnersku cenu i termin |
+| **Operativa Gradi Lako** | Izvođenje | Proverava ekipu, obuhvat radova i termin ugradnje |
+
+Posledice za dashboard: popust, partnerska cena i potvrda termina su polja koja menja samo Luka (ili bar vidljivo ko je upisao).
+
+---
+
+## 3. Proizvodi
+
+Svi elementi su od vibropresovanog betona, sa bojom umešanom u celu masu i dve cepane reljefne strane (izgled kamena „rustik tesanik"). Ograda je završena samim zidanjem, bez fasade i malterisanja. Izrađuju se po porudžbini, a uzorci boje su dostupni na zahtev.
+
+| id | Proizvod | Dimenzije | Napomena |
+|---|---|---|---|
+| `zidni_blok` | Dekorativni blok (zidni) | 19 × 19 × 39 cm | 18 kg ±5%, 72 kom/paleta, **12,5 kom/m²** |
+| `stubni_blok` | Stubni dekorativni blok | 19 × 39 × 39 cm | Za masivne stubove |
+| `okapnica` | Betonska okapnica | 50 × 30 cm | Boje: siva, crna, bela; ≈2 kom po metru zida |
+| `kapa` | Betonska kapa za stub | 50 × 50 cm | Boje: siva, crna, bela; 1 po stubu |
+| `obloga` | Dekorativna obloga | 19 × 39 × 5 cm | Nije u cenovniku; u julu 2026 akcija 4,75 €/m² **[potvrditi]** |
+
+---
+
+## 4. Cenovnik (RSD po komadu)
+
+Izvor: DEKO_PRO_Cenovnik_A4.pdf. Ponuda za materijal kaže „U cenu je uračunat PDV"; da li i cenovnik uključuje PDV **[potvrditi]**.
+
+| Boja | Nivo | Zidni blok | Stubni blok |
+|---|---|---|---|
+| Natur siva | osnovni | 420 | 520 |
+| Žuta | standard | 460 | 560 |
+| Braon | standard | 460 | 560 |
+| Oranž | standard | 460 | 560 |
+| Crvena | standard | 460 | 560 |
+| Zelena | standard | 460 | 560 |
+| Crna | standard | 460 | 560 |
+| Kapučino | kapučino | 560 | 720 |
+| Multikolor Rok | multikolor | 580 | 780 |
+| Multikolor Rast | multikolor | 580 | 780 |
+
+| Završni element | Boje | Cena |
+|---|---|---|
+| Betonska okapnica 50 × 30 | siva, crna, bela | 680 |
+| Betonska kapa 50 × 50 | siva, crna, bela | 1.290 |
+
+**Partnerske cene (INTERNO, samo za stovarišta i saradnike, nikad kupcu):** zidni blok 25 RSD jeftiniji, stubni 10 RSD jeftiniji, kape i okapnice iste. Ko ima pravo na njih **[potvrditi]**.
+
+Pravila za prikaz cena u dashboardu:
+
+- Cena je uvek po artiklu: „Zidni blok natur siva 420 RSD/kom", nikad „ograda od 420 RSD".
+- **Ne računati cenu po metru ograde** automatski iz cene bloka. Ponudu po metru pravi Luka.
+- Materijal je u RSD, a radovi i transport u EUR.
+
+---
+
+## 5. Vrste ponude i modeli ograde
+
+### Obuhvat (šta kupac kupuje)
+
+| id | Naziv | Obuhvat | Ko izdaje |
+|---|---|---|---|
+| `materijal` | Samo materijal | Blokovi i završni elementi; preuzimanje u Mladenovcu | PromoBet / Deko Pro |
+| `materijal_prevoz` | Materijal sa prevozom | Materijal + prevoz + istovar | PromoBet / Deko Pro |
+| `kljuc_u_ruke` | Ograda ključ u ruke | Materijal + prevoz + radovi preko Gradi Lako | Dve ponude: materijal (RSD) + radovi Gradi Lako (EUR) |
+
+### Modeli (kako ograda izgleda)
+
+| id | Model | Polje | Stub | Elementi |
+|---|---|---|---|---|
+| `start` | START | 0,8 m | 1,6 m | Zidni blok u polju i stubovima, okapnice |
+| `plus` | PLUS | 0,8 m | 1,6 m | Stubni blok 39 × 39, kape 50 × 50 |
+| `privat` | PRIVAT | 1,8 m | 2,0 m | Stubni blok 39 × 39, kape 50 × 50; visina ide na tehničku i pravnu proveru |
+
+Kapije, ALU i kovane ispune i rasveta **nisu** u ceni modela; ugovaraju se posebno. Standardnih cena modela i cene ugradnje po metru još nema **[potvrditi]**.
+
+### Uslovi iz stvarnih ponuda
+
+**Materijal (primer ponude 184/26):**
+
+- Plaćanje: avans
+- Isporuka: 15 radnih dana od uplate avansa **[potvrditi da i dalje važi]**
+- Ponuda važi **3 dana** **[potvrditi]**
+- Transport sa istovarom je posebna stavka; u primeru 260 €
+- Primer: 140 zidnih, 46 stubnih, 20 okapnica i 4 kape u natur sivoj = 101.480 RSD
+
+**Radovi Gradi Lako (primer ponude 214/26, Sremska Mitrovica):**
+
+- 4.000 € samo za rad: zidanje, stubovi, kape i okapnice. Materijal, transport, temelj i iskop nisu uključeni.
+- Planirani početak oktobar, trajanje 21 dan.
+- Plaćanje:
+  - 650 € avans za rezervaciju termina (deo cene),
+  - doplata do 50% na dan početka,
+  - 50% po završetku.
+
+**Obavezni prilozi uz svaku ponudu:** tehnički list i dokument „Obaveze i odgovornosti kupca i proizvođača" (prijava oštećenja u roku od 48 h sa fotografijama robe na paleti; do 5% vizuelnih oštećenja je dozvoljeno; razlika u nijansi nije osnov za reklamaciju; proizvođač odgovara na reklamaciju u roku od 48 h).
+
+---
+
+## 6. Model podataka za upit (lead)
+
+Predlog; nazivi polja na engleskom, oznake u UI na srpskom.
+
+### Kontakt i izvor
+
+| Polje | Tip | Napomena |
+|---|---|---|
+| `name` | text | Ime i prezime |
+| `phone` | text | Obavezno za predaju Luki |
+| `city` | text | Mesto gde se radi ograda |
+| `access_notes` | text | Pristup lokaciji (kamion, istovar) |
+| `is_diaspora` | bool | Broj ili boravak u inostranstvu |
+| `source` | enum | `ig_dm`, `ig_comment`, `fb_dm`, `fb_comment`, `meta_lead_form`, `phone`, `viber`, `whatsapp`, `referral`, `website`, `other` |
+| `source_detail` | text | Koja objava, oglas ili ko je preporučio |
+| `created_at` | datetime | |
+
+### Kvalifikacija
+
+| Polje | Tip | Napomena |
+|---|---|---|
+| `customer_type` | enum | Vidi tabelu tipova ispod |
+| `scope` | enum | `materijal`, `materijal_prevoz`, `kljuc_u_ruke`, `nepoznato` |
+| `model` | enum | `start`, `plus`, `privat`, `custom`, `nepoznato` |
+| `color` | enum | natur_siva, zuta, braon, oranz, crvena, zelena, crna, kapucino, multikolor_rok, multikolor_rast, nepoznato |
+| `fence_length_m` | number | Ukupna dužina |
+| `length_includes_openings` | bool | Da li dužina uključuje kapije |
+| `field_height_m` | number | |
+| `column_height_m` | number | |
+| `column_spacing_m` | number | |
+| `gates` | text | Broj i širina kapija i otvora |
+| `has_foundation` | enum | `da`, `ne`, `ne_zna` |
+| `foundation_notes` | text | Mere i stanje, ako su poznati |
+| `photos` | files/links | Teren, kuća, postojeći temelj |
+| `desired_timing` | enum + date | `odmah`, `1_3_meseca`, `prolece`, `neodredjeno` + opcioni datum (dijaspora: datum dolaska) |
+| `budget_note` | text | Samo ako kupac sam navede |
+| `main_motive` | enum | `privatnost`, `izgled_zavrsena_kuca`, `status`, `bezbednost_psi_deca`, `medja_komsija`, `drugo` |
+| `main_objection` | enum | `cena`, `poverenje_avans`, `komsija_pravila`, `boja`, `rok`, `nadzor_na_daljinu`, `porodica_odlucuje`, `nema`, `drugo` |
+| `decision_maker` | text | Ko odlučuje (on, ona, par, brat...) |
+| `lead_temperature` | enum | `vruc` (rok do mesec dana + ima mere + lokacija u zoni), `topao` (1–3 meseca), `hladan` (samo cena, istražuje) |
+
+### Tip kupca (`customer_type`, po Lukinoj podeli)
+
+| Vrednost | UI naziv | Kako ga prepoznaš | Šta radi Pavle |
+|---|---|---|---|
+| `t1_srednja_klasa` | Porodica / srednja klasa | Predgrađe, pita cenu po metru, poredi, pominje suprugu | Prvo cena bloka, pa pitanja; pošalje primer ponude |
+| `t2_dijaspora` | Dijaspora | Broj iz DE/AT/CH, „biću dole za Božić" | Pita mesto, dužinu i kad dolazi; nudi Viber ili WhatsApp |
+| `t3_premium` | Premium investitor | Elitna lokacija, kratke poruke, pita termin a ne cenu | Brzo predaje Luki, bez popusta |
+| `t4_preporuka` | Preporuka / zna Luku | „Jel si ti Luka?", „kum mi je rekao" | Odmah predaje Luki, isti dan |
+| `t5_statusni_selo` | Statusni kupac sa sela | Selo ili manje mesto, „hoću najveću ogradu", ne pita cenu | Zakazuje poziv ili posetu Luke |
+| `materijal_majstor` | Kupac materijala | Pita težinu, lepljenje, cenu po komadu, „imam majstora" | Tehnički odgovor, cena sa prevozom, predmer |
+
+Interni nazivi tipova (npr. Lukin izraz za tip 5) **ne smeju** da se prikazuju nigde gde ih vidi kupac. U UI koristiti gornje nazive.
+
+### Tok i status
+
+| Polje | Tip | Napomena |
+|---|---|---|
+| `status` | enum | Vidi pipeline |
+| `owner` | enum | `pavle`, `luka`, `gradi_lako` |
+| `next_action` | text | Obavezno za svaki otvoren upit |
+| `next_action_date` | date | Obavezno za svaki otvoren upit |
+| `handed_to_luka_at` | datetime | |
+| `luka_called_at` | datetime | |
+| `offer_sent_at` | date | |
+| `offer_number` | text | Npr. 184/26 |
+| `offer_value_material_rsd` | number | |
+| `offer_value_works_eur` | number | Ponuda Gradi Lako |
+| `offer_valid_until` | date | Podrazumevano offer_sent_at + 3 dana **[potvrditi]** |
+| `discount_approved_by` | text | Samo Luka |
+| `won_value` | number + currency | |
+| `lost_reason` | enum | `cena`, `izabrao_drugog`, `odlozio`, `komsija_pravila`, `ne_javlja_se`, `van_zone`, `samo_istrazivao`, `drugo` |
+| `notes` | text | |
+
+### Pipeline (statusi)
+
+| Status | Značenje |
+|---|---|
+| `novo` | Upit stigao, nije odgovoreno |
+| `ceka_podatke` | Odgovoreno, čekamo mere, fotografije ili lokaciju |
+| `kvalifikovano` | Ima dovoljno podataka za Luku |
+| `predato_luki` | Pavle predao; čeka poziv |
+| `u_razgovoru` | Luka zvao; priprema ponude |
+| `ponuda_poslata` | |
+| `pracenje` | Follow-up posle ponude |
+| `prihvaceno` | Zatvoren posao (avans uplaćen ili termin rezervisan) |
+| `odlozeno` | Kupac traži kasnije; obavezan datum |
+| `izgubljeno` | Obavezan `lost_reason` |
+
+---
+
+## 7. Pravila i rokovi (za podsetnike i upozorenja)
+
+- **Prvi odgovor:** isti radni dan. Standard Gradi Lako je kontakt istog dana (izuzetno sledećeg) i ponuda u roku od 48 h od prvog kontakta.
+- **`t4_preporuka`:** predaja Luki isti dan.
+- **Follow-up posle ponude:**
+  - 1–2 radna dana: provera da je ponuda stigla i da nema nejasnoća;
+  - 5–7 dana: pitanje za odluku ili termin;
+  - ako kupac traži kasnije, upisati datum;
+  - ako ne želi poruke, zaustaviti.
+- **Rok važenja ponude** (3 dana) je dobar okidač za prvi follow-up.
+- **Upozorenje** kad otvoren upit nema `next_action_date` ili je datum prošao.
+- **Upozorenje** kad je `status = predato_luki` duže od jednog radnog dana.
+- **Sezona:** zidanje je ograničeno ispod oko 5 °C i staje ispod 0 °C. Od novembra upiti za ugradnju prelaze na prolećne termine, pa `desired_timing` utiče na prioritet.
+
+### Format predaje Luki (jedna kartica ili poruka)
+
+`Klijent / telefon / lokacija / izvor / tip kupca / materijal ili komplet / mere i kapije / model i boja / temelj / fotografije / željeni rok / glavni prigovor / pitanje koje treba rešiti / sledeći kontakt i datum`
+
+### Šabloni poruka (ako dashboard pravi nacrte)
+
+Uvek „vi", kratko, jedna sledeća radnja; bez popusta i bez cene po metru.
+
+- **Prvi odgovor:** „Zdravo, hvala na javljanju! Imamo dekorativne blokove u više boja, a možete dogovoriti i prevoz i ugradnju. Da li vas zanima samo materijal ili kompletna ograda? Pošaljite približnu dužinu i mesto gde se radi ograda."
+- **Kad pita cenu:** prvo cena traženog artikla („Zidni blok je od 420 do 580 RSD po komadu, zavisno od boje; stubni od 520 do 780 RSD."), pa pitanje o boji i mestu.
+- **Follow-up:** „Zdravo, da li ste stigli da pogledate ponudu za ogradu? Ako treba da uporedimo drugu boju ili prilagodimo obuhvat, javite šta vam je važno."
+
+---
+
+## 8. Izveštaji (KPI)
+
+Nedeljno i mesečno, sa filterom po `source`, `customer_type` i kampanji:
+
+- broj upita
+- broj kvalifikovanih upita (dovoljno podataka za ponudu)
+- prosečno vreme prvog odgovora i vreme do predaje Luki
+- broj poslatih i prihvaćenih ponuda, stopa zatvaranja
+- vrednost zatvorenih poslova (materijal RSD, radovi EUR, odvojeno)
+- razlozi odustajanja
+- cena po upitu i po zatvorenom poslu (ako se unese potrošnja na oglase)
+- najčešći motivi i prigovori po tipu kupca (za validaciju ICP-a)
+
+Broj poruka nije broj kupaca; poslovni rezultat su kvalifikovani upiti i zatvoreni poslovi.
+
+---
+
+## 9. Podaci o ličnosti
+
+Dashboard čuva imena, telefone, lokacije i fotografije privatnih lica. U Srbiji to pokriva Zakon o zaštiti podataka o ličnosti.
+
+- Pristup samo Pavlu i Luki (login).
+- Bez javnih linkova.
+- Mogućnost brisanja upita na zahtev kupca.
+- Fotografije i adrese kupaca se ne koriste u objavama bez njihove saglasnosti.
+
+---
+
+## 10. Otvoreno (drži kao podešavanje, ne kao konstantu)
+
+- PDV na cenovniku; važenje cenovnika
+- Važenje ponude (3 dana) i rok isporuke (15 radnih dana)
+- Teritorija dostave i ugradnje; tarifa prevoza
+- Standardne cene START, PLUS, PRIVAT i ugradnje po metru
+- Avans za materijal; ko izdaje račun za šta
+- Garancija (nije definisana; ne prikazivati)
+- Javni mejl
+- Dostupnost i cena obloge
+- Ko ima pravo na partnerske cene
