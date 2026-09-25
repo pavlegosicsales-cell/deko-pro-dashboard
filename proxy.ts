@@ -28,7 +28,7 @@ export async function proxy(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
-  const javno = path.startsWith("/login") || path.startsWith("/api/lead");
+  const javno = path.startsWith("/login") || path.startsWith("/api/lead") || path.startsWith("/kviz");
 
   // ulogovan ali van allowliste -> odjavi i na login
   if (user && !jeDozvoljen(user.email)) {
