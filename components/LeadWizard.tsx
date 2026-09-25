@@ -10,7 +10,7 @@ import { dodajLead, izmeniLead, type LeadState } from "@/app/leadovi/actions";
   Wizard za unos leada (Lukin spisak informacija pred poziv), korak po korak da stane na telefon:
     1 Kontakt      ime, prezime, telefon, lokacija, izvor
     2 Šta kupuje   obuhvat: samo blokovi / blokovi + prevoz / ključ u ruke   (tap = dalje)
-    3 Ograda       PRETPOSTAVLJA ogradu (Luka: 90% upita). dužina*, ispuna* (samo blokovi /
+    3 Ograda       PRETPOSTAVLJA ogradu (Luka: 90% upita). dužina*, ispuna* (bez panela /
                    + paneli), model, boja. Sitan prekidač „Nije ograda?" (potporni zid /
                    oblaganje / drugo) zameni pitanja sa: boja, količina, opis.
     4 Za Luku      poželjni detalji + informacije pred poziv (+ ishod kod izmene) + šta fali
@@ -143,7 +143,7 @@ export function LeadWizard({ lead, onClose, akcija, pocetniKorak = 0 }: { lead?:
               <Field label="Ukupna dužina ograde (m)" obavezno>
                 <input value={v.duzina_m} onChange={(e) => set("duzina_m", e.target.value)} inputMode="decimal" autoFocus className="inp" placeholder="npr. 28" />
               </Field>
-              <Field label="Ograda je" obavezno>
+              <Field label="Ograda sa panelima ili bez" obavezno>
                 <div className="grid grid-cols-2 gap-2">
                   {MODELI_OGRADE.map((o) => <Cip key={o.v} on={v.ispuna === o.v} onClick={() => set("ispuna", o.v)} velik>{o.l}</Cip>)}
                 </div>

@@ -21,7 +21,7 @@ export const ZATVORENI = new Set(["zatvoren", "propao"]);
 export const DRUGO = "__drugo";
 // ŠTA GRADI (grana wizarda). Ograda otvara dužinu, ispunu i model; ostalo traži količinu i opis.
 export const PROIZVODI = [
-  { v: "ograda", l: "Ograda", opis: "Dužina, samo blokovi ili sa panelima, model" },
+  { v: "ograda", l: "Ograda", opis: "Dužina, bez ili sa panelima, model" },
   { v: "potporni_zid", l: "Potporni zid", opis: "Dužina i visina zida" },
   { v: "oblaganje", l: "Oblaganje / fasada", opis: "Kvadratura" },
 ] as const;
@@ -50,8 +50,9 @@ export const OBUHVATI = [
 ] as const;
 // Model ograde po Luki: samo od blokova, ili blokovi + paneli (ispune).
 export const MODELI_OGRADE = [
-  { v: "samo_blokovi", l: "Samo od blokova", k: "samo blokovi" },
-  { v: "blokovi_paneli", l: "Blokovi + paneli", k: "blokovi + paneli" },
+  // Nazivi „bez / sa panelima" da se ne meša sa obuhvatom „samo materijal" (Pavle, 25.09.2026.)
+  { v: "samo_blokovi", l: "Bez panela", k: "bez panela" },
+  { v: "blokovi_paneli", l: "Sa panelima", k: "sa panelima" },
 ] as const;
 export const modelKratko = (v: string | null | undefined) => MODELI_OGRADE.find((o) => o.v === v)?.k ?? null;
 
@@ -87,7 +88,7 @@ export function staFali(l: { ime?: string | null; prezime?: string | null; telef
   if (!l.proizvod) f.push("šta gradi");
   if (l.proizvod === "ograda") {
     if (l.duzina_m == null) f.push("dužina");
-    if (!l.ispuna) f.push("samo blokovi / sa panelima");
+    if (!l.ispuna) f.push("bez / sa panelima");
   }
   return f;
 }
