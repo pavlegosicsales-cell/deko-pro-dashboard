@@ -33,7 +33,7 @@ const uIshodu = (l: LeadRow) => (l.status !== "nov" && l.status_od ? pre(l.statu
 // Lukine kategorije (gornje kartice = filteri). „Pozvati" = svi koje tek treba zvati.
 const POGLEDI = {
   pozvati: (l: LeadRow, danas: string) => l.status === "nov" || l.status === "nije_se_javio" || jeDospeo(l, danas),
-  prioritet: (l: LeadRow, danas: string) => OTVORENI.has(l.status) && (!!l.prioritet || jeDospeo(l, danas) || l.temperatura === "vruc"),
+  prioritet: (l: LeadRow, danas: string) => OTVORENI.has(l.status) && (!!l.prioritet || jeDospeo(l, danas) || l.temperatura === "vruc" || l.temperatura === "topao"),
   dostaviti_ponudu: (l: LeadRow) => l.status === "dostaviti_ponudu",
   ponuda: (l: LeadRow) => l.status === "ponuda",
   kupci: (l: LeadRow) => l.status === "zatvoren",
@@ -161,8 +161,8 @@ export function LeadView({ leadovi, tabelaFali, demo, login, migracijaFali }: { 
   const nNovi = opt.filter((l) => l.status === "nov").length;
   const nNije = opt.filter((l) => l.status === "nije_se_javio").length;
   const nDospeli = opt.filter((l) => jeDospeo(l, danas)).length;
-  const nZvezda = opt.filter((l) => OTVORENI.has(l.status) && !!l.prioritet).length;
   const nVruci = opt.filter((l) => OTVORENI.has(l.status) && l.temperatura === "vruc").length;
+  const nTopli = opt.filter((l) => OTVORENI.has(l.status) && l.temperatura === "topao").length;
   const nazivPogleda: Record<Pogled, string> = { pozvati: "Pozvati", prioritet: "Prioritetni", dostaviti_ponudu: "Dostaviti ponudu", ponuda: "Čeka odgovor na ponudu", kupci: "Kupci", zakazani: "Zakazani pozivi", odustali: "Odustali", svi: "Svi leadovi" };
 
   return (
@@ -197,7 +197,7 @@ export function LeadView({ leadovi, tabelaFali, demo, login, migracijaFali }: { 
               sub={`${nNovi} nov${nNovi === 1 ? "" : "ih"}${nNije ? ` · ${nNije} nije se javio` : ""}${nDospeli ? ` · ${nDospeli} povratn${nDospeli === 1 ? "i" : "a"}` : ""}`}
               icon={<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />} />
             <Kartica p="prioritet" akcent aktivan={view === "prioritet"} onClick={setView} label="Prioritetni" n={broj("prioritet")}
-              sub={`${nDospeli} za danas${nZvezda ? ` · ${nZvezda} zvezd.` : ""}${nVruci ? ` · ${nVruci} vruć${nVruci === 1 ? "" : "ih"}` : ""}`}
+              sub={`${nVruci} vruć${nVruci === 1 ? "" : "ih"} · ${nTopli} topl${nTopli === 1 ? "i" : "ih"}${nDospeli ? ` · ${nDospeli} za danas` : ""}`}
               icon={<path d="m12 2 3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />} />
             <Kartica p="dostaviti_ponudu" aktivan={view === "dostaviti_ponudu"} onClick={setView} label="Dostaviti ponudu" n={broj("dostaviti_ponudu")}
               icon={<><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><path d="M14 2v6h6M9 13h6M9 17h6" /></>} />
@@ -532,11 +532,14 @@ function ProcenaOznaka({ p }: { p?: Procena }) {
   const u = p.ulaz;
   const href = `/kalkulator?duzina=${u.duzina}&razmak=${u.razmak}&vp=${u.visinaPolja}&vs=${u.visinaStuba}&boja=${u.boja}`;
   const opis = `${u.duzina} m · polje ${u.visinaPolja} · stub ${u.visinaStuba} · razmak ${u.razmak} · ${bojaNaziv(u.boja)}`;
+  // Bez iznosa na kartici (Pavle, 27.09.2026.); vrednost služi samo za redosled. Link nosi mere u kalkulator.
   return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px]">
-      <Link href={href} className="font-display text-[15px] font-bold tabular-nums text-gold-deep underline-offset-2 hover:underline" title="Otvori u kalkulatoru">≈ {rsd(p.rsd)}</Link>
-      <span className="text-muted">{opis}</span>
-      {p.pretpostavke.length > 0 && <span className="text-muted/80" title="Mere koje lead nema, uzete podrazumevane">(pretpostavljeno: {p.pretpostavke.join(", ")})</span>}
+    <div className="mt-1">
+      <Link href={href} title={`Otvori u kalkulatoru: ${opis}${p.pretpostavke.length ? ` (pretpostavljeno: ${p.pretpostavke.join(", ")})` : ""}`}
+        className="inline-flex items-center gap-1 text-[12px] text-muted underline-offset-2 hover:text-navy hover:underline">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M8 6h8M8 11h2M12 11h2M8 15h2M12 15h2M16 15v3" /></svg>
+        Kalkulator
+      </Link>
     </div>
   );
 }
