@@ -128,7 +128,7 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
             <div className="card overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-line bg-wash/70 text-left text-[11px] uppercase tracking-wider text-muted">
+                  <tr className="border-b border-line bg-wash/70 text-left text-[11px] uppercase tracking-wider text-muted [&>th]:whitespace-nowrap">
                     <th className="px-4 py-2.5 font-semibold">Naziv proizvoda</th>
                     <th className="px-2 py-2.5 text-right font-semibold">Kom</th>
                     <th className="px-2 py-2.5 text-right font-semibold">Cena</th>
@@ -139,14 +139,14 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
                   {r.stavke.map((s) => (
                     <tr key={s.naziv} className="border-b border-line last:border-0">
                       <td className="px-4 py-2.5 text-ink">{s.naziv}</td>
-                      <td className="px-2 py-2.5 text-right tabular-nums font-semibold">{s.kom}</td>
-                      <td className="px-2 py-2.5 text-right tabular-nums text-muted">{s.cena}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums">{rsd(s.ukupno)}</td>
+                      <td className="whitespace-nowrap px-2 py-2.5 text-right tabular-nums font-semibold">{s.kom}</td>
+                      <td className="whitespace-nowrap px-2 py-2.5 text-right tabular-nums text-muted">{s.cena}</td>
+                      <td className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums">{rsd(s.ukupno)}</td>
                     </tr>
                   ))}
                   <tr className="bg-wash/70">
                     <td className="px-4 py-2.5 font-semibold text-ink" colSpan={3}>Svega</td>
-                    <td className="px-4 py-2.5 text-right font-display text-[17px] font-bold tabular-nums text-navy">{rsd(r.ukupno)}</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-right font-display text-[17px] font-bold tabular-nums text-navy">{rsd(r.ukupno)}</td>
                   </tr>
                 </tbody>
               </table>
