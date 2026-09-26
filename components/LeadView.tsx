@@ -294,6 +294,10 @@ function TopBar({ onDodaj, login }: { onDodaj: () => void; login?: boolean }) {
             </div>
           </div>
           <div className="flex items-center gap-1.5">
+            <Link href="/kalkulator" title="Kalkulator" aria-label="Kalkulator"
+              className="grid h-10 w-10 place-items-center rounded-full border border-white/10 text-white/80 transition-colors hover:bg-white/10 hover:text-white">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M8 6h8M8 11h2M12 11h2M8 15h2M12 15h2M16 11v0M16 15v3M8 19h6" /></svg>
+            </Link>
             <Link href="/analitika" title="Analitika" aria-label="Analitika"
               className="grid h-10 w-10 place-items-center rounded-full border border-white/10 text-white/80 transition-colors hover:bg-white/10 hover:text-white">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18M7 15l3-4 3 3 4-6" /></svg>
