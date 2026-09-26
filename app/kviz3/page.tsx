@@ -8,7 +8,7 @@ const LEADOVI: readonly KvizLead[] = [
   { n: 4, ime: "Marko (suprug Lidije Uroš…)", tel: "0649083959", info: "Siva boja; traži ponudu (bio i u kvizu 1)" },
   { n: 5, ime: "Zoran (KupujemProdajem)", tel: "+43 681 20871332", info: "Austrija, samo WhatsApp; cena sa okapnicama i prevozom" },
   { n: 6, ime: "Marko Mil…", tel: "0692834111", info: "15 m bez kapija; traži predlog" },
-  { n: 7, ime: "Milinčić Da…", tel: "", info: "Niš; hoće da neko dođe da uzme mere (poslati katalog i tehn. list); nema broja" },
+  { n: 7, ime: "Milinčić Darko", tel: "", info: "Niš; hoće da neko dođe da uzme mere; poslat katalog i tehn. list", pitanje: "Da li je ovaj posao closeovan?", dugmad: [{ v: "closeovan", l: "Closeovan", boja: "ok" }, { v: "nije_closeovan", l: "Nije closeovan", boja: "danger" }] },
   { n: 8, ime: "Vladana", tel: "064/5003970", info: "Plac 5 ari, ograda oko kuće; boja Rast multikolor" },
 ];
 

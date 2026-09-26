@@ -10,9 +10,17 @@ import { Logo } from "@/components/ui";
   Isti kalup za /kviz, /kviz2, … (lista + folder slika + ključ za pamćenje).
 */
 
-export type KvizLead = { n: number; ime: string; tel: string; info: string };
-type Odg = "zvao" | "nisam" | "nije_se_javio";
-const OZNAKA: Record<Odg, string> = { zvao: "Zvao ✅", nisam: "Nisam zvao ❌", nije_se_javio: "Zvao, nije se javio 📵" };
+// Podrazumevana dugmad su zvao / nisam / nije se javio; lead može imati svoja (npr. closeovan / nije).
+export type KvizDugme = { v: string; l: string; boja: "ok" | "danger" | "neutralno" };
+export type KvizLead = { n: number; ime: string; tel: string; info: string; pitanje?: string; dugmad?: KvizDugme[] };
+type Odg = string;
+const PODRAZUMEVANA: KvizDugme[] = [
+  { v: "zvao", l: "Jesam, zvao sam", boja: "ok" },
+  { v: "nisam", l: "Nisam zvao", boja: "danger" },
+  { v: "nije_se_javio", l: "Zvao sam, nije se javio", boja: "neutralno" },
+];
+const OZNAKA: Record<string, string> = { zvao: "Zvao ✅", nisam: "Nisam zvao ❌", nije_se_javio: "Zvao, nije se javio 📵", closeovan: "Closeovan ✅", nije_closeovan: "Nije closeovan ❌" };
+const oznaka = (v: string | undefined) => (v ? OZNAKA[v] ?? v : "—");
 
 export function Kviz({ leadovi, folder, kljuc, naslov }: { leadovi: readonly KvizLead[]; folder: string; kljuc: string; naslov: string }) {
   const [i, setI] = useState(0);
@@ -34,7 +42,7 @@ export function Kviz({ leadovi, folder, kljuc, naslov }: { leadovi: readonly Kvi
     if (i + 1 < leadovi.length) setI(i + 1); else setGotovo(true);
   };
 
-  const rezime = [`Luka, ${naslov}:`, ...leadovi.map((l) => `${l.n}. ${l.ime}${l.tel ? ` (${l.tel})` : ""}: ${odg[l.n] ? OZNAKA[odg[l.n]] : "—"}`)].join("\n");
+  const rezime = [`Luka, ${naslov}:`, ...leadovi.map((l) => `${l.n}. ${l.ime}${l.tel ? ` (${l.tel})` : ""}: ${oznaka(odg[l.n])}`)].join("\n");
   const wa = `https://wa.me/?text=${encodeURIComponent(rezime)}`;
   const l = leadovi[i];
 
@@ -72,12 +80,15 @@ export function Kviz({ leadovi, folder, kljuc, naslov }: { leadovi: readonly Kvi
               <img src={`/${folder}/${l.n}.jpg`} alt={`Prepiska: ${l.ime}`} className="max-h-[52vh] w-full bg-black object-contain object-top" />
             </div>
 
-            <p className="mt-4 text-center text-sm text-muted">Da li si zvao ovog čoveka?</p>
+            <p className="mt-4 text-center text-sm text-muted">{l.pitanje ?? "Da li si zvao ovog čoveka?"}</p>
             <div className="mt-2 grid grid-cols-2 gap-2.5">
-              <button type="button" onClick={() => odgovori("zvao")} className="rounded-[10px] bg-ok px-4 py-4 text-[15px] font-semibold text-white active:scale-[.98]">Jesam, zvao sam</button>
-              <button type="button" onClick={() => odgovori("nisam")} className="rounded-[10px] bg-danger px-4 py-4 text-[15px] font-semibold text-white active:scale-[.98]">Nisam zvao</button>
+              {(l.dugmad ?? PODRAZUMEVANA).filter((d) => d.boja !== "neutralno").map((d) => (
+                <button key={d.v} type="button" onClick={() => odgovori(d.v)} className={`rounded-[10px] px-4 py-4 text-[15px] font-semibold text-white active:scale-[.98] ${d.boja === "ok" ? "bg-ok" : "bg-danger"}`}>{d.l}</button>
+              ))}
             </div>
-            <button type="button" onClick={() => odgovori("nije_se_javio")} className="mt-2.5 w-full rounded-[10px] border border-line bg-white px-4 py-3 text-sm font-medium text-ink">Zvao sam, nije se javio</button>
+            {(l.dugmad ?? PODRAZUMEVANA).filter((d) => d.boja === "neutralno").map((d) => (
+              <button key={d.v} type="button" onClick={() => odgovori(d.v)} className="mt-2.5 w-full rounded-[10px] border border-line bg-white px-4 py-3 text-sm font-medium text-ink">{d.l}</button>
+            ))}
             {i > 0 && <button type="button" onClick={() => setI(i - 1)} className="mt-3 w-full text-center text-sm text-muted underline-offset-4 hover:underline">Nazad</button>}
           </>
         ) : (
@@ -89,7 +100,7 @@ export function Kviz({ leadovi, folder, kljuc, naslov }: { leadovi: readonly Kvi
                 <li key={x.n}>
                   <button type="button" onClick={() => { setGotovo(false); setI(k); }} className="flex w-full items-center justify-between gap-3 rounded-[10px] border border-line px-3 py-2.5 text-left text-sm">
                     <span className="min-w-0"><b className="text-ink">{x.n}. {x.ime}</b><br /><span className="text-muted">{x.tel || x.info}</span></span>
-                    <span className="shrink-0 text-[13px] font-semibold">{odg[x.n] ? OZNAKA[odg[x.n]] : "—"}</span>
+                    <span className="shrink-0 text-[13px] font-semibold">{oznaka(odg[x.n])}</span>
                   </button>
                 </li>
               ))}
