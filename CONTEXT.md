@@ -69,7 +69,8 @@ Jedna glavna strana (`/`) = lista leadova, mobile-first, optimistična.
   razmak (KRAJ DO KRAJA stubnog bloka, ne osa) / visina polja / visina stuba / boja / kapije /
   zatvoren obim → raspored (polja, stubovi), zidni + stubni + okapnice + kape, cene iz cenovnika,
   težina, palete, tekst za ponudu. Modul 20×40 cm (blok + fuga) po priručniku; 12,5 kom/m².
-  Pretpostavke podesive u UI. Ručno provereni testovi: `node --experimental-strip-types
+  Luka potvrdio 26.09.2026.: stubni blok 1/red, širina 40 cm sa fugom, stub od temelja, visina
+  stuba BEZ kape; cene iz cenovnika SA PDV-om. Ostale pretpostavke podesive u UI. Ručno provereni testovi: `node --experimental-strip-types
   lib/kalkulator.test.mjs`. Izvorni dokumenti u `primeri ponuda/` (nisu u gitu).
 - Zvezdica (`prioritet`) na svakom leadu; `zarada_rsd` se upisuje inline kad je „Kupio".
   Analitika ima zaradu ovog meseca i ukupno. Strana `/analitika`.

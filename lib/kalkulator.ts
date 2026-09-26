@@ -12,6 +12,8 @@
     dužina zidanog dela L = stubovi × modulStub + Σ polja
     zidni blok u redu = polje / modulDužina (0,40 m); redova = visina / modulVisina (0,20 m)
     stubni blok = po jedan po redu stuba; redova = visinaStuba / 0,20
+      (POTVRDIO LUKA 26.09.2026.: stub ide od temelja, visina stuba se zadaje BEZ kape)
+    cene iz cenovnika su SA PDV-om (POTVRDIO LUKA 26.09.2026., kao u ponudi 184/26)
     okapnica 50 cm = 2 kom po metru zida (preko polja); kapa = 1 po stubu
 
   Sve pretpostavke su u PODRAZUMEVANO i mogu se menjati u UI (Luka potvrđuje).
@@ -143,7 +145,7 @@ export function specifikacijaTekst(u: Ulaz, r: Rezultat): string {
     "",
     ...r.stavke.map((s) => `${s.naziv}: ${s.kom} kom × ${rsd(s.cena)} = ${rsd(s.ukupno)}`),
     "",
-    `Ukupno materijal: ${rsd(r.ukupno)}`,
+    `Ukupno materijal (sa PDV-om): ${rsd(r.ukupno)}`,
     `Težina ≈ ${r.tezinaKg} kg · zidni blok ${r.paleteZidni} paleta (72/paleta)`,
   ].join("\n");
 }

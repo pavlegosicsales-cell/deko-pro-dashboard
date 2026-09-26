@@ -116,7 +116,7 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
               <Plocica label="Polja" value={String(r.polja)} sub={`razmak ${r.stvarniRazmak} m`} />
               <Plocica label="Stubova" value={String(r.stubovi)} sub={`${r.redovaStuba} redova · ${r.stvarnaVisinaStuba} m`} />
               <Plocica label="Zid" value={`${r.duzinaZida} m`} sub={`${r.redovaPolja} redova · ${r.m2Zida} m²`} />
-              <Plocica label="Ukupno" value={rsd(r.ukupno)} sub="materijal, bez prevoza" zlato />
+              <Plocica label="Ukupno" value={rsd(r.ukupno)} sub="materijal sa PDV-om, bez prevoza" zlato />
             </div>
 
             {r.napomene.length > 0 && (
@@ -159,7 +159,7 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
             <div className="card p-4 text-xs leading-relaxed text-muted">
               <b className="text-ink">Kako računa:</b> zidni blok 19×19×39 = modul 20×40 cm sa fugom (12,5 kom/m²); stubni blok 39×39 = jedan po redu stuba, širina 40 cm sa fugom;
               stubova = polja + 1 (+ 1 po kapiji; zatvoren obim: stubova = polja); okapnica 50 cm = 2 kom/m zida; kapa 1 po stubu.
-              Visine se zaokružuju na ceo red (20 cm). Cene iz cenovnika (RSD/kom); prevoz nije uključen.
+              Visine se zaokružuju na ceo red (20 cm); visina stuba je bez kape. Cene iz cenovnika (RSD/kom, sa PDV-om); prevoz nije uključen.
             </div>
           </div>
         </div>
