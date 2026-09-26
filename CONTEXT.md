@@ -72,6 +72,11 @@ Jedna glavna strana (`/`) = lista leadova, mobile-first, optimistična.
   Luka potvrdio 26.09.2026.: stubni blok 1/red, širina 40 cm sa fugom, stub od temelja, visina
   stuba BEZ kape; cene iz cenovnika SA PDV-om. Ostale pretpostavke podesive u UI. Ručno provereni testovi: `node --experimental-strip-types
   lib/kalkulator.test.mjs`. Izvorni dokumenti u `primeri ponuda/` (nisu u gitu).
+- **Redosled po vrednosti projekta** (Luka, 26.09.2026., `lib/procena.ts`): svaki lead sa dužinom
+  dobija procenu iz kalkulatora (mere iz detalja; što fali = podrazumevano START 0,8/1,6, razmak 2 m,
+  natur siva, i to piše). Lista: vrući + topli ZAJEDNO po vrednosti (opadajuće), pa bez ocene, pa
+  hladni po vrednosti. U „Pozvati" zvezdica/dospeli ostaju na vrhu; „Prioritetni" čist redosled po
+  vrednosti. Na kartici „≈ X RSD" je link u /kalkulator sa istim merama (query parametri).
 - Zvezdica (`prioritet`) na svakom leadu; `zarada_rsd` se upisuje inline kad je „Kupio".
   Analitika ima zaradu ovog meseca i ukupno. Strana `/analitika`.
 - `/api/lead` — javni endpoint (token-opcioni) za buduću formu sa sajta (izvor="sajt").

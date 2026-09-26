@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sidebar } from "@/components/Sidebar";
 import { Logo } from "@/components/ui";
@@ -15,8 +16,16 @@ import { rsd } from "@/lib/format";
 
 const POC: Ulaz = { duzina: 10, razmak: 2, visinaPolja: 0.8, visinaStuba: 1.6, otvori: 0, zatvoren: false, boja: "natur_siva" };
 
+// /kalkulator?duzina=33&razmak=2&vp=0.8&vs=1.6&boja=natur_siva — link sa kartice leada
+function izUrla(sp: URLSearchParams): Ulaz {
+  const n = (k: string, d: number) => { const v = parseFloat(sp.get(k) ?? ""); return isNaN(v) ? d : v; };
+  const boja = sp.get("boja") as Boja | null;
+  return { ...POC, duzina: n("duzina", POC.duzina), razmak: n("razmak", POC.razmak), visinaPolja: n("vp", POC.visinaPolja), visinaStuba: n("vs", POC.visinaStuba), boja: boja && CENOVNIK.some((c) => c.v === boja) ? boja : POC.boja };
+}
+
 export function KalkulatorView({ uRedu }: { uRedu: number }) {
-  const [u, setU] = useState<Ulaz>(POC);
+  const sp = useSearchParams();
+  const [u, setU] = useState<Ulaz>(() => izUrla(sp));
   const [p, setP] = useState<Podesavanja>(PODRAZUMEVANO);
   const [pod, setPod] = useState(false);
   const [kopirano, setKopirano] = useState(false);

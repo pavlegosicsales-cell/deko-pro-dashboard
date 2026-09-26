@@ -12,6 +12,7 @@ import { STATUSI, OTVORENI, SVI_PROIZVODI, SVI_IZVORI, DETALJI, staFali, obuhvat
 import { LeadWizard } from "@/components/LeadWizard";
 import { telLink, smsLink, waLink, viberLink } from "@/lib/lead";
 import { pre, rsd } from "@/lib/format";
+import { proceniLead, grupaTemperature, bojaNaziv, type Procena } from "@/lib/procena";
 import { promeniStatus, obrisiLead, promeniBelesku, promeniPodsetnik, promeniPrioritet, promeniZaradu, promeniKvalifikaciju, type LeadState } from "@/app/leadovi/actions";
 
 export type LeadRow = {
@@ -125,23 +126,33 @@ export function LeadView({ leadovi, tabelaFali, demo, login, migracijaFali }: { 
   const danas = danasIso();
   const qq = q.trim().toLowerCase();
 
+  // procena vrednosti projekta (kalkulator) za svaki lead sa dužinom
+  const procene = useMemo(() => {
+    const m = new Map<string, Procena>();
+    for (const l of opt) { const p = proceniLead(l); if (p) m.set(l.id, p); }
+    return m;
+  }, [opt]);
+
   const filtrirani = useMemo(() => {
     let arr = opt;
     arr = arr.filter((l) => POGLEDI[view](l, danas));
     if (qq) arr = arr.filter((l) => [l.ime, l.prezime, l.telefon, l.info, l.proizvod].some((x) => (x || "").toLowerCase().includes(qq)));
 
-    if (view === "pozvati" || view === "prioritet") {
-      // zvezdica i dospeli povratni pozivi gore, pa najstariji prvi (zove se redom)
-      return [...arr].sort((a, b) => {
-        const t = (l: LeadRow) => (l.temperatura === "vruc" ? 2 : l.temperatura === "hladan" ? -1 : 0);
-        const ap = (a.prioritet ? 4 : 0) + (jeDospeo(a, danas) ? 3 : 0) + t(a), bp = (b.prioritet ? 4 : 0) + (jeDospeo(b, danas) ? 3 : 0) + t(b);
-        if (ap !== bp) return bp - ap;
-        return a.created_at.localeCompare(b.created_at);
-      });
-    }
     if (view === "zakazani") return [...arr].sort((a, b) => (a.podseti_kad ?? "").localeCompare(b.podseti_kad ?? ""));
-    return [...arr].sort((a, b) => b.created_at.localeCompare(a.created_at));
-  }, [opt, view, qq, danas]);
+
+    // Redosled po Luki (26.09.2026.): u „Pozvati" zvezdica/dospeli gore (hitno), zatim vrući + topli ZAJEDNO
+    // po vrednosti projekta (najskuplji prvi), pa bez ocene, pa hladni (isto po vrednosti).
+    // Bez procene ide iza onih sa procenom u svojoj grupi, najstariji prvi.
+    return [...arr].sort((a, b) => {
+      const hitnoA = (a.prioritet ? 2 : 0) + (jeDospeo(a, danas) ? 1 : 0), hitnoB = (b.prioritet ? 2 : 0) + (jeDospeo(b, danas) ? 1 : 0);
+      if (view === "pozvati") { if (hitnoA !== hitnoB) return hitnoB - hitnoA; } // u Prioritetnim važi čist redosled po vrednosti (Pavle, 26.09.)
+      const ga = grupaTemperature(a.temperatura), gb = grupaTemperature(b.temperatura);
+      if (ga !== gb) return ga - gb;
+      const va = procene.get(a.id)?.rsd ?? -1, vb = procene.get(b.id)?.rsd ?? -1;
+      if (va !== vb) return vb - va;
+      return a.created_at.localeCompare(b.created_at);
+    });
+  }, [opt, view, qq, danas, procene]);
 
   const stigloDanas = brojNaDan(opt, danasKljuc());
   const stigloJuce = brojNaDan(opt, pomeriDan(danasKljuc(), -1));
@@ -254,11 +265,11 @@ export function LeadView({ leadovi, tabelaFali, demo, login, migracijaFali }: { 
           <>
             <div className="flex flex-col gap-3 lg:hidden">
               {filtrirani.map((l) => (
-                <LeadKartica key={l.id} l={l} danas={danas} onStatus={menjajStatus} onBeleska={menjajBelesku} onDatum={menjajDatum} onPrioritet={menjajPrioritet} onZarada={menjajZaradu} onKval={menjajKvalifikaciju} onEdit={() => setIzmeni(l)} onDelete={() => obrisi(l.id)} />
+                <LeadKartica key={l.id} l={l} procena={procene.get(l.id)} danas={danas} onStatus={menjajStatus} onBeleska={menjajBelesku} onDatum={menjajDatum} onPrioritet={menjajPrioritet} onZarada={menjajZaradu} onKval={menjajKvalifikaciju} onEdit={() => setIzmeni(l)} onDelete={() => obrisi(l.id)} />
               ))}
             </div>
             <div className="hidden lg:block">
-              <LeadTabela leadovi={filtrirani} danas={danas} onStatus={menjajStatus} onBeleska={menjajBelesku} onDatum={menjajDatum} onPrioritet={menjajPrioritet} onZarada={menjajZaradu} onKval={menjajKvalifikaciju} onEdit={setIzmeni} onDelete={obrisi} />
+              <LeadTabela leadovi={filtrirani} procene={procene} danas={danas} onStatus={menjajStatus} onBeleska={menjajBelesku} onDatum={menjajDatum} onPrioritet={menjajPrioritet} onZarada={menjajZaradu} onKval={menjajKvalifikaciju} onEdit={setIzmeni} onDelete={obrisi} />
             </div>
           </>
         )}
@@ -332,7 +343,7 @@ function Kartica({ p, label, n, sub, icon, akcent, aktivan, onClick }: { p: Pogl
   );
 }
 
-function LeadTabela({ leadovi, danas, onStatus, onBeleska, onDatum, onPrioritet, onZarada, onKval, onEdit, onDelete }: { leadovi: LeadRow[]; danas: string; onEdit: (l: LeadRow) => void; onDelete: (id: string) => void } & Handleri) {
+function LeadTabela({ leadovi, procene, danas, onStatus, onBeleska, onDatum, onPrioritet, onZarada, onKval, onEdit, onDelete }: { leadovi: LeadRow[]; procene: Map<string, Procena>; danas: string; onEdit: (l: LeadRow) => void; onDelete: (id: string) => void } & Handleri) {
   return (
     <Card className="overflow-hidden">
       <table className="w-full text-sm">
@@ -376,6 +387,7 @@ function LeadTabela({ leadovi, danas, onStatus, onBeleska, onDatum, onPrioritet,
                 <td className="px-4 py-3 whitespace-nowrap">{l.izvor ? <span className="tag tag-gold">{label(SVI_IZVORI, l.izvor)}</span> : <span className="text-muted">—</span>}</td>
                 <td className="max-w-[380px] px-4 py-3">
                   <ZaPoziv l={l} />
+                  <ProcenaOznaka p={procene.get(l.id)} />
                   {fali(l).length > 0 && <div className="mt-1"><span className="tag tag-warn max-w-full whitespace-normal text-left leading-snug">Nepotpun: {fali(l).join(", ")}</span></div>}
                   {l.info ? <p className="mt-1 whitespace-pre-wrap text-[13px] leading-snug text-ink/85">{l.info}</p> : null}
                   <Beleska id={l.id} vrednost={l.ishod_beleska} onSave={onBeleska} mala />
@@ -433,7 +445,7 @@ function MiniAkcija({ href, ima, title, icon, primarno, blank }: { href: string;
 }
 
 /* ---------------- Kartica leada ---------------- */
-function LeadKartica({ l, danas, onStatus, onBeleska, onDatum, onPrioritet, onZarada, onKval, onEdit, onDelete }: { l: LeadRow; danas: string; onEdit: () => void; onDelete: () => void } & Handleri) {
+function LeadKartica({ l, procena, danas, onStatus, onBeleska, onDatum, onPrioritet, onZarada, onKval, onEdit, onDelete }: { l: LeadRow; procena?: Procena; danas: string; onEdit: () => void; onDelete: () => void } & Handleri) {
   const st = STATUSI.find((s) => s.v === l.status);
   const dospeo = jeDospeo(l, danas);
   const ima = !!l.telefon;
@@ -465,6 +477,7 @@ function LeadKartica({ l, danas, onStatus, onBeleska, onDatum, onPrioritet, onZa
       </div>
 
       <ZaPoziv l={l} />
+      <ProcenaOznaka p={procena} />
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {temperatura(l.temperatura) && <span className="tag" style={{ background: temperatura(l.temperatura)!.boja, borderColor: temperatura(l.temperatura)!.boja, color: "#fff" }}>{temperatura(l.temperatura)!.l}</span>}
         {l.tip_kupca && <span className="tag">{label(TIPOVI_KUPCA, l.tip_kupca)}</span>}
@@ -510,6 +523,21 @@ function LeadKartica({ l, danas, onStatus, onBeleska, onDatum, onPrioritet, onZa
       <Kvalifikacija l={l} onKval={onKval} />
       <Beleska id={l.id} vrednost={l.ishod_beleska} onSave={onBeleska} />
     </Card>
+  );
+}
+
+/* Procena vrednosti projekta iz kalkulatora, sa linkom da se otvori u kalkulatoru sa istim merama. */
+function ProcenaOznaka({ p }: { p?: Procena }) {
+  if (!p) return null;
+  const u = p.ulaz;
+  const href = `/kalkulator?duzina=${u.duzina}&razmak=${u.razmak}&vp=${u.visinaPolja}&vs=${u.visinaStuba}&boja=${u.boja}`;
+  const opis = `${u.duzina} m · polje ${u.visinaPolja} · stub ${u.visinaStuba} · razmak ${u.razmak} · ${bojaNaziv(u.boja)}`;
+  return (
+    <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px]">
+      <Link href={href} className="font-display text-[15px] font-bold tabular-nums text-gold-deep underline-offset-2 hover:underline" title="Otvori u kalkulatoru">≈ {rsd(p.rsd)}</Link>
+      <span className="text-muted">{opis}</span>
+      {p.pretpostavke.length > 0 && <span className="text-muted/80" title="Mere koje lead nema, uzete podrazumevane">(pretpostavljeno: {p.pretpostavke.join(", ")})</span>}
+    </div>
   );
 }
 
