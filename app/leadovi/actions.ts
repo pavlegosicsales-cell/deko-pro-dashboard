@@ -20,7 +20,8 @@ async function mojEmail(): Promise<string | null> {
 }
 
 // „28", „28,5", „28 m" -> 28.5; prazno -> null
-const broj = (v: string | null) => { if (!v) return null; const n = parseFloat(v.replace(",", ".").replace(/[^\d.]/g, "")); return isNaN(n) ? null : n; };
+// „28", „28,5", „20 m2" -> PRVI broj u tekstu (ranije je „20 m2" postajalo 202 jer su se slova samo brisala)
+const broj = (v: string | null) => { if (!v) return null; const m = v.replace(",", ".").match(/\d+(\.\d+)?/); const n = m ? parseFloat(m[0]) : NaN; return isNaN(n) ? null : n; };
 // Poželjni detalji: samo popunjena polja, kao JSON (null ako nema nijednog)
 function detaljiIzForme(fd: FormData): Record<string, string> | null {
   const d: Record<string, string> = {};
@@ -32,6 +33,9 @@ const KASNIJE = ["obuhvat", "lokacija", "duzina_m", "ispuna", "detalji", "temper
 const bezKasnijih = <T extends Record<string, unknown>>(p: T) => Object.fromEntries(Object.entries(p).filter(([k]) => !(KASNIJE as readonly string[]).includes(k)));
 const faliKolona = (msg: string) => KASNIJE.some((k) => msg.includes(k));
 
+// Dužina i „bez/sa panelima" važe samo za ogradu; kad se lead prebaci na nešto drugo, stare vrednosti se brišu.
+const jeOgrada = (fd: FormData) => s(fd, "proizvod") === "ograda";
+
 function polja(fd: FormData) {
   return {
     ime: s(fd, "ime"),
@@ -40,8 +44,8 @@ function polja(fd: FormData) {
     proizvod: s(fd, "proizvod") === DRUGO ? normalizujProizvod(s(fd, "proizvod_tekst")) : s(fd, "proizvod"),
     obuhvat: s(fd, "obuhvat"),
     lokacija: s(fd, "lokacija"),
-    duzina_m: broj(s(fd, "duzina_m")),
-    ispuna: s(fd, "ispuna"),
+    duzina_m: jeOgrada(fd) ? broj(s(fd, "duzina_m")) : null,
+    ispuna: jeOgrada(fd) ? s(fd, "ispuna") : null,
     detalji: detaljiIzForme(fd),
     izvor: s(fd, "izvor"),
     temperatura: s(fd, "temperatura"),

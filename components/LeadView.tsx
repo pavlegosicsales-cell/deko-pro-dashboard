@@ -113,7 +113,7 @@ export function LeadView({ leadovi, tabelaFali, demo, login, migracijaFali }: { 
   const demoSacuvaj = async (_p: LeadState, fd: FormData): Promise<LeadState> => {
     const g = (k: string) => { const v = fd.get(k); return typeof v === "string" && v.trim() ? v.trim() : null; };
     const id = g("id");
-    const polja = { ime: g("ime"), prezime: g("prezime"), telefon: g("telefon"), proizvod: g("proizvod") === DRUGO ? normalizujProizvod(g("proizvod_tekst")) : g("proizvod"), obuhvat: g("obuhvat"), lokacija: g("lokacija"), duzina_m: g("duzina_m") ? parseFloat(g("duzina_m")!.replace(",", ".")) || null : null, ispuna: g("ispuna"),
+    const polja = { ime: g("ime"), prezime: g("prezime"), telefon: g("telefon"), proizvod: g("proizvod") === DRUGO ? normalizujProizvod(g("proizvod_tekst")) : g("proizvod"), obuhvat: g("obuhvat"), lokacija: g("lokacija"), duzina_m: g("proizvod") === "ograda" && g("duzina_m") ? parseFloat(g("duzina_m")!.replace(",", ".").match(/\d+(\.\d+)?/)?.[0] ?? "") || null : null, ispuna: g("proizvod") === "ograda" ? g("ispuna") : null,
       detalji: (() => { const d: Record<string, string> = {}; for (const { k } of DETALJI) { const v = g("d_" + k); if (v) d[k] = v; } return Object.keys(d).length ? (d as Detalji) : null; })(),
       izvor: g("izvor"), info: g("info") };
     if (!polja.ime && !polja.prezime && !polja.telefon) return { ok: false, msg: "Unesi bar ime ili telefon." };

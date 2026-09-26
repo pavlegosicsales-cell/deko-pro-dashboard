@@ -77,6 +77,7 @@ export function LeadWizard({ lead, onClose, akcija, pocetniKorak = 0 }: { lead?:
     const fd = new FormData();
     if (lead) { fd.set("id", lead.id); fd.set("prethodni_status", lead.status); }
     for (const k of ["ime", "prezime", "telefon", "lokacija", "izvor", "obuhvat", "proizvod", "proizvod_tekst", "duzina_m", "ispuna", "info", "status", "podseti_kad", "ishod_beleska", "temperatura", "tip_kupca", "rok", "razlog_odustajanja"] as const) fd.set(k, v[k]);
+    if (!ograda) { fd.set("duzina_m", ""); fd.set("ispuna", ""); } // nije ograda: mere ograde se ne čuvaju
     fd.set("temperatura", temp);
     for (const { k } of DETALJI) if (v.d[k]) fd.set("d_" + k, v.d[k]);
     start(() => formAction(fd));
