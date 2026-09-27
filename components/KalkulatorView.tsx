@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sidebar } from "@/components/Sidebar";
@@ -47,14 +47,8 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
   const [kopirano, setKopirano] = useState<"" | "ponuda" | "beleska">("");
   const r = izracunaj(u, p);
 
-  const broj = (k: keyof Ulaz) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const n = parseFloat(e.target.value.replace(",", "."));
-    setU((s) => ({ ...s, [k]: isNaN(n) ? 0 : n }));
-  };
-  const pbroj = (k: keyof Podesavanja) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const n = parseFloat(e.target.value.replace(",", "."));
-    setP((s) => ({ ...s, [k]: isNaN(n) ? 0 : n }));
-  };
+  const broj = (k: keyof Ulaz) => (n: number) => setU((s) => ({ ...s, [k]: n }));
+  const pbroj = (k: keyof Podesavanja) => (n: number) => setP((s) => ({ ...s, [k]: n }));
   const kopiraj = async (sta: "ponuda" | "beleska") => {
     try {
       await navigator.clipboard.writeText(sta === "ponuda" ? ponudaTekst(u, r) : internaBeleska(u, r));
@@ -113,18 +107,18 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
             <div className="mt-4 grid grid-cols-2 gap-3">
               {!obloga && (
                 <Polje label={ograda ? "Dužina ograde (m)" : "Dužina zida (m)"} hint="sa stubovima">
-                  <input inputMode="decimal" value={u.duzina} onChange={broj("duzina")} className="inp" />
+                  <BrojInput decimalno={true} value={u.duzina} onChange={broj("duzina")} className="inp"  />
                 </Polje>
               )}
-              {ograda && <Polje label="Razmak stubova (m)" hint="svetli otvor"><input inputMode="decimal" value={u.razmak} onChange={broj("razmak")} className="inp" /></Polje>}
+              {ograda && <Polje label="Razmak stubova (m)" hint="svetli otvor"><BrojInput decimalno={true} value={u.razmak} onChange={broj("razmak")} className="inp"  /></Polje>}
               {!obloga && (
                 <Polje label={ograda ? "Visina polja (m)" : "Visina zida (m)"} hint={`${rp.redova} redova`} puno={zid}>
-                  <input inputMode="decimal" value={u.visinaPolja} onChange={broj("visinaPolja")} className="inp" />
+                  <BrojInput decimalno={true} value={u.visinaPolja} onChange={broj("visinaPolja")} className="inp"  />
                 </Polje>
               )}
-              {ograda && <Polje label="Visina stuba (m)" hint={`${rs.redova} redova`}><input inputMode="decimal" value={u.visinaStuba} onChange={broj("visinaStuba")} className="inp" /></Polje>}
-              {ograda && <Polje label="Kapije, ukupna širina (m)" hint="oduzima se od zida"><input inputMode="decimal" value={u.sirinaKapija} onChange={broj("sirinaKapija")} className="inp" /></Polje>}
-              {obloga && <Polje label="Površina (m²)" hint="dužina × visina, po strani"><input inputMode="decimal" value={u.povrsina} onChange={broj("povrsina")} className="inp" /></Polje>}
+              {ograda && <Polje label="Visina stuba (m)" hint={`${rs.redova} redova`}><BrojInput decimalno={true} value={u.visinaStuba} onChange={broj("visinaStuba")} className="inp"  /></Polje>}
+              {ograda && <Polje label="Kapije, ukupna širina (m)" hint="oduzima se od zida"><BrojInput decimalno={true} value={u.sirinaKapija} onChange={broj("sirinaKapija")} className="inp"  /></Polje>}
+              {obloga && <Polje label="Površina (m²)" hint="dužina × visina, po strani"><BrojInput decimalno={true} value={u.povrsina} onChange={broj("povrsina")} className="inp"  /></Polje>}
 
               <Polje label="Boja bloka" puno={obloga}>
                 <select value={u.boja} onChange={(e) => setU((s) => ({ ...s, boja: e.target.value as Boja }))} className="inp">
@@ -192,15 +186,15 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
             </button>
             {pod && (
               <div className="mt-2 grid grid-cols-2 gap-3 rounded-[10px] bg-wash p-3">
-                <Polje label="Rezerva (%)" hint="pravilo: 5"><input inputMode="decimal" value={p.rezervaPct} onChange={pbroj("rezervaPct")} className="inp inp-sm" /></Polje>
-                <Polje label="Modul dužine (m)" hint="blok + fuga"><input inputMode="decimal" value={p.modulDuzina} onChange={pbroj("modulDuzina")} className="inp inp-sm" /></Polje>
-                <Polje label="Modul visine (m)" hint="red + fuga"><input inputMode="decimal" value={p.modulVisina} onChange={pbroj("modulVisina")} className="inp inp-sm" /></Polje>
-                <Polje label="Širina stuba (m)"><input inputMode="decimal" value={p.modulStub} onChange={pbroj("modulStub")} className="inp inp-sm" /></Polje>
-                <Polje label="Okapnica (RSD)"><input inputMode="numeric" value={p.cenaOkapnica} onChange={pbroj("cenaOkapnica")} className="inp inp-sm" /></Polje>
-                <Polje label="Kapa (RSD)"><input inputMode="numeric" value={p.cenaKapa} onChange={pbroj("cenaKapa")} className="inp inp-sm" /></Polje>
+                <Polje label="Rezerva (%)" hint="pravilo: 5"><BrojInput decimalno={true} value={p.rezervaPct} onChange={pbroj("rezervaPct")} className="inp inp-sm"  /></Polje>
+                <Polje label="Modul dužine (m)" hint="blok + fuga"><BrojInput decimalno={true} value={p.modulDuzina} onChange={pbroj("modulDuzina")} className="inp inp-sm"  /></Polje>
+                <Polje label="Modul visine (m)" hint="red + fuga"><BrojInput decimalno={true} value={p.modulVisina} onChange={pbroj("modulVisina")} className="inp inp-sm"  /></Polje>
+                <Polje label="Širina stuba (m)"><BrojInput decimalno={true} value={p.modulStub} onChange={pbroj("modulStub")} className="inp inp-sm"  /></Polje>
+                <Polje label="Okapnica (RSD)"><BrojInput decimalno={false} value={p.cenaOkapnica} onChange={pbroj("cenaOkapnica")} className="inp inp-sm"  /></Polje>
+                <Polje label="Kapa (RSD)"><BrojInput decimalno={false} value={p.cenaKapa} onChange={pbroj("cenaKapa")} className="inp inp-sm"  /></Polje>
                 <Polje label="Obloga (RSD/m²)" hint="cena nije potvrđena" puno>
-                  <input inputMode="numeric" value={p.cenaObloga ?? ""} placeholder="prazno = ne računaj"
-                    onChange={(e) => { const n = parseFloat(e.target.value.replace(",", ".")); setP((s) => ({ ...s, cenaObloga: isNaN(n) ? null : n })); }} className="inp inp-sm" />
+                  <BrojInput decimalno value={p.cenaObloga} praznoJeNull placeholder="prazno = ne računaj"
+                    onChange={(n) => setP((s) => ({ ...s, cenaObloga: n }))} className="inp inp-sm" />
                 </Polje>
                 <label className="col-span-2 flex items-center gap-2.5 text-sm text-ink">
                   <input type="checkbox" checked={p.partnerske} onChange={(e) => setP((s) => ({ ...s, partnerske: e.target.checked }))} className="h-4 w-4 accent-[#0B1E3B]" />
@@ -290,6 +284,53 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
         </div>
       </main>
     </div>
+  );
+}
+
+/* Brojno polje koje pamti TEKST koji kucaš.
+   Ranije je value bio broj, pa je parseFloat("2,") dao 2 i render je odmah brisao zapetu:
+   nije se moglo upisati 2,8 ni 0,5. Sada se zapeta i točka drže do kraja unosa. */
+function BrojInput<T extends number | null>({
+  value, onChange, decimalno = true, praznoJeNull, className = "inp", placeholder, id,
+}: {
+  value: T;
+  onChange: (n: T) => void;
+  decimalno?: boolean;
+  praznoJeNull?: boolean;
+  className?: string;
+  placeholder?: string;
+  id?: string;
+}) {
+  const kaoTekst = (v: number | null) => (v === null ? "" : String(v).replace(".", ","));
+  const [txt, setTxt] = useState(() => kaoTekst(value));
+  const zadnji = useRef<number | null>(value);
+
+  // Kad vrednost promeni nešto drugo (npr. dugme „Upiši" ili opcija visine), osveži tekst.
+  useEffect(() => {
+    if (value !== zadnji.current) { zadnji.current = value; setTxt(kaoTekst(value)); }
+  }, [value]);
+
+  const dozvoljeno = decimalno ? /^[0-9]*[.,]?[0-9]*$/ : /^[0-9]*$/;
+
+  const menjaj = (v: string) => {
+    if (!dozvoljeno.test(v)) return;           // slova i višak separatora se ignorišu
+    setTxt(v);
+    const n = parseFloat(v.replace(",", "."));
+    const nova = (isNaN(n) ? (praznoJeNull ? null : 0) : n) as T;
+    zadnji.current = nova;
+    onChange(nova);
+  };
+
+  // Na izlazu iz polja počisti „2," i „,5" u „2" i „0,5".
+  const pocisti = () => {
+    const c = kaoTekst(zadnji.current);
+    if (c !== txt) setTxt(c);
+  };
+
+  return (
+    <input id={id} type="text" inputMode={decimalno ? "decimal" : "numeric"} value={txt}
+      onChange={(e) => menjaj(e.target.value)} onBlur={pocisti}
+      placeholder={placeholder} className={className} />
   );
 }
 
