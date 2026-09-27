@@ -47,7 +47,7 @@ export type Podesavanja = {
   okapnicaDuzina: number; // m, 0,50 → 2 kom/m
   cenaOkapnica: number;   // RSD
   cenaKapa: number;       // RSD
-  cenaObloga: number | null; // RSD/m²; NEPOTVRĐENO (9,99 € je možda po komadu) → null = ne računaj
+  cenaObloga: number | null; // RSD/m² sa PDV-om; potvrdio Luka 28.09.2026. (null = ne računaj cenu)
   tezinaZidni: number;    // kg (tehnički list: 18)
   tezinaStubni: number;   // kg [potvrditi]
   tezinaObloga: number;   // kg (procena ~8)
@@ -58,7 +58,7 @@ export type Podesavanja = {
 
 export const PODRAZUMEVANO: Podesavanja = {
   modulDuzina: 0.40, modulVisina: 0.20, modulStub: 0.40, okapnicaDuzina: 0.50,
-  cenaOkapnica: 680, cenaKapa: 1290, cenaObloga: null,
+  cenaOkapnica: 680, cenaKapa: 1290, cenaObloga: 1174,
   tezinaZidni: 18, tezinaStubni: 36, tezinaObloga: 8, paleta: 72,
   rezervaPct: 5, partnerske: false,
 };
@@ -88,7 +88,12 @@ export const POCETNI_ULAZ: Ulaz = {
   povrsina: 10, boja: "natur_siva", bojaZavrsnih: "siva", mesto: "",
 };
 
-export type Stavka = { naziv: string; opis: string; kom: number; jedinica: string; cena: number | null; ukupno: number | null };
+export type Stavka = {
+  naziv: string; opis: string; kom: number; jedinica: string;
+  cena: number | null; ukupno: number | null;
+  jedinicaCene?: string;  // podrazumevano „kom"; obloga se naplaćuje po m²
+  dodatak?: string;       // uz količinu, npr. „8,16 m²"
+};
 export type Rezultat = {
   rezim: Rezim;
   polja: number; stubovi: number; stvarniRazmak: number;
@@ -133,11 +138,14 @@ export function izracunaj(u: Ulaz, p: Podesavanja = PODRAZUMEVANO): Rezultat {
   if (u.rezim === "obloga") {
     const m2 = Math.max(0, u.povrsina);
     const kom = zaokruzi(m2 * 12.5 * rez);
-    racun.push(`${m2} m² × 12,5 kom/m² × ${1 + p.rezervaPct / 100} = ${kom} kom`);
-    if (p.cenaObloga == null) napomene.push("Cena obloge nije potvrđena (9,99 € je možda po komadu, a možda po m²). Proveriti sa Lukom pre slanja ponude.");
+    const m2Naplata = r2(kom / 12.5);   // naplaćuje se kvadratura koja se stvarno dostavlja, sa rezervom
+    racun.push(`${m2} m² × 12,5 kom/m² × ${1 + p.rezervaPct / 100} = ${kom} kom (${m2Naplata} m²)`);
+    if (p.cenaObloga != null) racun.push(`${m2Naplata} m² × ${p.cenaObloga} din/m² = ${Math.round(m2Naplata * p.cenaObloga)} din`);
+    else napomene.push("Cena obloge nije upisana. Po cenovniku je 1.174 din/m² sa PDV-om.");
     stavke.push({
       naziv: "Dekorativna obloga", opis: "5 × 19 × 39 cm", kom, jedinica: "obloga",
-      cena: p.cenaObloga, ukupno: p.cenaObloga != null ? kom * p.cenaObloga : null,
+      cena: p.cenaObloga, jedinicaCene: "m²", dodatak: `${m2Naplata} m²`,
+      ukupno: p.cenaObloga != null ? Math.round(m2Naplata * p.cenaObloga) : null,
     });
     const ukupno = stavke.reduce((s, x) => s + (x.ukupno ?? 0), 0);
     return {
@@ -241,9 +249,9 @@ export function ponudaTekst(u: Ulaz, r: Rezultat): string {
   }
 
   for (const s of r.stavke) {
-    const cena = s.cena != null ? `${rsdFmt(s.cena)}din/kom` : "[cena – proveriti]";
+    const cena = s.cena != null ? `${rsdFmt(s.cena)}din/${s.jedinicaCene ?? "kom"}` : "[cena – proveriti]";
     red.push(`${s.naziv} (${cena}) (${s.opis})`);
-    red.push(`${s.kom} ${s.jedinica} = ${s.ukupno != null ? rsdFmt(s.ukupno) + "din" : "[___]"}`);
+    red.push(`${s.kom} ${s.jedinica}${s.dodatak ? ` (${s.dodatak})` : ""} = ${s.ukupno != null ? rsdFmt(s.ukupno) + "din" : "[___]"}`);
   }
   red.push("", `UKUPNO: ${rsdFmt(r.ukupno)}din${r.cenaNepotpuna ? " (bez stavki kojima cena nije potvrđena)" : ""}`);
   return red.join("\n");

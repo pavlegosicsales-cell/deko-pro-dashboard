@@ -192,7 +192,7 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
                 <Polje label="Širina stuba (m)"><BrojInput decimalno={true} value={p.modulStub} onChange={pbroj("modulStub")} className="inp inp-sm"  /></Polje>
                 <Polje label="Okapnica (RSD)"><BrojInput decimalno={false} value={p.cenaOkapnica} onChange={pbroj("cenaOkapnica")} className="inp inp-sm"  /></Polje>
                 <Polje label="Kapa (RSD)"><BrojInput decimalno={false} value={p.cenaKapa} onChange={pbroj("cenaKapa")} className="inp inp-sm"  /></Polje>
-                <Polje label="Obloga (RSD/m²)" hint="cena nije potvrđena" puno>
+                <Polje label="Obloga (RSD/m²)" hint="1.174 sa PDV-om" puno>
                   <BrojInput decimalno value={p.cenaObloga} praznoJeNull placeholder="prazno = ne računaj"
                     onChange={(n) => setP((s) => ({ ...s, cenaObloga: n }))} className="inp inp-sm" />
                 </Polje>
@@ -219,7 +219,7 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
               </>}
               {obloga && <>
                 <Plocica label="Površina" value={`${r.m2} m²`} sub="po strani" />
-                <Plocica label="Obloga" value={String(r.stavke[0]?.kom ?? 0)} sub="12,5 kom/m² + 5 %" />
+                <Plocica label="Obloga" value={String(r.stavke[0]?.kom ?? 0)} sub={`12,5 kom/m² + 5 % = ${r.stavke[0]?.dodatak ?? "—"}`} />
                 <Plocica label="Težina" value={`≈ ${new Intl.NumberFormat("sr-RS").format(r.tezinaKg)} kg`} sub="~8 kg/kom" />
               </>}
               <Plocica label="Ukupno" value={r.cenaNepotpuna ? "—" : rsd(r.ukupno)} sub={r.cenaNepotpuna ? "cena nije potvrđena" : "materijal sa PDV-om"} zlato />
@@ -246,7 +246,7 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
                     <tr key={s.naziv} className="border-b border-line last:border-0">
                       <td className="px-4 py-2.5 text-ink">{s.naziv} <span className="text-muted">{s.opis}</span></td>
                       <td className="whitespace-nowrap px-2 py-2.5 text-right font-semibold tabular-nums">{s.kom}</td>
-                      <td className="whitespace-nowrap px-2 py-2.5 text-right tabular-nums text-muted">{s.cena ?? "—"}</td>
+                      <td className="whitespace-nowrap px-2 py-2.5 text-right tabular-nums text-muted">{s.cena ?? "—"}{s.cena != null && s.jedinicaCene ? <span className="text-[11px]"> /{s.jedinicaCene}</span> : null}</td>
                       <td className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums">{s.ukupno != null ? rsd(s.ukupno) : "[proveriti]"}</td>
                     </tr>
                   ))}
