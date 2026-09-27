@@ -5,7 +5,9 @@ Interni panel za **leadove** firme Deko Pro. Pravi ga PATO (Pavle). Pavle je
 ih; **vlasnik** ih zove i beleži ishod. Optimizovano za **telefon**, optimistično i brzo.
 
 ## Izvor istine o biznisu
-`context/business details` (24.09.2026.) — ceo poslovni kontekst: firme (Deko Pro brend,
+Od 27.09.2026. biznis znanje, planovi, marketing, prodaja i automatizacije žive u **`../Deko-Pro-Biznis/`**
+(`CLAUDE.md` tamo uvodi u sve). Ovaj repo je samo kod dashboarda.
+Kopija starog konteksta: `context/business details` (24.09.2026.) — ceo poslovni kontekst: firme (Deko Pro brend,
 PromoBet proizvođač/pravno lice, Gradi Lako izvođač), ljudi i ovlašćenja (Pavle setter,
 Luka Jovanović vlasnik zatvara), proizvodi i cenovnik (RSD/kom; partnerske cene su INTERNE),
 obuhvat ponude (materijal / sa prevozom / ključ u ruke), modeli START/PLUS/PRIVAT, tipovi
