@@ -5,22 +5,37 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sidebar } from "@/components/Sidebar";
 import { Logo } from "@/components/ui";
-import { izracunaj, specifikacijaTekst, CENOVNIK, PODRAZUMEVANO, type Ulaz, type Podesavanja, type Boja } from "@/lib/kalkulator";
+import {
+  izracunaj, ponudaTekst, internaBeleska, redoviZaVisinu, obimPlaca,
+  CENOVNIK, ZAVRSNE_BOJE, PODRAZUMEVANO, POCETNI_ULAZ,
+  type Ulaz, type Podesavanja, type Boja, type BojaZavrsnih, type Rezim,
+} from "@/lib/kalkulator";
 import { rsd } from "@/lib/format";
 
 /*
-  Kalkulator materijala (Lukin zahtev 26.09.2026.). Unos: dužina, razmak (kraj do kraja
-  stubnog bloka), visina polja, visina stuba, boja. Izlaz: raspored, specifikacija sa
-  cenama iz cenovnika, težina/palete, tekst za ponudu. Sve pretpostavke su podesive.
+  Kalkulator po pravilima iz „Deko Pro – pravila za računanje ograda, zidova i obloga" (27.09.2026.):
+  tačna dužina, +5 % na svaku stavku, zaokruživanje na najbliži ceo broj, visine u celim redovima od 20 cm.
+  Tri režima: ograda sa stubovima, pun zid bez stubova, dekorativna obloga.
 */
 
-const POC: Ulaz = { duzina: 10, razmak: 2, visinaPolja: 0.8, visinaStuba: 1.6, otvori: 0, zatvoren: false, boja: "natur_siva" };
+const REZIMI: { v: Rezim; l: string; opis: string }[] = [
+  { v: "ograda", l: "Ograda", opis: "stubovi i polja" },
+  { v: "zid", l: "Pun zid", opis: "bez stubova" },
+  { v: "obloga", l: "Obloga", opis: "postojeći zid" },
+];
 
-// /kalkulator?duzina=33&razmak=2&vp=0.8&vs=1.6&boja=natur_siva — link sa kartice leada
 function izUrla(sp: URLSearchParams): Ulaz {
   const n = (k: string, d: number) => { const v = parseFloat(sp.get(k) ?? ""); return isNaN(v) ? d : v; };
   const boja = sp.get("boja") as Boja | null;
-  return { ...POC, duzina: n("duzina", POC.duzina), razmak: n("razmak", POC.razmak), visinaPolja: n("vp", POC.visinaPolja), visinaStuba: n("vs", POC.visinaStuba), boja: boja && CENOVNIK.some((c) => c.v === boja) ? boja : POC.boja };
+  return {
+    ...POCETNI_ULAZ,
+    duzina: n("duzina", POCETNI_ULAZ.duzina),
+    razmak: n("razmak", POCETNI_ULAZ.razmak),
+    visinaPolja: n("vp", POCETNI_ULAZ.visinaPolja),
+    visinaStuba: n("vs", POCETNI_ULAZ.visinaStuba),
+    boja: boja && CENOVNIK.some((c) => c.v === boja) ? boja : POCETNI_ULAZ.boja,
+    mesto: sp.get("mesto") ?? "",
+  };
 }
 
 export function KalkulatorView({ uRedu }: { uRedu: number }) {
@@ -28,7 +43,8 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
   const [u, setU] = useState<Ulaz>(() => izUrla(sp));
   const [p, setP] = useState<Podesavanja>(PODRAZUMEVANO);
   const [pod, setPod] = useState(false);
-  const [kopirano, setKopirano] = useState(false);
+  const [ari, setAri] = useState("");
+  const [kopirano, setKopirano] = useState<"" | "ponuda" | "beleska">("");
   const r = izracunaj(u, p);
 
   const broj = (k: keyof Ulaz) => (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -39,15 +55,20 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
     const n = parseFloat(e.target.value.replace(",", "."));
     setP((s) => ({ ...s, [k]: isNaN(n) ? 0 : n }));
   };
-  const kopiraj = async () => {
-    try { await navigator.clipboard.writeText(specifikacijaTekst(u, r)); setKopirano(true); setTimeout(() => setKopirano(false), 1500); } catch { /* prazno */ }
+  const kopiraj = async (sta: "ponuda" | "beleska") => {
+    try {
+      await navigator.clipboard.writeText(sta === "ponuda" ? ponudaTekst(u, r) : internaBeleska(u, r));
+      setKopirano(sta); setTimeout(() => setKopirano(""), 1600);
+    } catch { /* prazno */ }
   };
+
+  const ograda = u.rezim === "ograda", zid = u.rezim === "zid", obloga = u.rezim === "obloga";
+  const rp = redoviZaVisinu(u.visinaPolja), rs = redoviZaVisinu(u.visinaStuba);
 
   return (
     <div className="min-h-screen bg-wash lg:pl-64">
       <Sidebar uRedu={uRedu} />
 
-      {/* Mobilni header */}
       <header className="pointer-events-none fixed inset-x-0 top-3 z-40 sm:top-5 lg:hidden">
         <div className="pointer-events-auto mx-auto w-full max-w-3xl px-3 sm:px-4">
           <div className="nav-bar">
@@ -70,32 +91,100 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
           <div className="on-dark rise flex flex-col items-start gap-3">
             <span className="eyebrow"><span className="eyebrow-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h4" /></svg></span>Interni panel</span>
             <h1 className="h2 lg:text-[34px]">Kalkulator</h1>
-            <p className="text-sm text-white/70">Materijal i cena za ogradu od dekorativnog bloka. Razmak se meri od kraja do kraja stubnog bloka.</p>
+            <p className="text-sm text-white/70">Tačna dužina, +5 % na svaku stavku, visine u celim redovima od 20 cm.</p>
           </div>
         </div>
       </section>
 
       <main className="mx-auto w-full max-w-3xl px-4 py-5 sm:py-7 lg:max-w-none lg:px-8 lg:py-6">
         <div className="grid gap-4 lg:grid-cols-[400px_1fr]">
-          {/* Unos */}
+          {/* ---------------- Unos ---------------- */}
           <div className="card p-4 sm:p-5">
-            <h2 className="h3 text-[16px]">Ograda</h2>
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <Polje label="Dužina zidanog dela (m)" hint="bez širine kapija"><input inputMode="decimal" defaultValue={u.duzina} onChange={broj("duzina")} className="inp" /></Polje>
-              <Polje label="Razmak stubova (m)" hint="kraj do kraja stuba"><input inputMode="decimal" defaultValue={u.razmak} onChange={broj("razmak")} className="inp" /></Polje>
-              <Polje label="Visina polja (m)"><input inputMode="decimal" defaultValue={u.visinaPolja} onChange={broj("visinaPolja")} className="inp" /></Polje>
-              <Polje label="Visina stuba (m)" hint="bez kape"><input inputMode="decimal" defaultValue={u.visinaStuba} onChange={broj("visinaStuba")} className="inp" /></Polje>
-              <Polje label="Kapije / otvori (kom)" hint="svaki dodaje 1 stub"><input inputMode="numeric" defaultValue={u.otvori} onChange={broj("otvori")} className="inp" /></Polje>
-              <Polje label="Boja">
+            <div className="grid grid-cols-3 gap-1.5">
+              {REZIMI.map((x) => (
+                <button key={x.v} type="button" onClick={() => setU((s) => ({ ...s, rezim: x.v }))}
+                  className={`rounded-[10px] border px-2 py-2 text-center transition-colors ${u.rezim === x.v ? "border-navy bg-navy text-white" : "border-line bg-white text-ink hover:border-accent"}`}>
+                  <span className="block text-[13px] font-semibold">{x.l}</span>
+                  <span className={`block text-[10px] ${u.rezim === x.v ? "text-white/70" : "text-muted"}`}>{x.opis}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              {!obloga && (
+                <Polje label={ograda ? "Dužina ograde (m)" : "Dužina zida (m)"} hint="sa stubovima">
+                  <input inputMode="decimal" value={u.duzina} onChange={broj("duzina")} className="inp" />
+                </Polje>
+              )}
+              {ograda && <Polje label="Razmak stubova (m)" hint="svetli otvor"><input inputMode="decimal" value={u.razmak} onChange={broj("razmak")} className="inp" /></Polje>}
+              {!obloga && (
+                <Polje label={ograda ? "Visina polja (m)" : "Visina zida (m)"} hint={`${rp.redova} redova`} puno={zid}>
+                  <input inputMode="decimal" value={u.visinaPolja} onChange={broj("visinaPolja")} className="inp" />
+                </Polje>
+              )}
+              {ograda && <Polje label="Visina stuba (m)" hint={`${rs.redova} redova`}><input inputMode="decimal" value={u.visinaStuba} onChange={broj("visinaStuba")} className="inp" /></Polje>}
+              {ograda && <Polje label="Kapije, ukupna širina (m)" hint="oduzima se od zida"><input inputMode="decimal" value={u.sirinaKapija} onChange={broj("sirinaKapija")} className="inp" /></Polje>}
+              {obloga && <Polje label="Površina (m²)" hint="dužina × visina, po strani"><input inputMode="decimal" value={u.povrsina} onChange={broj("povrsina")} className="inp" /></Polje>}
+
+              <Polje label="Boja bloka" puno={obloga}>
                 <select value={u.boja} onChange={(e) => setU((s) => ({ ...s, boja: e.target.value as Boja }))} className="inp">
                   {CENOVNIK.map((c) => <option key={c.v} value={c.v}>{c.l} ({c.zidni}/{c.stubni})</option>)}
                 </select>
               </Polje>
+              {!obloga && (
+                <Polje label="Boja kapa i okapnica">
+                  <select value={u.bojaZavrsnih} onChange={(e) => setU((s) => ({ ...s, bojaZavrsnih: e.target.value as BojaZavrsnih }))} className="inp">
+                    {ZAVRSNE_BOJE.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}
+                  </select>
+                </Polje>
+              )}
+              <Polje label="Mesto" hint="ide u naslov ponude" puno><input value={u.mesto} onChange={(e) => setU((s) => ({ ...s, mesto: e.target.value }))} className="inp" placeholder="npr. Kragujevac" /></Polje>
             </div>
-            <label className="mt-3 flex items-center gap-2.5 text-sm text-ink">
-              <input type="checkbox" checked={u.zatvoren} onChange={(e) => setU((s) => ({ ...s, zatvoren: e.target.checked }))} className="h-4 w-4 accent-[#0B1E3B]" />
-              Zatvoren obim (oko placa: stubova koliko i polja)
-            </label>
+
+            {/* opcije visine kad nije ceo broj redova */}
+            {!obloga && !rp.jeCeo && (
+              <Opcije naslov={ograda ? "Visina polja nije ceo broj redova" : "Visina zida nije ceo broj redova"}
+                opcije={rp.opcije} izaberi={(v) => setU((s) => ({ ...s, visinaPolja: v }))} />
+            )}
+            {ograda && !rs.jeCeo && (
+              <Opcije naslov="Visina stuba nije ceo broj redova" opcije={rs.opcije} izaberi={(v) => setU((s) => ({ ...s, visinaStuba: v }))} />
+            )}
+
+            {ograda && (
+              <div className="mt-3 flex flex-col gap-2">
+                <label className="flex items-center gap-2.5 text-sm text-ink">
+                  <input type="checkbox" checked={u.zatvoren} onChange={(e) => setU((s) => ({ ...s, zatvoren: e.target.checked }))} className="h-4 w-4 accent-[#0B1E3B]" />
+                  Zatvoren obim placa (stubova koliko i polja)
+                </label>
+                <label className="flex items-center gap-2.5 text-sm text-ink">
+                  <input type="checkbox" checked={u.spojena} onChange={(e) => setU((s) => ({ ...s, spojena: e.target.checked }))} className="h-4 w-4 accent-[#0B1E3B]" />
+                  Nastavlja se na drugu ogradu (stub na spoju zajednički)
+                </label>
+              </div>
+            )}
+            {zid && (
+              <label className="mt-3 flex items-center gap-2.5 text-sm text-ink">
+                <input type="checkbox" checked={u.saOkapnicama} onChange={(e) => setU((s) => ({ ...s, saOkapnicama: e.target.checked }))} className="h-4 w-4 accent-[#0B1E3B]" />
+                Sa okapnicama (preporučeno)
+              </label>
+            )}
+
+            {/* plac u arima */}
+            {ograda && (
+              <div className="mt-4 rounded-[10px] bg-wash p-3">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Plac u arima → obim</div>
+                <div className="mt-2 flex items-center gap-2">
+                  <input inputMode="decimal" value={ari} onChange={(e) => setAri(e.target.value)} placeholder="npr. 5" className="inp inp-sm w-24" />
+                  <span className="text-sm text-muted">ari ≈</span>
+                  <b className="text-sm text-ink">{ari ? `${obimPlaca(parseFloat(ari.replace(",", ".")) || 0)} m` : "—"}</b>
+                  {ari && (
+                    <button type="button" onClick={() => setU((s) => ({ ...s, duzina: obimPlaca(parseFloat(ari.replace(",", ".")) || 0), zatvoren: true }))}
+                      className="btn btn-sm btn-plain ml-auto">Upiši</button>
+                  )}
+                </div>
+                <p className="mt-1.5 text-[11px] text-muted">Kvadratni plac. Duguljast ima veći obim, uvek tražiti stvarne mere.</p>
+              </div>
+            )}
 
             <button type="button" onClick={() => setPod((o) => !o)} className="mt-4 flex w-full items-center justify-between rounded-[10px] border border-dashed border-line px-3 py-2.5 text-left text-sm font-semibold text-ink">
               Pretpostavke <span className="font-normal text-muted">(modul, cene, rezerva)</span>
@@ -103,14 +192,16 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
             </button>
             {pod && (
               <div className="mt-2 grid grid-cols-2 gap-3 rounded-[10px] bg-wash p-3">
-                <Polje label="Modul dužine (m)" hint="blok 0,39 + fuga"><input inputMode="decimal" defaultValue={p.modulDuzina} onChange={pbroj("modulDuzina")} className="inp inp-sm" /></Polje>
-                <Polje label="Modul visine (m)" hint="red 0,19 + fuga"><input inputMode="decimal" defaultValue={p.modulVisina} onChange={pbroj("modulVisina")} className="inp inp-sm" /></Polje>
-                <Polje label="Širina stuba (m)" hint="stubni blok + fuga"><input inputMode="decimal" defaultValue={p.modulStub} onChange={pbroj("modulStub")} className="inp inp-sm" /></Polje>
-                <Polje label="Rezerva za lom (%)"><input inputMode="decimal" defaultValue={p.rezervaPct} onChange={pbroj("rezervaPct")} className="inp inp-sm" /></Polje>
-                <Polje label="Okapnica (RSD)"><input inputMode="numeric" defaultValue={p.cenaOkapnica} onChange={pbroj("cenaOkapnica")} className="inp inp-sm" /></Polje>
-                <Polje label="Kapa (RSD)"><input inputMode="numeric" defaultValue={p.cenaKapa} onChange={pbroj("cenaKapa")} className="inp inp-sm" /></Polje>
-                <Polje label="Težina zidnog (kg)"><input inputMode="decimal" defaultValue={p.tezinaZidni} onChange={pbroj("tezinaZidni")} className="inp inp-sm" /></Polje>
-                <Polje label="Težina stubnog (kg)" hint="procena, potvrditi"><input inputMode="decimal" defaultValue={p.tezinaStubni} onChange={pbroj("tezinaStubni")} className="inp inp-sm" /></Polje>
+                <Polje label="Rezerva (%)" hint="pravilo: 5"><input inputMode="decimal" value={p.rezervaPct} onChange={pbroj("rezervaPct")} className="inp inp-sm" /></Polje>
+                <Polje label="Modul dužine (m)" hint="blok + fuga"><input inputMode="decimal" value={p.modulDuzina} onChange={pbroj("modulDuzina")} className="inp inp-sm" /></Polje>
+                <Polje label="Modul visine (m)" hint="red + fuga"><input inputMode="decimal" value={p.modulVisina} onChange={pbroj("modulVisina")} className="inp inp-sm" /></Polje>
+                <Polje label="Širina stuba (m)"><input inputMode="decimal" value={p.modulStub} onChange={pbroj("modulStub")} className="inp inp-sm" /></Polje>
+                <Polje label="Okapnica (RSD)"><input inputMode="numeric" value={p.cenaOkapnica} onChange={pbroj("cenaOkapnica")} className="inp inp-sm" /></Polje>
+                <Polje label="Kapa (RSD)"><input inputMode="numeric" value={p.cenaKapa} onChange={pbroj("cenaKapa")} className="inp inp-sm" /></Polje>
+                <Polje label="Obloga (RSD/m²)" hint="cena nije potvrđena" puno>
+                  <input inputMode="numeric" value={p.cenaObloga ?? ""} placeholder="prazno = ne računaj"
+                    onChange={(e) => { const n = parseFloat(e.target.value.replace(",", ".")); setP((s) => ({ ...s, cenaObloga: isNaN(n) ? null : n })); }} className="inp inp-sm" />
+                </Polje>
                 <label className="col-span-2 flex items-center gap-2.5 text-sm text-ink">
                   <input type="checkbox" checked={p.partnerske} onChange={(e) => setP((s) => ({ ...s, partnerske: e.target.checked }))} className="h-4 w-4 accent-[#0B1E3B]" />
                   Partnerske cene (interno: zidni −25, stubni −10 RSD)
@@ -119,13 +210,25 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
             )}
           </div>
 
-          {/* Rezultat */}
+          {/* ---------------- Rezultat ---------------- */}
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <Plocica label="Polja" value={String(r.polja)} sub={`razmak ${r.stvarniRazmak} m`} />
-              <Plocica label="Stubova" value={String(r.stubovi)} sub={`${r.redovaStuba} redova · ${r.stvarnaVisinaStuba} m`} />
-              <Plocica label="Zid" value={`${r.duzinaZida} m`} sub={`${r.redovaPolja} redova · ${r.m2Zida} m²`} />
-              <Plocica label="Ukupno" value={rsd(r.ukupno)} sub="materijal sa PDV-om, bez prevoza" zlato />
+              {ograda && <>
+                <Plocica label="Polja" value={String(r.polja)} sub={`razmak ${r.stvarniRazmak} m`} />
+                <Plocica label="Stubova" value={String(r.stubovi)} sub={`${r.redovaStuba} redova`} />
+                <Plocica label="Zidani deo" value={`${r.duzinaZida} m`} sub={`${r.redovaPolja} redova · ${r.m2} m²`} />
+              </>}
+              {zid && <>
+                <Plocica label="Dužina" value={`${r.duzinaZida} m`} sub={`${r.redovaPolja} redova`} />
+                <Plocica label="Površina" value={`${r.m2} m²`} sub="12,5 kom/m²" />
+                <Plocica label="Redova" value={String(r.redovaPolja)} sub="po 20 cm" />
+              </>}
+              {obloga && <>
+                <Plocica label="Površina" value={`${r.m2} m²`} sub="po strani" />
+                <Plocica label="Obloga" value={String(r.stavke[0]?.kom ?? 0)} sub="12,5 kom/m² + 5 %" />
+                <Plocica label="Težina" value={`≈ ${new Intl.NumberFormat("sr-RS").format(r.tezinaKg)} kg`} sub="~8 kg/kom" />
+              </>}
+              <Plocica label="Ukupno" value={r.cenaNepotpuna ? "—" : rsd(r.ukupno)} sub={r.cenaNepotpuna ? "cena nije potvrđena" : "materijal sa PDV-om"} zlato />
             </div>
 
             {r.napomene.length > 0 && (
@@ -147,10 +250,10 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
                 <tbody>
                   {r.stavke.map((s) => (
                     <tr key={s.naziv} className="border-b border-line last:border-0">
-                      <td className="px-4 py-2.5 text-ink">{s.naziv}</td>
-                      <td className="whitespace-nowrap px-2 py-2.5 text-right tabular-nums font-semibold">{s.kom}</td>
-                      <td className="whitespace-nowrap px-2 py-2.5 text-right tabular-nums text-muted">{s.cena}</td>
-                      <td className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums">{rsd(s.ukupno)}</td>
+                      <td className="px-4 py-2.5 text-ink">{s.naziv} <span className="text-muted">{s.opis}</span></td>
+                      <td className="whitespace-nowrap px-2 py-2.5 text-right font-semibold tabular-nums">{s.kom}</td>
+                      <td className="whitespace-nowrap px-2 py-2.5 text-right tabular-nums text-muted">{s.cena ?? "—"}</td>
+                      <td className="whitespace-nowrap px-4 py-2.5 text-right tabular-nums">{s.ukupno != null ? rsd(s.ukupno) : "[proveriti]"}</td>
                     </tr>
                   ))}
                   <tr className="bg-wash/70">
@@ -160,15 +263,28 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
                 </tbody>
               </table>
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-3 text-xs text-muted">
-                <span>Težina ≈ <b className="text-ink">{new Intl.NumberFormat("sr-RS").format(r.tezinaKg)} kg</b> · zidni blok <b className="text-ink">{r.paleteZidni}</b> paleta (72/paleta){p.rezervaPct ? ` · uključena rezerva ${p.rezervaPct} %` : ""}</span>
-                <button type="button" onClick={kopiraj} className="btn btn-sm btn-plain">{kopirano ? "Kopirano ✓" : "Kopiraj specifikaciju"}</button>
+                <span>
+                  Rezerva <b className="text-ink">+{p.rezervaPct} %</b> na svaku stavku
+                  {!obloga && <> · težina ≈ <b className="text-ink">{new Intl.NumberFormat("sr-RS").format(r.tezinaKg)} kg</b> · zidni blok <b className="text-ink">{r.palete}</b> paleta</>}
+                </span>
+                <span className="flex gap-2">
+                  <button type="button" onClick={() => kopiraj("beleska")} className="btn btn-sm btn-ghost btn-plain">{kopirano === "beleska" ? "Kopirano ✓" : "Beleška za nas"}</button>
+                  <button type="button" onClick={() => kopiraj("ponuda")} className="btn btn-sm btn-plain">{kopirano === "ponuda" ? "Kopirano ✓" : "Kopiraj ponudu"}</button>
+                </span>
               </div>
             </div>
 
+            {/* pregled ponude, tačno kako se šalje */}
+            <div className="card p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Ponuda za DM, WhatsApp ili Viber</div>
+              <pre className="mt-2 whitespace-pre-wrap font-sans text-[13px] leading-snug text-ink">{ponudaTekst(u, r)}</pre>
+            </div>
+
             <div className="card p-4 text-xs leading-relaxed text-muted">
-              <b className="text-ink">Kako računa:</b> zidni blok 19×19×39 = modul 20×40 cm sa fugom (12,5 kom/m²); stubni blok 39×39 = jedan po redu stuba, širina 40 cm sa fugom;
-              stubova = polja + 1 (+ 1 po kapiji; zatvoren obim: stubova = polja); okapnica 50 cm = 2 kom/m zida; kapa 1 po stubu.
-              Visine se zaokružuju na ceo red (20 cm); visina stuba je bez kape. Cene iz cenovnika (RSD/kom, sa PDV-om); prevoz nije uključen.
+              <b className="text-ink">Nije uključeno:</b> temelj, prevoz, ugradnja, alu paneli i ispune, kapije. To dodaje Luka.<br />
+              <b className="text-ink">Kako računa:</b> polja = zaokruži((dužina − 0,4) / (razmak + 0,4)), stubova = polja + 1 (zatvoren obim: stubova = polja);
+              zidani deo = dužina − stubovi × 0,4 − širina kapija; zidni blok 12,5 kom/m² (lice 20 × 40 cm), stubni 1 po redu stuba,
+              okapnica 2 kom po metru, kapa 1 po stubu. Na sve ide +5 %, pa se zaokružuje na najbliži ceo broj.
             </div>
           </div>
         </div>
@@ -177,9 +293,25 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
   );
 }
 
-function Polje({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
+function Opcije({ naslov, opcije, izaberi }: { naslov: string; opcije: { redova: number; visina: number }[]; izaberi: (v: number) => void }) {
   return (
-    <label className="field">
+    <div className="mt-3 rounded-[10px] border border-warn/30 bg-warn/5 p-3">
+      <div className="text-sm font-semibold text-warn">{naslov}</div>
+      <p className="mt-0.5 text-xs text-ink">Nema pola reda. Ponudi klijentu jednu od dve najbliže visine:</p>
+      <div className="mt-2 flex gap-2">
+        {opcije.map((o) => (
+          <button key={o.redova} type="button" onClick={() => izaberi(o.visina)} className="btn btn-sm btn-ghost btn-plain">
+            {o.redova} redova = {o.visina} m
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function Polje({ label, hint, children, puno }: { label: string; hint?: string; children: React.ReactNode; puno?: boolean }) {
+  return (
+    <label className={`field ${puno ? "col-span-2" : ""}`}>
       <span>{label}{hint && <span className="ml-1 font-normal text-muted">({hint})</span>}</span>
       {children}
     </label>

@@ -4,7 +4,7 @@
   podrazumevanu (START: polje 0,8 / stub 1,6; PRIVAT: 1,8 / 2,0; razmak 2 m; natur siva
   kao najjeftinija) i to navodi u `pretpostavke`, da se zna koliko je procena gruba.
 */
-import { izracunaj, CENOVNIK, type Boja, type Ulaz } from "@/lib/kalkulator";
+import { izracunaj, CENOVNIK, POCETNI_ULAZ, type Boja, type Ulaz } from "@/lib/kalkulator";
 
 type LeadZaProcenu = {
   proizvod?: string | null; duzina_m?: number | null; obuhvat?: string | null;
@@ -58,7 +58,7 @@ export function proceniLead(l: LeadZaProcenu): Procena | null {
   let boja = bojaKljuc(d.boja);
   if (!boja) { boja = "natur_siva"; pretpostavke.push("natur siva"); }
 
-  const ulaz: Ulaz = { duzina: Number(l.duzina_m), razmak, visinaPolja, visinaStuba, otvori: 0, zatvoren: false, boja };
+  const ulaz: Ulaz = { ...POCETNI_ULAZ, rezim: "ograda", duzina: Number(l.duzina_m), razmak, visinaPolja, visinaStuba, boja };
   const r = izracunaj(ulaz);
   return { rsd: r.ukupno, ulaz, pretpostavke };
 }

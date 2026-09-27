@@ -1,27 +1,27 @@
 /*
-  Kalkulator materijala za ogradu od dekorativnog bloka (Lukin zahtev, 26.09.2026.).
+  Kalkulator materijala za Deko Pro ponude.
 
-  Izvori: DEKO_PRO_Cenovnik_A4.pdf (cene), tehnički list (19×19×39, 18 kg, 72/paleta,
-  12,5 kom/m²), priručnik („ranije kalkulacije koriste modul 20 × 40 cm" = blok + fuga).
+  Izvor pravila: „Deko Pro – pravila za računanje ograda, zidova i obloga" (Luka + Pavle, 27.09.2026.),
+  kopija u ../Deko-Pro-Biznis/znanje/pravila-racunanja.md. Cene iz DEKO_PRO_Cenovnik_A4.pdf (sa PDV-om).
 
-  Pravilo mere (Luka): RAZMAK IZMEĐU STUBOVA se meri od kraja do kraja stubnog bloka
-  (čisto polje), NE od ose stuba.
+  Obavezna pravila:
+  1. Računa se na TAČNU dužinu i visinu koju klijent da; polja se rasporede po celoj dužini,
+     pa stvarni razmak može malo da odstupi od traženog.
+  2. Na svaku stavku ide +5 % („bolje malo previše nego premalo").
+  3. Konačna količina se zaokružuje na NAJBLIŽI ceo broj (92,4 → 92; 11,55 → 12).
+  4. Visina mora biti ceo broj redova od 20 cm; ako nije, nude se dve najbliže opcije.
 
-  Geometrija (prav potez):
-    stubovi = polja + 1 (+ po jedan dodatni stub za svaki otvor / kapiju)
-    dužina zidanog dela L = stubovi × modulStub + Σ polja
-    zidni blok u redu = polje / modulDužina (0,40 m); redova = visina / modulVisina (0,20 m)
-    stubni blok = po jedan po redu stuba; redova = visinaStuba / 0,20
-      (POTVRDIO LUKA 26.09.2026.: stub ide od temelja, visina stuba se zadaje BEZ kape)
-    cene iz cenovnika su SA PDV-om (POTVRDIO LUKA 26.09.2026., kao u ponudi 184/26)
-    okapnica 50 cm = 2 kom po metru zida (preko polja); kapa = 1 po stubu
-
-  Sve pretpostavke su u PODRAZUMEVANO i mogu se menjati u UI (Luka potvrđuje).
+  Dimenzije sa fugom ~1 cm: zidni blok lice 20 × 40 cm (12,5 kom/m², 2,5 kom po dužnom metru reda),
+  stubni blok stub širok 40 cm, red visok 20 cm; okapnica 50 cm (2 kom/m); kapa 1 po stubu.
 */
 
-export type Boja = "natur_siva" | "zuta" | "braon" | "oranz" | "crvena" | "zelena" | "crna" | "kapucino" | "multikolor_rok" | "multikolor_rast";
+export type Boja =
+  | "natur_siva" | "zuta" | "braon" | "oranz" | "crvena" | "zelena" | "crna"
+  | "kapucino" | "multikolor_rok" | "multikolor_rast";
+export type BojaZavrsnih = "siva" | "crna" | "bela";
+export type Rezim = "ograda" | "zid" | "obloga";
 
-// Cenovnik, RSD/kom (DEKO_PRO_Cenovnik_A4.pdf). Partnerske: zidni -25, stubni -10 (INTERNO).
+// Cenovnik, RSD/kom, sa PDV-om (DEKO_PRO_Cenovnik_A4.pdf; Luka potvrdio PDV 26.09.2026.)
 export const CENOVNIK: { v: Boja; l: string; zidni: number; stubni: number }[] = [
   { v: "natur_siva", l: "Natur siva", zidni: 420, stubni: 520 },
   { v: "zuta", l: "Žuta", zidni: 460, stubni: 560 },
@@ -34,118 +34,231 @@ export const CENOVNIK: { v: Boja; l: string; zidni: number; stubni: number }[] =
   { v: "multikolor_rok", l: "Multikolor Rok", zidni: 580, stubni: 780 },
   { v: "multikolor_rast", l: "Multikolor Rast", zidni: 580, stubni: 780 },
 ];
+export const ZAVRSNE_BOJE: { v: BojaZavrsnih; l: string }[] = [
+  { v: "siva", l: "Siva" }, { v: "crna", l: "Crna" }, { v: "bela", l: "Bela" },
+];
+export const bojaNaziv = (b: Boja) => CENOVNIK.find((c) => c.v === b)?.l ?? b;
+export const zavrsnaNaziv = (b: BojaZavrsnih) => ZAVRSNE_BOJE.find((c) => c.v === b)?.l ?? b;
 
 export type Podesavanja = {
-  modulDuzina: number;   // m, zidni blok + fuga (0,39 + 0,01)
-  modulVisina: number;   // m, red bloka + fuga (0,19 + 0,01)
-  modulStub: number;     // m, širina stubnog bloka + fuga (0,39 + 0,01)
+  modulDuzina: number;    // m, lice bloka sa fugom (0,40)
+  modulVisina: number;    // m, red sa fugom (0,20)
+  modulStub: number;      // m, širina stuba sa fugom (0,40)
   okapnicaDuzina: number; // m, 0,50 → 2 kom/m
-  cenaOkapnica: number;  // RSD
-  cenaKapa: number;      // RSD
-  tezinaZidni: number;   // kg (tehnički list: 18)
-  tezinaStubni: number;  // kg [potvrditi] — procena, stubni je ~2× zapremine zidnog
-  paleta: number;        // kom zidnog po paleti (tehnički list: 72)
-  rezervaPct: number;    // % rezerve za lom i sečenje (0 = bez)
-  partnerske: boolean;   // interne cene za saradnike
+  cenaOkapnica: number;   // RSD
+  cenaKapa: number;       // RSD
+  cenaObloga: number | null; // RSD/m²; NEPOTVRĐENO (9,99 € je možda po komadu) → null = ne računaj
+  tezinaZidni: number;    // kg (tehnički list: 18)
+  tezinaStubni: number;   // kg [potvrditi]
+  tezinaObloga: number;   // kg (procena ~8)
+  paleta: number;         // kom zidnog po paleti (72)
+  rezervaPct: number;     // OBAVEZNO 5 %
+  partnerske: boolean;    // interne cene za saradnike (zidni −25, stubni −10)
 };
 
 export const PODRAZUMEVANO: Podesavanja = {
   modulDuzina: 0.40, modulVisina: 0.20, modulStub: 0.40, okapnicaDuzina: 0.50,
-  cenaOkapnica: 680, cenaKapa: 1290,
-  tezinaZidni: 18, tezinaStubni: 36, paleta: 72,
-  rezervaPct: 0, partnerske: false,
+  cenaOkapnica: 680, cenaKapa: 1290, cenaObloga: null,
+  tezinaZidni: 18, tezinaStubni: 36, tezinaObloga: 8, paleta: 72,
+  rezervaPct: 5, partnerske: false,
 };
 
 export type Ulaz = {
-  duzina: number;        // m, ukupna dužina ZIDANOG dela (bez širine kapija/otvora)
-  razmak: number;        // m, čisto polje između stubova (kraj do kraja stubnog bloka)
-  visinaPolja: number;   // m
-  visinaStuba: number;   // m (bez kape)
-  otvori: number;        // broj kapija/otvora u potezu (svaki dodaje jedan stub)
-  zatvoren: boolean;     // zatvoren obim (npr. oko placa): stubovi = polja
+  rezim: Rezim;
+  // ograda i zid
+  duzina: number;          // m, ukupna dužina (uključuje stubove)
+  visinaPolja: number;     // m (kod zida: visina zida)
+  visinaStuba: number;     // m (samo ograda)
+  razmak: number;          // m, željeni svetli otvor između stubova (samo ograda)
+  sirinaKapija: number;    // m, ukupna širina kapija i otvora; oduzima se od zidanog dela
+  zatvoren: boolean;       // zatvoren obim: stubova koliko i polja
+  spojena: boolean;        // nastavlja se na drugu ogradu: jedan stub manje (zajednički)
+  saOkapnicama: boolean;   // kod punog zida okapnice nisu obavezne
+  // obloga
+  povrsina: number;        // m²
+  // zajedničko
   boja: Boja;
+  bojaZavrsnih: BojaZavrsnih;
+  mesto: string;
 };
 
-export type Stavka = { naziv: string; kom: number; cena: number; ukupno: number };
+export const POCETNI_ULAZ: Ulaz = {
+  rezim: "ograda", duzina: 20, visinaPolja: 0.8, visinaStuba: 1.6, razmak: 2,
+  sirinaKapija: 0, zatvoren: false, spojena: false, saOkapnicama: true,
+  povrsina: 10, boja: "natur_siva", bojaZavrsnih: "siva", mesto: "",
+};
+
+export type Stavka = { naziv: string; opis: string; kom: number; jedinica: string; cena: number | null; ukupno: number | null };
 export type Rezultat = {
-  polja: number; stubovi: number;
-  stvarniRazmak: number;        // m, kad se dužina ne deli tačno, polja se ravnomerno prilagode
+  rezim: Rezim;
+  polja: number; stubovi: number; stvarniRazmak: number;
   redovaPolja: number; redovaStuba: number;
-  stvarnaVisinaPolja: number; stvarnaVisinaStuba: number;
-  duzinaZida: number;           // m, zbir polja
-  zidni: number; stubni: number; okapnice: number; kape: number;
-  zidniBezRezerve: number; stubniBezRezerve: number;
-  stavke: Stavka[]; ukupno: number;
-  tezinaKg: number; paleteZidni: number; m2Zida: number;
-  napomene: string[];
+  duzinaZida: number;      // m, zidani deo (bez stubova i kapija)
+  m2: number;
+  stavke: Stavka[]; ukupno: number; cenaNepotpuna: boolean;
+  tezinaKg: number; palete: number;
+  napomene: string[]; racun: string[];
 };
 
 const r2 = (x: number) => Math.round(x * 100) / 100;
+const zaokruzi = (x: number) => Math.round(x - 1e-9);   // pravilo 3: na najbliži ceo broj
+const rsdFmt = (n: number) => new Intl.NumberFormat("sr-RS").format(Math.round(n));
 
-export function izracunaj(u: Ulaz, p: Podesavanja = PODRAZUMEVANO): Rezultat {
-  const napomene: string[] = [];
-  const L = Math.max(0, u.duzina), R = Math.max(0.1, u.razmak);
-
-  // 1) raspored stubova i polja duž poteza
-  // prav potez: L = (polja + 1 + otvori) × modulStub + polja × R  →  polja = (L − (1 + otvori) × modulStub) / (R + modulStub)
-  // zatvoren obim: L = polja × modulStub + polja × R
-  const fiksniStubovi = u.zatvoren ? 0 : 1 + Math.max(0, u.otvori);
-  const poljaTacno = (L - fiksniStubovi * p.modulStub) / (R + p.modulStub);
-  const polja = Math.max(1, Math.round(poljaTacno));
-  const stubovi = u.zatvoren ? polja + Math.max(0, u.otvori) : polja + 1 + Math.max(0, u.otvori);
-  const duzinaZida = Math.max(0, L - stubovi * p.modulStub);
-  const stvarniRazmak = duzinaZida / polja;
-  if (Math.abs(stvarniRazmak - R) > 0.02) napomene.push(`Dužina se ne deli tačno na polja od ${R} m: sa ${polja} polja stvarni razmak je ${r2(stvarniRazmak)} m (raspodeljeno ravnomerno).`);
-
-  // 2) visine u redovima (modul 20 cm)
-  const redovaPolja = Math.max(1, Math.ceil(u.visinaPolja / p.modulVisina - 1e-9));
-  const redovaStuba = Math.max(1, Math.ceil(u.visinaStuba / p.modulVisina - 1e-9));
-  const stvarnaVisinaPolja = redovaPolja * p.modulVisina, stvarnaVisinaStuba = redovaStuba * p.modulVisina;
-  if (Math.abs(stvarnaVisinaPolja - u.visinaPolja) > 0.005) napomene.push(`Visina polja zaokružena na ${r2(stvarnaVisinaPolja)} m (${redovaPolja} redova po 20 cm).`);
-  if (Math.abs(stvarnaVisinaStuba - u.visinaStuba) > 0.005) napomene.push(`Visina stuba zaokružena na ${r2(stvarnaVisinaStuba)} m (${redovaStuba} redova po 20 cm).`);
-  if (stvarnaVisinaStuba < stvarnaVisinaPolja) napomene.push("Stub je niži od polja — proveri visine.");
-
-  // 3) količine
-  const zidniPoRedu = duzinaZida / p.modulDuzina;                 // može biti razlomak (sečeni blokovi)
-  const zidniBezRezerve = Math.ceil(zidniPoRedu * redovaPolja - 1e-9);
-  const stubniBezRezerve = stubovi * redovaStuba;
-  const rez = 1 + Math.max(0, p.rezervaPct) / 100;
-  const zidni = Math.ceil(zidniBezRezerve * rez - 1e-9);
-  const stubni = Math.ceil(stubniBezRezerve * rez - 1e-9);
-  const okapnice = Math.ceil(duzinaZida / p.okapnicaDuzina - 1e-9);
-  const kape = stubovi;
-  const m2Zida = duzinaZida * stvarnaVisinaPolja;
-
-  // 4) cene
-  const c = CENOVNIK.find((x) => x.v === u.boja) ?? CENOVNIK[0];
-  const cenaZidni = c.zidni - (p.partnerske ? 25 : 0), cenaStubni = c.stubni - (p.partnerske ? 10 : 0);
-  const stavke: Stavka[] = [
-    { naziv: `Dekorativni blok ${c.l} 19×19×39 cm`, kom: zidni, cena: cenaZidni, ukupno: zidni * cenaZidni },
-    { naziv: `Dekorativni stubni blok ${c.l} 19×39×39 cm`, kom: stubni, cena: cenaStubni, ukupno: stubni * cenaStubni },
-    { naziv: "Betonska okapnica 50×30 cm", kom: okapnice, cena: p.cenaOkapnica, ukupno: okapnice * p.cenaOkapnica },
-    { naziv: "Betonska kapa 50×50 cm", kom: kape, cena: p.cenaKapa, ukupno: kape * p.cenaKapa },
-  ];
-  const ukupno = stavke.reduce((s, x) => s + x.ukupno, 0);
-
+/** Visina u redovima od 20 cm. Ako nije ceo broj redova, vraća dve najbliže opcije. */
+export function redoviZaVisinu(visina: number, modul = 0.20) {
+  const tacno = visina / modul;
+  const dole = Math.max(1, Math.floor(tacno + 1e-9));
+  const gore = dole + 1;
+  const jeCeo = Math.abs(tacno - Math.round(tacno)) < 1e-6;
   return {
-    polja, stubovi, stvarniRazmak: r2(stvarniRazmak), redovaPolja, redovaStuba,
-    stvarnaVisinaPolja: r2(stvarnaVisinaPolja), stvarnaVisinaStuba: r2(stvarnaVisinaStuba),
-    duzinaZida: r2(duzinaZida), zidni, stubni, okapnice, kape, zidniBezRezerve, stubniBezRezerve,
-    stavke, ukupno, tezinaKg: Math.round(zidni * p.tezinaZidni + stubni * p.tezinaStubni),
-    paleteZidni: Math.ceil(zidni / p.paleta), m2Zida: r2(m2Zida), napomene,
+    redova: jeCeo ? Math.max(1, Math.round(tacno)) : dole,
+    jeCeo,
+    opcije: jeCeo ? [] : [{ redova: dole, visina: r2(dole * modul) }, { redova: gore, visina: r2(gore * modul) }],
   };
 }
 
-// Tekst specifikacije za ponudu / poruku (bez dizajna, čisto za kopiranje).
-export function specifikacijaTekst(u: Ulaz, r: Rezultat): string {
-  const rsd = (n: number) => new Intl.NumberFormat("sr-RS").format(n) + " RSD";
-  return [
-    `Ograda: ${u.duzina} m zidanog dela, polje ${r.stvarnaVisinaPolja} m, stub ${r.stvarnaVisinaStuba} m, razmak ${r.stvarniRazmak} m (kraj do kraja stuba)`,
-    `Raspored: ${r.polja} polja, ${r.stubovi} stubova${u.otvori ? `, ${u.otvori} otvor(a)` : ""}${u.zatvoren ? ", zatvoren obim" : ""}`,
-    "",
-    ...r.stavke.map((s) => `${s.naziv}: ${s.kom} kom × ${rsd(s.cena)} = ${rsd(s.ukupno)}`),
-    "",
-    `Ukupno materijal (sa PDV-om): ${rsd(r.ukupno)}`,
-    `Težina ≈ ${r.tezinaKg} kg · zidni blok ${r.paleteZidni} paleta (72/paleta)`,
-  ].join("\n");
+/** Obim placa iz površine u arima (kvadratni plac). 1 ar = 100 m². */
+export const obimPlaca = (ari: number) => r2(4 * Math.sqrt(Math.max(0, ari) * 100));
+
+export function izracunaj(u: Ulaz, p: Podesavanja = PODRAZUMEVANO): Rezultat {
+  const rez = 1 + Math.max(0, p.rezervaPct) / 100;
+  const c = CENOVNIK.find((x) => x.v === u.boja) ?? CENOVNIK[0];
+  const cenaZidni = c.zidni - (p.partnerske ? 25 : 0);
+  const cenaStubni = c.stubni - (p.partnerske ? 10 : 0);
+  const napomene: string[] = [];
+  const racun: string[] = [];
+  const stavke: Stavka[] = [];
+
+  // ---------- OBLOGA ----------
+  if (u.rezim === "obloga") {
+    const m2 = Math.max(0, u.povrsina);
+    const kom = zaokruzi(m2 * 12.5 * rez);
+    racun.push(`${m2} m² × 12,5 kom/m² × ${1 + p.rezervaPct / 100} = ${kom} kom`);
+    if (p.cenaObloga == null) napomene.push("Cena obloge nije potvrđena (9,99 € je možda po komadu, a možda po m²). Proveriti sa Lukom pre slanja ponude.");
+    stavke.push({
+      naziv: "Dekorativna obloga", opis: "5 × 19 × 39 cm", kom, jedinica: "obloga",
+      cena: p.cenaObloga, ukupno: p.cenaObloga != null ? kom * p.cenaObloga : null,
+    });
+    const ukupno = stavke.reduce((s, x) => s + (x.ukupno ?? 0), 0);
+    return {
+      rezim: "obloga", polja: 0, stubovi: 0, stvarniRazmak: 0, redovaPolja: 0, redovaStuba: 0,
+      duzinaZida: 0, m2: r2(m2), stavke, ukupno, cenaNepotpuna: p.cenaObloga == null,
+      tezinaKg: Math.round(kom * p.tezinaObloga), palete: 0, napomene, racun,
+    };
+  }
+
+  // ---------- redovi ----------
+  const rp = redoviZaVisinu(u.visinaPolja, p.modulVisina);
+  if (!rp.jeCeo) napomene.push(`Visina ${u.visinaPolja} m nije ceo broj redova. Ponudi ${rp.opcije[0].redova} redova (${rp.opcije[0].visina} m) ili ${rp.opcije[1].redova} redova (${rp.opcije[1].visina} m). Uz okapnicu polje dobije još nekoliko cm.`);
+  const redovaPolja = rp.redova;
+
+  // ---------- PUN ZID ----------
+  if (u.rezim === "zid") {
+    const L = Math.max(0, u.duzina);
+    const zidni = zaokruzi((L / p.modulDuzina) * redovaPolja * rez);
+    racun.push(`Zidni: (${L} / ${p.modulDuzina}) × ${redovaPolja} redova × ${rez} = ${zidni} kom`);
+    stavke.push({ naziv: `Zidni blok ${bojaNaziv(u.boja)}`, opis: "19 × 19 × 39 cm", kom: zidni, jedinica: "blokova", cena: cenaZidni, ukupno: zidni * cenaZidni });
+    if (u.saOkapnicama) {
+      const okapnice = zaokruzi((L / p.okapnicaDuzina) * rez);
+      racun.push(`Okapnice: (${L} / ${p.okapnicaDuzina}) × ${rez} = ${okapnice} kom`);
+      stavke.push({ naziv: `Okapnica ${zavrsnaNaziv(u.bojaZavrsnih)}`, opis: "50 × 30 cm", kom: okapnice, jedinica: "okapnica", cena: p.cenaOkapnica, ukupno: okapnice * p.cenaOkapnica });
+    } else {
+      napomene.push("Okapnice nisu uračunate. Nisu obavezne, ali se preporučuju: štite šupljine bloka od vode i mraza i daju završni izgled.");
+    }
+    const ukupno = stavke.reduce((s, x) => s + (x.ukupno ?? 0), 0);
+    return {
+      rezim: "zid", polja: 0, stubovi: 0, stvarniRazmak: 0, redovaPolja, redovaStuba: 0,
+      duzinaZida: r2(L), m2: r2(L * redovaPolja * p.modulVisina), stavke, ukupno, cenaNepotpuna: false,
+      tezinaKg: Math.round(zidni * p.tezinaZidni), palete: Math.ceil(zidni / p.paleta), napomene, racun,
+    };
+  }
+
+  // ---------- OGRADA ----------
+  const L = Math.max(0, u.duzina);
+  const R = Math.max(0.1, u.razmak);
+  const rs = redoviZaVisinu(u.visinaStuba, p.modulVisina);
+  if (!rs.jeCeo) napomene.push(`Visina stuba ${u.visinaStuba} m nije ceo broj redova. Ponudi ${rs.opcije[0].redova} redova (${rs.opcije[0].visina} m) ili ${rs.opcije[1].redova} redova (${rs.opcije[1].visina} m).`);
+  const redovaStuba = rs.redova;
+  if (redovaStuba < redovaPolja) napomene.push("Stub je niži od polja. Proveri visine.");
+
+  // polja i stubovi
+  const polja = Math.max(1, zaokruzi((L - p.modulStub) / (R + p.modulStub)));
+  let stubovi = u.zatvoren ? polja : polja + 1;
+  if (u.spojena && !u.zatvoren) { stubovi -= 1; napomene.push("Ograda se nastavlja na drugu: stub na spoju je zajednički, pa je oduzet jedan stub i jedna kapa."); }
+  const duzinaBezStubova = Math.max(0, L - stubovi * p.modulStub);
+  const stvarniRazmak = duzinaBezStubova / polja;
+  racun.push(`Polja: zaokruži((${L} − ${p.modulStub}) / (${R} + ${p.modulStub})) = ${polja}; stubova ${stubovi}`);
+  if (Math.abs(stvarniRazmak - R) > 0.02) napomene.push(`Sa ${polja} polja stvarni razmak je ${r2(stvarniRazmak)} m umesto ${R} m (polja se rasporede po celoj dužini).`);
+
+  // kapije zauzimaju mesto polja: njihova širina se ne zida
+  const kapije = Math.max(0, u.sirinaKapija);
+  const Lz = Math.max(0, duzinaBezStubova - kapije);
+  if (kapije > 0) racun.push(`Zidani deo: ${r2(duzinaBezStubova)} − ${kapije} m kapija = ${r2(Lz)} m`);
+  else racun.push(`Zidani deo: ${L} − ${stubovi} × ${p.modulStub} = ${r2(Lz)} m`);
+
+  const stubni = zaokruzi(stubovi * redovaStuba * rez);
+  const zidni = zaokruzi((Lz / p.modulDuzina) * redovaPolja * rez);
+  const kape = zaokruzi(stubovi * rez);
+  const okapnice = zaokruzi((Lz / p.okapnicaDuzina) * rez);
+  racun.push(`Stubni: ${stubovi} × ${redovaStuba} × ${rez} = ${stubni} kom`);
+  racun.push(`Zidni: (${r2(Lz)} / ${p.modulDuzina}) × ${redovaPolja} × ${rez} = ${zidni} kom`);
+  racun.push(`Kape: ${stubovi} × ${rez} = ${kape} kom`);
+  racun.push(`Okapnice: (${r2(Lz)} / ${p.okapnicaDuzina}) × ${rez} = ${okapnice} kom`);
+
+  stavke.push(
+    { naziv: `Stubni blok ${bojaNaziv(u.boja)}`, opis: "19 × 39 × 39 cm", kom: stubni, jedinica: "blokova", cena: cenaStubni, ukupno: stubni * cenaStubni },
+    { naziv: `Zidni blok ${bojaNaziv(u.boja)}`, opis: "19 × 19 × 39 cm", kom: zidni, jedinica: "blokova", cena: cenaZidni, ukupno: zidni * cenaZidni },
+    { naziv: `Kapa ${zavrsnaNaziv(u.bojaZavrsnih)}`, opis: "50 × 50 cm", kom: kape, jedinica: "kapa", cena: p.cenaKapa, ukupno: kape * p.cenaKapa },
+    { naziv: `Okapnica ${zavrsnaNaziv(u.bojaZavrsnih)}`, opis: "50 × 30 cm", kom: okapnice, jedinica: "okapnica", cena: p.cenaOkapnica, ukupno: okapnice * p.cenaOkapnica },
+  );
+  if (kapije > 0) napomene.push(`Kapije (${kapije} m) su oduzete od zidanog dela. Same kapije, ispune i rasveta se ugovaraju posebno.`);
+  else napomene.push("Kapije nisu oduzete. Ako klijent ima kapiju, upiši njenu širinu.");
+
+  const ukupno = stavke.reduce((s, x) => s + (x.ukupno ?? 0), 0);
+  return {
+    rezim: "ograda", polja, stubovi, stvarniRazmak: r2(stvarniRazmak), redovaPolja, redovaStuba,
+    duzinaZida: r2(Lz), m2: r2(Lz * redovaPolja * p.modulVisina), stavke, ukupno, cenaNepotpuna: false,
+    tezinaKg: Math.round(zidni * p.tezinaZidni + stubni * p.tezinaStubni),
+    palete: Math.ceil(zidni / p.paleta), napomene, racun,
+  };
 }
+
+/** Ponuda u formatu za DM / WhatsApp / Viber (pravila, deo 8). */
+export function ponudaTekst(u: Ulaz, r: Rezultat): string {
+  const boja = bojaNaziv(u.boja).toLowerCase();
+  const mesto = u.mesto.trim();
+  const red: string[] = [];
+
+  if (r.rezim === "obloga") {
+    red.push(`Ponuda – dekorativna obloga ${boja}${mesto ? `, ${mesto}` : ""}`, "");
+    red.push(`Obloga ${r.m2} m²`, "");
+  } else if (r.rezim === "zid") {
+    red.push(`Ponuda – zid ${boja}${mesto ? `, ${mesto}` : ""}`, "");
+    red.push(`Zid ${u.duzina}m (visina ${r2(r.redovaPolja * 0.2)}m, ${r.redovaPolja} redova)`, "");
+  } else {
+    red.push(`Ponuda – ograda ${boja}${mesto ? `, ${mesto}` : ""}`, "");
+    red.push(`Ograda ${u.duzina}m (stubovi ${r2(r.redovaStuba * 0.2)}m, polja ${r2(r.redovaPolja * 0.2)}m, razmak između stubova ${r.stvarniRazmak}m)`, "");
+  }
+
+  for (const s of r.stavke) {
+    const cena = s.cena != null ? `${rsdFmt(s.cena)}din/kom` : "[cena – proveriti]";
+    red.push(`${s.naziv} (${cena}) (${s.opis})`);
+    red.push(`${s.kom} ${s.jedinica} = ${s.ukupno != null ? rsdFmt(s.ukupno) + "din" : "[___]"}`);
+  }
+  red.push("", `UKUPNO: ${rsdFmt(r.ukupno)}din${r.cenaNepotpuna ? " (bez stavki kojima cena nije potvrđena)" : ""}`);
+  return red.join("\n");
+}
+
+/** Beleška za nas, ne za klijenta (pravila, deo 8). */
+export function internaBeleska(u: Ulaz, r: Rezultat): string {
+  const red: string[] = ["Kako je računato:"];
+  red.push(...r.racun.map((x) => "  " + x));
+  red.push(`  Rezerva +5 % na svaku stavku, količine zaokružene na najbliži ceo broj.`);
+  if (r.rezim === "ograda") red.push(`  Težina ≈ ${rsdFmt(r.tezinaKg)} kg, zidni blok ${r.palete} paleta (72/paleta).`);
+  red.push("", "Nije uključeno: temelj, prevoz, ugradnja, alu paneli i ispune, kapije. To dodaje Luka.");
+  if (r.napomene.length) { red.push("", "Proveriti:"); red.push(...r.napomene.map((x) => "  " + x)); }
+  return red.join("\n");
+}
+
+// Zadržano zbog starijih poziva (procena vrednosti leada).
+export const specifikacijaTekst = ponudaTekst;
