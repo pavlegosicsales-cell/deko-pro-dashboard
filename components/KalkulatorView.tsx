@@ -331,12 +331,6 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
               </p>
             </div>
 
-            {/* pregled ponude, tačno kako se šalje */}
-            <div className="card p-4">
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Ponuda za DM, WhatsApp ili Viber</div>
-              <pre className="mt-2 whitespace-pre-wrap font-sans text-[13px] leading-snug text-ink">{ponudaTekst(u, r)}</pre>
-            </div>
-
             <div className="card p-4 text-xs leading-relaxed text-muted">
               <b className="text-ink">Nije uključeno:</b> temelj, prevoz, ugradnja, alu paneli i ispune, kapije. To dodaje Luka.<br />
               <b className="text-ink">Kako računa:</b> polja = zaokruži((dužina − 0,4) / (razmak + 0,4)), stubova = polja + 1 (zatvoren obim: stubova = polja);
