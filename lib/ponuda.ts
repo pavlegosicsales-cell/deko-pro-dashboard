@@ -4,7 +4,8 @@
   raspored je u components/PonudaView.tsx, a ovde su samo podaci i format.
 */
 import {
-  bojaNaziv, zavrsnaNaziv, type Ulaz, type Rezultat, type Stavka,
+  bojaNaziv, zavrsnaNaziv, VRSTE, type Ulaz, type Rezultat, type Stavka,
+  type RucnaStavka, type VrstaStavke,
 } from "@/lib/kalkulator";
 
 /** Podaci koje Pavle ili Luka upisuju pre nego što se ponuda napravi. */
@@ -86,11 +87,31 @@ export function ponudaRedovi(u: Ulaz, r: Rezultat, brojRedova = 6): PonudaRed[] 
 }
 
 /* --- prenos kalkulatora u stranu ponude preko adrese --- */
+
+/** Ručne stavke u adresi: „zidni:150:445,stubni:40,kapa:8". Cena je neobavezna. */
+export const kodirajRucne = (r: RucnaStavka[]) =>
+  r.filter((x) => x.kolicina > 0)
+    .map((x) => `${x.vrsta}:${x.kolicina}${x.cena != null ? ":" + x.cena : ""}`)
+    .join(",");
+
+export function dekodirajRucne(s: string | null): RucnaStavka[] {
+  if (!s) return [];
+  return s.split(",")
+    .map((d) => d.split(":"))
+    .filter((d) => d.length >= 2 && VRSTE.some((v) => v.v === d[0]) && Number(d[1]) > 0)
+    .map((d) => ({
+      vrsta: d[0] as VrstaStavke,
+      kolicina: Number(d[1]),
+      cena: d[2] != null && d[2] !== "" && !isNaN(Number(d[2])) ? Number(d[2]) : null,
+    }));
+}
+
 export function uAdresu(u: Ulaz, m: PonudaMeta): string {
   const q = new URLSearchParams({
     rezim: u.rezim, duzina: String(u.duzina), razmak: String(u.razmak),
     vp: String(u.visinaPolja), vs: String(u.visinaStuba), kapije: String(u.sirinaKapija),
     povrsina: String(u.povrsina), boja: u.boja, bz: u.bojaZavrsnih,
+    rucno: u.rezim === "rucno" ? kodirajRucne(u.rucne) : "",
     zatvoren: u.zatvoren ? "1" : "", spojena: u.spojena ? "1" : "", okapnice: u.saOkapnicama ? "1" : "",
     broj: m.broj, datum: m.datum, kupac: m.kupac, sastavio: m.sastavio,
     transport: m.transportEur == null ? "" : String(m.transportEur),

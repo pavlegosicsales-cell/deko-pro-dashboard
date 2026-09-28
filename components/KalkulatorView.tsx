@@ -7,8 +7,8 @@ import { Sidebar } from "@/components/Sidebar";
 import { Logo } from "@/components/ui";
 import {
   izracunaj, ponudaTekst, internaBeleska, redoviZaVisinu, obimPlaca, izracunajPrevoz,
-  CENOVNIK, ZAVRSNE_BOJE, PODRAZUMEVANO, POCETNI_ULAZ,
-  type Ulaz, type Podesavanja, type Boja, type BojaZavrsnih, type Rezim,
+  CENOVNIK, ZAVRSNE_BOJE, VRSTE, PODRAZUMEVANO, POCETNI_ULAZ,
+  type Ulaz, type Podesavanja, type Boja, type BojaZavrsnih, type Rezim, type VrstaStavke,
 } from "@/lib/kalkulator";
 import { rsd } from "@/lib/format";
 import { PONUDA_META, datumPonude, uAdresu, type PonudaMeta } from "@/lib/ponuda";
@@ -23,6 +23,7 @@ const REZIMI: { v: Rezim; l: string; opis: string }[] = [
   { v: "ograda", l: "Ograda", opis: "stubovi i polja" },
   { v: "zid", l: "Pun zid", opis: "bez stubova" },
   { v: "obloga", l: "Obloga", opis: "postojeći zid" },
+  { v: "rucno", l: "Ručno", opis: "upišeš količine" },
 ];
 
 function izUrla(sp: URLSearchParams): Ulaz {
@@ -93,7 +94,16 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
     } catch { /* prazno */ }
   };
 
-  const ograda = u.rezim === "ograda", zid = u.rezim === "zid", obloga = u.rezim === "obloga";
+  const ograda = u.rezim === "ograda", zid = u.rezim === "zid", obloga = u.rezim === "obloga", rucno = u.rezim === "rucno";
+  const cenaBoje = CENOVNIK.find((c) => c.v === u.boja) ?? CENOVNIK[0];
+  const podrazumevanaCena = (v: VrstaStavke) =>
+    v === "zidni" ? cenaBoje.zidni - (p.partnerske ? 25 : 0)
+    : v === "stubni" ? cenaBoje.stubni - (p.partnerske ? 10 : 0)
+    : v === "kapa" ? p.cenaKapa
+    : v === "okapnica" ? p.cenaOkapnica
+    : (p.cenaObloga ?? 0);
+  const menjajRucnu = (i: number, izmena: Partial<Ulaz["rucne"][number]>) =>
+    setU((st) => ({ ...st, rucne: st.rucne.map((x, j) => (j === i ? { ...x, ...izmena } : x)) }));
   const rp = redoviZaVisinu(u.visinaPolja), rs = redoviZaVisinu(u.visinaStuba);
 
   return (
@@ -131,7 +141,7 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
         <div className="grid gap-4 lg:grid-cols-[400px_1fr]">
           {/* ---------------- Unos ---------------- */}
           <div className="card p-4 sm:p-5">
-            <div className="grid grid-cols-3 gap-1.5">
+            <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-4">
               {REZIMI.map((x) => (
                 <button key={x.v} type="button" onClick={() => setU((s) => ({ ...s, rezim: x.v }))}
                   className={`rounded-[10px] border px-2 py-2 text-center transition-colors ${u.rezim === x.v ? "border-navy bg-navy text-white" : "border-line bg-white text-ink hover:border-accent"}`}>
@@ -142,13 +152,13 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
-              {!obloga && (
+              {!obloga && !rucno && (
                 <Polje label={ograda ? "Dužina ograde (m)" : "Dužina zida (m)"} hint="sa stubovima">
                   <BrojInput decimalno={true} value={u.duzina} onChange={broj("duzina")} className="inp"  />
                 </Polje>
               )}
               {ograda && <Polje label="Razmak stubova (m)" hint="svetli otvor"><BrojInput decimalno={true} value={u.razmak} onChange={broj("razmak")} className="inp"  /></Polje>}
-              {!obloga && (
+              {!obloga && !rucno && (
                 <Polje label={ograda ? "Visina polja (m)" : "Visina zida (m)"} hint={`${rp.redova} redova`} puno={zid}>
                   <BrojInput decimalno={true} value={u.visinaPolja} onChange={broj("visinaPolja")} className="inp"  />
                 </Polje>
@@ -172,8 +182,40 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
               <Polje label="Mesto" hint="ide u naslov ponude" puno><input value={u.mesto} onChange={(e) => setU((s) => ({ ...s, mesto: e.target.value }))} className="inp" placeholder="npr. Kragujevac" /></Polje>
             </div>
 
+            {/* ručni unos količina */}
+            {rucno && (
+              <div className="mt-4">
+                <div className="grid grid-cols-[1fr_74px_88px_30px] gap-2 px-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted">
+                  <span>Proizvod</span><span className="text-right">Količina</span><span className="text-right">Cena</span><span />
+                </div>
+                <div className="mt-1.5 flex flex-col gap-2">
+                  {u.rucne.map((rs, i) => (
+                    <div key={i} className="grid grid-cols-[1fr_74px_88px_30px] items-center gap-2">
+                      <select value={rs.vrsta} onChange={(e) => menjajRucnu(i, { vrsta: e.target.value as VrstaStavke })} className="inp inp-sm">
+                        {VRSTE.map((x) => <option key={x.v} value={x.v}>{x.l} ({x.jedinica})</option>)}
+                      </select>
+                      <BrojInput decimalno={rs.vrsta === "obloga"} value={rs.kolicina}
+                        onChange={(n) => menjajRucnu(i, { kolicina: n })} className="inp inp-sm text-right" placeholder="0" />
+                      <BrojInput decimalno praznoJeNull value={rs.cena}
+                        onChange={(n) => menjajRucnu(i, { cena: n })} className="inp inp-sm text-right"
+                        placeholder={String(podrazumevanaCena(rs.vrsta))} />
+                      <button type="button" aria-label="Ukloni stavku"
+                        onClick={() => setU((st) => ({ ...st, rucne: st.rucne.filter((_, j) => j !== i) }))}
+                        className="rounded-[8px] border border-line py-1.5 text-muted transition-colors hover:border-accent hover:text-ink">×</button>
+                    </div>
+                  ))}
+                </div>
+                <button type="button" onClick={() => setU((st) => ({ ...st, rucne: [...st.rucne, { vrsta: "zidni", kolicina: 0, cena: null }] }))}
+                  className="btn btn-sm btn-plain mt-2 w-full">+ Dodaj stavku</button>
+                <p className="mt-2 text-[11px] leading-relaxed text-muted">
+                  Količine idu tačno onako kako ih upišeš, <b className="text-ink">bez rezerve od 5 %</b>.
+                  Cena je iz cenovnika za izabranu boju; upiši svoju samo ako se razlikuje. Obloga se unosi u m².
+                </p>
+              </div>
+            )}
+
             {/* opcije visine kad nije ceo broj redova */}
-            {!obloga && !rp.jeCeo && (
+            {!obloga && !rucno && !rp.jeCeo && (
               <Opcije naslov={ograda ? "Visina polja nije ceo broj redova" : "Visina zida nije ceo broj redova"}
                 opcije={rp.opcije} izaberi={(v) => setU((s) => ({ ...s, visinaPolja: v }))} />
             )}
@@ -258,6 +300,11 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
                 <Plocica label="Površina" value={`${r.m2} m²`} sub="po strani" />
                 <Plocica label="Obloga" value={String(r.stavke[0]?.kom ?? 0)} sub={`12,5 kom/m² + 5 % = ${r.stavke[0]?.dodatak ?? "—"}`} />
                 <Plocica label="Težina" value={`≈ ${new Intl.NumberFormat("sr-RS").format(r.tezinaKg)} kg`} sub="6 kg/kom" />
+              </>}
+              {rucno && <>
+                <Plocica label="Stavki" value={String(r.stavke.length)} sub="u ponudi" />
+                <Plocica label="Komada" value={new Intl.NumberFormat("sr-RS").format(r.stavke.reduce((a, x) => a + x.kom, 0))} sub="svih stavki" />
+                <Plocica label="Težina" value={`≈ ${new Intl.NumberFormat("sr-RS").format(r.tezinaKg)} kg`} sub={`${r.palete} paleta`} />
               </>}
               <Plocica label="Ukupno" value={r.cenaNepotpuna ? "—" : rsd(r.ukupno)} sub={r.cenaNepotpuna ? "cena nije potvrđena" : "materijal sa PDV-om"} zlato />
             </div>

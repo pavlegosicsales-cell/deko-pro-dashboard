@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { izracunaj, CENOVNIK, POCETNI_ULAZ, type Ulaz, type Boja, type BojaZavrsnih, type Rezim } from "@/lib/kalkulator";
-import { ponudaRedovi, svegaFmt, datumPonude, type PonudaMeta } from "@/lib/ponuda";
+import { ponudaRedovi, svegaFmt, datumPonude, dekodirajRucne, type PonudaMeta } from "@/lib/ponuda";
 import { napraviPonudaPdf, imeFajla } from "@/lib/ponudaPdf";
 
 /*
@@ -31,6 +31,7 @@ function izUrla(sp: URLSearchParams): { u: Ulaz; m: PonudaMeta } {
     saOkapnicama: sp.get("okapnice") !== null ? sp.get("okapnice") === "1" : true,
     boja: boja && CENOVNIK.some((c) => c.v === boja) ? boja : POCETNI_ULAZ.boja,
     bojaZavrsnih: (sp.get("bz") as BojaZavrsnih) ?? "siva",
+    rucne: dekodirajRucne(sp.get("rucno")),
   };
   const t = sp.get("transport");
   const m: PonudaMeta = {

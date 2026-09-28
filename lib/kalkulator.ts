@@ -19,7 +19,7 @@ export type Boja =
   | "natur_siva" | "zuta" | "braon" | "oranz" | "crvena" | "zelena" | "crna"
   | "kapucino" | "multikolor_rok" | "multikolor_rast";
 export type BojaZavrsnih = "siva" | "crna" | "bela";
-export type Rezim = "ograda" | "zid" | "obloga";
+export type Rezim = "ograda" | "zid" | "obloga" | "rucno";
 
 // Cenovnik, RSD/kom, sa PDV-om. Luka potvrdio PDV 26.09.2026.; od 28.09.2026. svaka stavka +25 din.
 // Obloga se NE menja: 10 EUR/m² = 1.174 din.
@@ -40,6 +40,19 @@ export const ZAVRSNE_BOJE: { v: BojaZavrsnih; l: string }[] = [
 ];
 export const bojaNaziv = (b: Boja) => CENOVNIK.find((c) => c.v === b)?.l ?? b;
 export const zavrsnaNaziv = (b: BojaZavrsnih) => ZAVRSNE_BOJE.find((c) => c.v === b)?.l ?? b;
+
+/* Ručni unos: kad Luka ili Pavle sami znaju količine, bez merenja ograde.
+   Količine se NE uvećavaju za 5 %, upisuje se tačno ono što ide u ponudu. */
+export type VrstaStavke = "zidni" | "stubni" | "kapa" | "okapnica" | "obloga";
+export type RucnaStavka = { vrsta: VrstaStavke; kolicina: number; cena: number | null };  // cena null = iz cenovnika
+
+export const VRSTE: { v: VrstaStavke; l: string; jedinica: string; opis: string }[] = [
+  { v: "zidni", l: "Zidni blok", jedinica: "kom", opis: "19 × 19 × 39 cm" },
+  { v: "stubni", l: "Stubni blok", jedinica: "kom", opis: "19 × 39 × 39 cm" },
+  { v: "kapa", l: "Betonska kapa", jedinica: "kom", opis: "50 × 50 cm" },
+  { v: "okapnica", l: "Betonska okapnica", jedinica: "kom", opis: "50 × 30 cm" },
+  { v: "obloga", l: "Dekorativna obloga", jedinica: "m²", opis: "5 × 19 × 39 cm" },
+];
 
 export type Podesavanja = {
   modulDuzina: number;    // m, lice bloka sa fugom (0,40)
@@ -72,6 +85,8 @@ export type Ulaz = {
   saOkapnicama: boolean;   // kod punog zida okapnice nisu obavezne
   // obloga
   povrsina: number;        // m²
+  // ručni unos
+  rucne: RucnaStavka[];
   // zajedničko
   boja: Boja;
   bojaZavrsnih: BojaZavrsnih;
@@ -82,6 +97,12 @@ export const POCETNI_ULAZ: Ulaz = {
   rezim: "ograda", duzina: 20, visinaPolja: 0.8, visinaStuba: 1.6, razmak: 2,
   sirinaKapija: 0, zatvoren: false, spojena: false, saOkapnicama: true,
   povrsina: 10, boja: "natur_siva", bojaZavrsnih: "siva", mesto: "",
+  rucne: [
+    { vrsta: "zidni", kolicina: 0, cena: null },
+    { vrsta: "stubni", kolicina: 0, cena: null },
+    { vrsta: "kapa", kolicina: 0, cena: null },
+    { vrsta: "okapnica", kolicina: 0, cena: null },
+  ],
 };
 
 /* Prevoz: koliko komada staje na paletu i koliko komad teži (Luka, 28.09.2026.).
@@ -171,6 +192,48 @@ export function izracunaj(u: Ulaz, p: Podesavanja = PODRAZUMEVANO): Rezultat {
   const napomene: string[] = [];
   const racun: string[] = [];
   const stavke: Stavka[] = [];
+
+  // ---------- RUČNI UNOS ----------
+  if (u.rezim === "rucno") {
+    const zav = zavrsnaNaziv(u.bojaZavrsnih);
+    const boja = bojaNaziv(u.boja);
+    for (const rs of u.rucne) {
+      if (!(rs.kolicina > 0)) continue;
+      const v = VRSTE.find((x) => x.v === rs.vrsta)!;
+      if (rs.vrsta === "obloga") {
+        const m2 = r2(rs.kolicina);
+        const cena = rs.cena ?? p.cenaObloga;
+        stavke.push({
+          naziv: "Dekorativna obloga", opis: v.opis, kom: zaokruzi(m2 * 12.5), jedinica: "obloga",
+          cena, jedinicaCene: "m²", dodatak: `${m2} m²`,
+          ukupno: cena != null ? Math.round(m2 * cena) : null,
+        });
+        racun.push(`Obloga: ${m2} m² × 12,5 = ${zaokruzi(m2 * 12.5)} kom`);
+        if (cena == null) napomene.push("Cena obloge nije upisana.");
+        continue;
+      }
+      const podrazumevana =
+        rs.vrsta === "zidni" ? cenaZidni :
+        rs.vrsta === "stubni" ? cenaStubni :
+        rs.vrsta === "kapa" ? p.cenaKapa : p.cenaOkapnica;
+      const cena = rs.cena ?? podrazumevana;
+      const naziv =
+        rs.vrsta === "zidni" ? `Zidni blok ${boja}` :
+        rs.vrsta === "stubni" ? `Stubni blok ${boja}` :
+        rs.vrsta === "kapa" ? `Kapa ${zav}` : `Okapnica ${zav}`;
+      const kom = zaokruzi(rs.kolicina);
+      stavke.push({ naziv, opis: v.opis, kom, jedinica: "kom", cena, ukupno: kom * cena });
+    }
+    racun.push("Ručni unos: količine su upisane rukom, bez rezerve od 5 %.");
+    const ukupno = stavke.reduce((a, x) => a + (x.ukupno ?? 0), 0);
+    const m2Obloge = stavke.filter((x) => x.jedinicaCene === "m²").reduce((a, x) => a + x.kom / 12.5, 0);
+    return saPrevozom({
+      rezim: "rucno", polja: 0, stubovi: 0, stvarniRazmak: 0, redovaPolja: 0, redovaStuba: 0,
+      duzinaZida: 0, m2: r2(m2Obloge), stavke, ukupno,
+      cenaNepotpuna: stavke.some((x) => x.cena == null),
+      tezinaKg: 0, palete: 0, napomene, racun,
+    });
+  }
 
   // ---------- OBLOGA ----------
   if (u.rezim === "obloga") {
@@ -274,7 +337,9 @@ export function ponudaTekst(u: Ulaz, r: Rezultat): string {
   const mesto = u.mesto.trim();
   const red: string[] = [];
 
-  if (r.rezim === "obloga") {
+  if (r.rezim === "rucno") {
+    red.push(`Ponuda – materijal ${boja}${mesto ? `, ${mesto}` : ""}`, "");
+  } else if (r.rezim === "obloga") {
     red.push(`Ponuda – dekorativna obloga ${boja}${mesto ? `, ${mesto}` : ""}`, "");
     red.push(`Obloga ${r.m2} m²`, "");
   } else if (r.rezim === "zid") {
