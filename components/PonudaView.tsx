@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { izracunaj, CENOVNIK, POCETNI_ULAZ, type Ulaz, type Boja, type BojaZavrsnih, type Rezim } from "@/lib/kalkulator";
-import { ponudaRedovi, svegaFmt, datumPonude, dekodirajRucne, type PonudaMeta } from "@/lib/ponuda";
+import { ponudaRedovi, svegaFmt, datumPonude, dekodirajRucne, transportLinija, type PonudaMeta } from "@/lib/ponuda";
 import { napraviPonudaPdf, imeFajla } from "@/lib/ponudaPdf";
 
 /*
@@ -39,6 +39,7 @@ function izUrla(sp: URLSearchParams): { u: Ulaz; m: PonudaMeta } {
     datum: sp.get("datum") || datumPonude(),
     kupac: sp.get("kupac") ?? "",
     sastavio: sp.get("sastavio") || "Luka Jovanović",
+    saIstovarom: sp.get("istovar") !== "0",
     transportEur: t == null || t === "" ? null : Number(t),
   };
   return { u, m };
@@ -204,7 +205,7 @@ export function PonudaView() {
             <p>Prihvatanjem ove ponude saglasni ste sa uslovima i karakteristikama navedenim u tehnickom listu</p>
             <p>Trajanje ove ponude je 3 dana.</p>
             <p>Ponuda je važeća bez potpisa i pečata.</p>
-            {m.transportEur != null && m.transportEur > 0 && <p>Transport robe sa istovarom je {m.transportEur}e</p>}
+            {m.transportEur != null && m.transportEur > 0 && <p>{transportLinija(m)}</p>}
             <p>Ponudu sastavio: {m.sastavio}</p>
           </div>
         </div>

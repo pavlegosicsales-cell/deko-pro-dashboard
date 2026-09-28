@@ -14,6 +14,7 @@ export type PonudaMeta = {
   datum: string;         // „20.08.2025."
   kupac: string;
   transportEur: number | null;   // null = bez transporta (preuzimanje), linija se ne štampa
+  saIstovarom: boolean;          // linija glasi „sa istovarom" ili „bez istovara"
   sastavio: string;
 };
 
@@ -27,8 +28,12 @@ export type PonudaRed = {
 };
 
 export const PONUDA_META: PonudaMeta = {
-  broj: "", datum: "", kupac: "", transportEur: null, sastavio: "Luka Jovanović",
+  broj: "", datum: "", kupac: "", transportEur: null, saIstovarom: true, sastavio: "Luka Jovanović",
 };
+
+/** Linija o transportu, tačno kao u templateu. */
+export const transportLinija = (m: PonudaMeta) =>
+  `Transport robe ${m.saIstovarom ? "sa istovarom" : "bez istovara"} je ${m.transportEur}e`;
 
 /* --- formati brojeva tačno kao u templateu ---
    cena po jedinici ima hiljade sa zarezom (1,290.00 RSD),
@@ -115,6 +120,7 @@ export function uAdresu(u: Ulaz, m: PonudaMeta): string {
     zatvoren: u.zatvoren ? "1" : "", spojena: u.spojena ? "1" : "", okapnice: u.saOkapnicama ? "1" : "",
     broj: m.broj, datum: m.datum, kupac: m.kupac, sastavio: m.sastavio,
     transport: m.transportEur == null ? "" : String(m.transportEur),
+    istovar: m.saIstovarom ? "" : "0",
   });
   for (const [k, v] of [...q.entries()]) if (v === "") q.delete(k);
   return "/ponuda?" + q.toString();

@@ -410,7 +410,7 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
                 <Polje label="Datum">
                   <input value={pon.datum} onChange={(e) => setPon((s) => ({ ...s, datum: e.target.value }))} className="inp" />
                 </Polje>
-                <Polje label="Transport sa istovarom (€)" hint="dogovor sa dostavljačem">
+                <Polje label="Transport (€)" hint="dogovor sa dostavljačem">
                   <BrojInput decimalno praznoJeNull value={pon.transportEur} onChange={(n) => setPon((s) => ({ ...s, transportEur: n }))}
                     className={`inp ${bezTransporta ? "opacity-40" : ""}`} placeholder="npr. 260" />
                 </Polje>
@@ -418,10 +418,17 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
                   <input value={pon.sastavio} onChange={(e) => setPon((s) => ({ ...s, sastavio: e.target.value }))} className="inp" />
                 </Polje>
               </div>
-              <label className="mt-3 flex items-center gap-2.5 text-sm text-ink">
-                <input type="checkbox" checked={bezTransporta} onChange={(e) => setBezTransporta(e.target.checked)} className="h-4 w-4 accent-[#0B1E3B]" />
-                Bez transporta, kupac preuzima u Mladenovcu
-              </label>
+              <div className="mt-3 flex flex-col gap-2">
+                <label className="flex items-center gap-2.5 text-sm text-ink">
+                  <input type="checkbox" checked={pon.saIstovarom} disabled={bezTransporta}
+                    onChange={(e) => setPon((s) => ({ ...s, saIstovarom: e.target.checked }))} className="h-4 w-4 accent-[#0B1E3B]" />
+                  Sa istovarom <span className="text-muted">{pon.saIstovarom ? "(u ponudi: „sa istovarom“)" : "(u ponudi: „bez istovara“)"}</span>
+                </label>
+                <label className="flex items-center gap-2.5 text-sm text-ink">
+                  <input type="checkbox" checked={bezTransporta} onChange={(e) => setBezTransporta(e.target.checked)} className="h-4 w-4 accent-[#0B1E3B]" />
+                  Bez transporta, kupac preuzima u Mladenovcu
+                </label>
+              </div>
               <button type="button" onClick={napraviPonudu} disabled={faliZaPonudu.length > 0}
                 className="btn mt-3 w-full disabled:cursor-not-allowed disabled:opacity-45">
                 Napravi ponudu

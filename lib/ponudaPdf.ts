@@ -7,7 +7,7 @@
   Fontovi: Carlito (iste mere kao Calibri) i Arimo (iste mere kao Arial) — imaju č, ć, š, ž, đ.
 */
 import type { Ulaz, Rezultat } from "@/lib/kalkulator";
-import { ponudaRedovi, svegaFmt, type PonudaMeta } from "@/lib/ponuda";
+import { ponudaRedovi, svegaFmt, transportLinija, type PonudaMeta } from "@/lib/ponuda";
 
 const VIS = 841.89;          // A4 visina
 const SIR = 595.28;          // A4 širina
@@ -181,7 +181,7 @@ export async function napraviPonudaPdf(u: Ulaz, r: Rezultat, m: PonudaMeta): Pro
     "Prihvatanjem ove ponude saglasni ste sa uslovima i karakteristikama navedenim u tehnickom listu",
     "Trajanje ove ponude je 3 dana.",
     "Ponuda je važeća bez potpisa i pečata.",
-    ...(m.transportEur != null && m.transportEur > 0 ? [`Transport robe sa istovarom je ${m.transportEur}e`] : []),
+    ...(m.transportEur != null && m.transportEur > 0 ? [transportLinija(m)] : []),
     `Ponudu sastavio: ${m.sastavio}`,
   ];
   linije.forEach((t, i) => pisi(t, 81.4, svegaDno + USLOVI[i], obican));
