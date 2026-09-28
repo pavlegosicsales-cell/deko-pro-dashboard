@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { izracunaj, CENOVNIK, POCETNI_ULAZ, type Ulaz, type Boja, type BojaZavrsnih, type Rezim } from "@/lib/kalkulator";
 import { ponudaRedovi, svegaFmt, datumPonude, type PonudaMeta } from "@/lib/ponuda";
+import { napraviPonudaPdf, imeFajla } from "@/lib/ponudaPdf";
 
 /*
   Ponuda za materijal, 1:1 po templateu „PONUDA BR. 184/26" (PromoBet, 20.08.2025.).
@@ -48,6 +50,7 @@ html, body { background: #6b7280; margin: 0; }
 .dug { display: inline-block; border: 0; border-radius: 8px; padding: 9px 14px; font-size: 14px;
   font-weight: 600; background: #0b1e3b; color: #fff; cursor: pointer; text-decoration: none; }
 .dug-tih { background: rgba(255,255,255,0.16); }
+.dug:disabled { opacity: .5; cursor: not-allowed; }
 .savet { opacity: .85; font-size: 12.5px; }
 .fali { background: #fde68a; color: #7c2d12; border-radius: 8px; padding: 9px 14px; font-weight: 600; }
 
@@ -108,6 +111,25 @@ export function PonudaView() {
   const r = izracunaj(u);
   const redovi = ponudaRedovi(u, r);
   const fali = [!m.kupac.trim() && "ime i prezime kupca", !m.broj.trim() && "broj ponude"].filter(Boolean);
+  const [stanje, setStanje] = useState<"" | "radi" | "gotovo" | "greska">("");
+
+  const sacuvaj = async () => {
+    setStanje("radi");
+    try {
+      const blob = await napraviPonudaPdf(u, r, m);
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = imeFajla(m);
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+      setStanje("gotovo");
+      setTimeout(() => setStanje(""), 2500);
+    } catch (e) {
+      console.error(e);
+      setStanje("greska");
+    }
+  };
 
   return (
     <>
@@ -115,10 +137,14 @@ export function PonudaView() {
 
       <div className="alatke">
         <Link href="/kalkulator" className="dug dug-tih">← Kalkulator</Link>
-        <button type="button" onClick={() => window.print()} className="dug">Štampaj / Sačuvaj kao PDF</button>
+        <button type="button" onClick={sacuvaj} disabled={stanje === "radi" || fali.length > 0} className="dug">
+          {stanje === "radi" ? "Pravim PDF…" : stanje === "gotovo" ? "Sačuvano ✓" : "Sačuvaj u PDF"}
+        </button>
         {fali.length > 0
           ? <span className="fali">Fali {fali.join(" i ")}. Vrati se u kalkulator i upiši.</span>
-          : <span className="savet">{"U prozoru za štampu izaberi „Sačuvaj kao PDF“ i margine „Bez margina“."}</span>}
+          : stanje === "greska"
+            ? <span className="fali">PDF nije napravljen. Probaj ponovo.</span>
+            : <span className="savet">Ovo ispod je pregled. Dugme skida gotov PDF, bez štampača.</span>}
       </div>
 
       <div className="list">

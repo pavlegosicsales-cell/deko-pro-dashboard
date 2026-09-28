@@ -21,18 +21,19 @@ export type Boja =
 export type BojaZavrsnih = "siva" | "crna" | "bela";
 export type Rezim = "ograda" | "zid" | "obloga";
 
-// Cenovnik, RSD/kom, sa PDV-om (DEKO_PRO_Cenovnik_A4.pdf; Luka potvrdio PDV 26.09.2026.)
+// Cenovnik, RSD/kom, sa PDV-om. Luka potvrdio PDV 26.09.2026.; od 28.09.2026. svaka stavka +25 din.
+// Obloga se NE menja: 10 EUR/m² = 1.174 din.
 export const CENOVNIK: { v: Boja; l: string; zidni: number; stubni: number }[] = [
-  { v: "natur_siva", l: "Natur siva", zidni: 420, stubni: 520 },
-  { v: "zuta", l: "Žuta", zidni: 460, stubni: 560 },
-  { v: "braon", l: "Braon", zidni: 460, stubni: 560 },
-  { v: "oranz", l: "Oranž", zidni: 460, stubni: 560 },
-  { v: "crvena", l: "Crvena", zidni: 460, stubni: 560 },
-  { v: "zelena", l: "Zelena", zidni: 460, stubni: 560 },
-  { v: "crna", l: "Crna", zidni: 460, stubni: 560 },
-  { v: "kapucino", l: "Kapućino", zidni: 560, stubni: 720 },
-  { v: "multikolor_rok", l: "Multikolor Rok", zidni: 580, stubni: 780 },
-  { v: "multikolor_rast", l: "Multikolor Rast", zidni: 580, stubni: 780 },
+  { v: "natur_siva", l: "Natur siva", zidni: 445, stubni: 545 },
+  { v: "zuta", l: "Žuta", zidni: 485, stubni: 585 },
+  { v: "braon", l: "Braon", zidni: 485, stubni: 585 },
+  { v: "oranz", l: "Oranž", zidni: 485, stubni: 585 },
+  { v: "crvena", l: "Crvena", zidni: 485, stubni: 585 },
+  { v: "zelena", l: "Zelena", zidni: 485, stubni: 585 },
+  { v: "crna", l: "Crna", zidni: 485, stubni: 585 },
+  { v: "kapucino", l: "Kapućino", zidni: 585, stubni: 745 },
+  { v: "multikolor_rok", l: "Multikolor Rok", zidni: 605, stubni: 805 },
+  { v: "multikolor_rast", l: "Multikolor Rast", zidni: 605, stubni: 805 },
 ];
 export const ZAVRSNE_BOJE: { v: BojaZavrsnih; l: string }[] = [
   { v: "siva", l: "Siva" }, { v: "crna", l: "Crna" }, { v: "bela", l: "Bela" },
@@ -58,7 +59,7 @@ export type Podesavanja = {
 
 export const PODRAZUMEVANO: Podesavanja = {
   modulDuzina: 0.40, modulVisina: 0.20, modulStub: 0.40, okapnicaDuzina: 0.50,
-  cenaOkapnica: 680, cenaKapa: 1290, cenaObloga: 1174,
+  cenaOkapnica: 705, cenaKapa: 1315, cenaObloga: 1174,
   tezinaZidni: 18, tezinaStubni: 36, tezinaObloga: 8, paleta: 72,
   rezervaPct: 5, partnerske: false,
 };
