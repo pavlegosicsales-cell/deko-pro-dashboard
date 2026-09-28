@@ -32,7 +32,7 @@ export const CENOVNIK: { v: Boja; l: string; zidni: number; stubni: number }[] =
   { v: "zelena", l: "Zelena", zidni: 485, stubni: 585 },
   { v: "crna", l: "Crna", zidni: 485, stubni: 585 },
   { v: "kapucino", l: "Kapućino", zidni: 585, stubni: 745 },
-  { v: "multikolor_rok", l: "Multikolor Rok", zidni: 605, stubni: 805 },
+  { v: "multikolor_rok", l: "Multikolor Rock", zidni: 605, stubni: 805 }   // katalog piše Rock,
   { v: "multikolor_rast", l: "Multikolor Rast", zidni: 605, stubni: 805 },
 ];
 export const ZAVRSNE_BOJE: { v: BojaZavrsnih; l: string }[] = [
