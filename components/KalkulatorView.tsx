@@ -11,6 +11,7 @@ import {
   type Ulaz, type Podesavanja, type Boja, type BojaZavrsnih, type Rezim,
 } from "@/lib/kalkulator";
 import { rsd } from "@/lib/format";
+import { PONUDA_META, datumPonude, uAdresu, type PonudaMeta } from "@/lib/ponuda";
 
 /*
   Kalkulator po pravilima iz „Deko Pro – pravila za računanje ograda, zidova i obloga" (27.09.2026.):
@@ -45,6 +46,29 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
   const [pod, setPod] = useState(false);
   const [ari, setAri] = useState("");
   const [kopirano, setKopirano] = useState<"" | "ponuda" | "beleska">("");
+  const [pon, setPon] = useState<PonudaMeta>(PONUDA_META);
+  const [bezTransporta, setBezTransporta] = useState(false);
+
+  // Broj ponude se NE predlaze: ponude prave i ljudi van dashboarda, pa bi predlog bio pogresan.
+  // Pamti se samo ko je sastavio.
+  useEffect(() => {
+    let sastavio = "Luka Jovanović";
+    try { sastavio = localStorage.getItem("deko.ponuda.sastavio") || sastavio; } catch { /* prazno */ }
+    // Datum i potpis postoje samo u pregledacu, pa se upisuju posle montiranja (inace puca hidracija).
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setPon((s) => ({ ...s, sastavio, datum: datumPonude() }));
+  }, []);
+
+  const faliZaPonudu = [
+    !pon.kupac.trim() && "ime i prezime kupca",
+    !pon.broj.trim() && "broj ponude",
+    !bezTransporta && pon.transportEur == null && "cena transporta",
+  ].filter(Boolean) as string[];
+
+  const napraviPonudu = () => {
+    try { localStorage.setItem("deko.ponuda.sastavio", pon.sastavio); } catch { /* prazno */ }
+    window.open(uAdresu(u, { ...pon, transportEur: bezTransporta ? null : pon.transportEur }), "_blank");
+  };
   const r = izracunaj(u, p);
 
   const broj = (k: keyof Ulaz) => (n: number) => setU((s) => ({ ...s, [k]: n }));
@@ -266,6 +290,45 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
                   <button type="button" onClick={() => kopiraj("ponuda")} className="btn btn-sm btn-plain">{kopirano === "ponuda" ? "Kopirano ✓" : "Kopiraj ponudu"}</button>
                 </span>
               </div>
+            </div>
+
+            {/* zvanična ponuda po templateu 184/26 */}
+            <div className="card p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Zvanična ponuda (PDF)</div>
+                <span className="text-[11px] text-muted">PromoBet, izgled kao ponuda 184/26</span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <Polje label="Ime i prezime kupca" puno>
+                  <input value={pon.kupac} onChange={(e) => setPon((s) => ({ ...s, kupac: e.target.value }))} className="inp" placeholder="npr. Miloš Obilić" />
+                </Polje>
+                <Polje label="Broj ponude" hint="obavezno, upiši ručno">
+                  <input value={pon.broj} onChange={(e) => setPon((s) => ({ ...s, broj: e.target.value }))} className="inp" placeholder="npr. 185/26" />
+                </Polje>
+                <Polje label="Datum">
+                  <input value={pon.datum} onChange={(e) => setPon((s) => ({ ...s, datum: e.target.value }))} className="inp" />
+                </Polje>
+                <Polje label="Transport sa istovarom (€)" hint="dogovor sa dostavljačem">
+                  <BrojInput decimalno praznoJeNull value={pon.transportEur} onChange={(n) => setPon((s) => ({ ...s, transportEur: n }))}
+                    className={`inp ${bezTransporta ? "opacity-40" : ""}`} placeholder="npr. 260" />
+                </Polje>
+                <Polje label="Ponudu sastavio">
+                  <input value={pon.sastavio} onChange={(e) => setPon((s) => ({ ...s, sastavio: e.target.value }))} className="inp" />
+                </Polje>
+              </div>
+              <label className="mt-3 flex items-center gap-2.5 text-sm text-ink">
+                <input type="checkbox" checked={bezTransporta} onChange={(e) => setBezTransporta(e.target.checked)} className="h-4 w-4 accent-[#0B1E3B]" />
+                Bez transporta, kupac preuzima u Mladenovcu
+              </label>
+              <button type="button" onClick={napraviPonudu} disabled={faliZaPonudu.length > 0}
+                className="btn mt-3 w-full disabled:cursor-not-allowed disabled:opacity-45">
+                Napravi ponudu
+              </button>
+              <p className="mt-2 text-[11px] leading-relaxed text-muted">
+                {faliZaPonudu.length > 0
+                  ? <>Fali: <b className="text-ink">{faliZaPonudu.join(", ")}</b>.</>
+                  : <>{"Otvara se list ponude, pa „Štampaj / Sačuvaj kao PDF“. Kapije, ispune, temelj i ugradnja se ne unose ovde."}</>}
+              </p>
             </div>
 
             {/* pregled ponude, tačno kako se šalje */}
