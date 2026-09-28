@@ -75,12 +75,13 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
   const pbroj = (k: keyof Podesavanja) => (n: number) => setP((s) => ({ ...s, [k]: n }));
   const prevoz = izracunajPrevoz(r);
   const brFmt = (n: number) => new Intl.NumberFormat("sr-RS").format(n);
+  // Poruka za prevoznika je kratka, onako kako je Pavle šalje: mesto, palete, kilaža, „Cena?“
   const prevozTekst = () => {
-    const red = ["Deko Pro, prevoz materijala", "Utovar: Mladenovac"];
-    if (u.mesto.trim()) red.push(`Istovar: ${u.mesto.trim()}`);
-    red.push("");
-    for (const x of prevoz.redovi) red.push(`${x.naziv}: ${brFmt(x.kom)} kom, ${x.palete} paleta, ${brFmt(x.kg)} kg`);
-    red.push("", `UKUPNO: ${prevoz.palete} paleta, ${brFmt(prevoz.kg)} kg`);
+    const n = prevoz.palete, zadnja = n % 10, dve = n % 100;
+    const rec = zadnja >= 2 && zadnja <= 4 && !(dve >= 12 && dve <= 14) ? "palete" : "paleta";
+    const red: string[] = [];
+    if (u.mesto.trim()) red.push(u.mesto.trim());
+    red.push(`${n} ${rec}`, `${prevoz.kg}kg`, "Cena?");
     return red.join("\n");
   };
 
