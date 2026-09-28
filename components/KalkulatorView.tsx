@@ -342,7 +342,7 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
               </table>
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-3 text-xs text-muted">
                 <span>
-                  Rezerva <b className="text-ink">+{p.rezervaPct} %</b> na svaku stavku
+                  {rucno ? <>Količine su upisane ručno, <b className="text-ink">bez rezerve</b></> : <>Rezerva <b className="text-ink">+{p.rezervaPct} %</b> na svaku stavku</>}
                 </span>
                 <span className="flex gap-2">
                   <button type="button" onClick={() => kopiraj("beleska")} className="btn btn-sm btn-ghost btn-plain">{kopirano === "beleska" ? "Kopirano ✓" : "Beleška za nas"}</button>
