@@ -132,7 +132,7 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
           <div className="on-dark rise flex flex-col items-start gap-3">
             <span className="eyebrow"><span className="eyebrow-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h4" /></svg></span>Interni panel</span>
             <h1 className="h2 lg:text-[34px]">Kalkulator</h1>
-            <p className="text-sm text-white/70">Tačna dužina, +5 % na svaku stavku, visine u celim redovima od 20 cm.</p>
+            <p className="text-sm text-white/70">{rucno ? "Sam upisuješ količine i boju, bez rezerve. Ponuda i prevoz se računaju iz toga." : "Tačna dužina, +5 % na svaku stavku, visine u celim redovima od 20 cm."}</p>
           </div>
         </div>
       </section>
