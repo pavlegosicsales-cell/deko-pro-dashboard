@@ -49,10 +49,6 @@ export type Podesavanja = {
   cenaOkapnica: number;   // RSD
   cenaKapa: number;       // RSD
   cenaObloga: number | null; // RSD/m² sa PDV-om; potvrdio Luka 28.09.2026. (null = ne računaj cenu)
-  tezinaZidni: number;    // kg (tehnički list: 18)
-  tezinaStubni: number;   // kg [potvrditi]
-  tezinaObloga: number;   // kg (procena ~8)
-  paleta: number;         // kom zidnog po paleti (72)
   rezervaPct: number;     // OBAVEZNO 5 %
   partnerske: boolean;    // interne cene za saradnike (zidni −25, stubni −10)
 };
@@ -60,7 +56,6 @@ export type Podesavanja = {
 export const PODRAZUMEVANO: Podesavanja = {
   modulDuzina: 0.40, modulVisina: 0.20, modulStub: 0.40, okapnicaDuzina: 0.50,
   cenaOkapnica: 705, cenaKapa: 1315, cenaObloga: 1174,
-  tezinaZidni: 18, tezinaStubni: 36, tezinaObloga: 8, paleta: 72,
   rezervaPct: 5, partnerske: false,
 };
 
@@ -89,6 +84,42 @@ export const POCETNI_ULAZ: Ulaz = {
   povrsina: 10, boja: "natur_siva", bojaZavrsnih: "siva", mesto: "",
 };
 
+/* Prevoz: koliko komada staje na paletu i koliko komad teži (Luka, 28.09.2026.).
+   Obloga: 12 m² i oko 900 kg na paleti, 12,5 kom/m² → 150 kom/paleta, 6 kg/kom. */
+export const PREVOZ: { kljuc: string; naziv: string; poPaleti: number; kg: number; napomena?: string }[] = [
+  { kljuc: "Zidni blok", naziv: "Zidni blok 19x19x39", poPaleti: 72, kg: 17 },
+  { kljuc: "Stubni blok", naziv: "Stubni blok 19x39x39", poPaleti: 24, kg: 36 },
+  { kljuc: "Kapa", naziv: "Betonska kapa 50x50", poPaleti: 10, kg: 40, napomena: "Luka kaže 10 do 20 kom na paletu; računamo 10, da prevoznik ne dođe sa premalim kamionom." },
+  { kljuc: "Okapnica", naziv: "Betonska okapnica 50x30", poPaleti: 60, kg: 15 },
+  { kljuc: "Dekorativna obloga", naziv: "Dekorativna obloga", poPaleti: 150, kg: 6, napomena: "12 m² i oko 900 kg na paleti." },
+];
+
+export type PrevozRed = { naziv: string; kom: number; palete: number; kg: number; poPaleti: number; kgPoKom: number };
+export type Prevoz = { redovi: PrevozRed[]; palete: number; kg: number; napomene: string[] };
+
+/** Palete i kilogrami, za dogovor sa prevoznikom. Palete se zaokružuju NAVIŠE, po proizvodu
+    (2,3 palete su 3 palete), jer se dva proizvoda ne mešaju na istoj paleti. */
+export function izracunajPrevoz(r: Rezultat): Prevoz {
+  const redovi: PrevozRed[] = [];
+  const napomene: string[] = [];
+  for (const s of r.stavke) {
+    if (s.kom <= 0) continue;
+    const t = PREVOZ.find((x) => s.naziv.startsWith(x.kljuc));
+    if (!t) continue;
+    redovi.push({
+      naziv: t.naziv, kom: s.kom, poPaleti: t.poPaleti, kgPoKom: t.kg,
+      palete: Math.ceil(s.kom / t.poPaleti), kg: Math.round(s.kom * t.kg),
+    });
+    if (t.napomena && !napomene.includes(t.napomena)) napomene.push(t.napomena);
+  }
+  return {
+    redovi,
+    palete: redovi.reduce((a, x) => a + x.palete, 0),
+    kg: redovi.reduce((a, x) => a + x.kg, 0),
+    napomene,
+  };
+}
+
 export type Stavka = {
   naziv: string; opis: string; kom: number; jedinica: string;
   cena: number | null; ukupno: number | null;
@@ -109,6 +140,12 @@ export type Rezultat = {
 const r2 = (x: number) => Math.round(x * 100) / 100;
 const zaokruzi = (x: number) => Math.round(x - 1e-9);   // pravilo 3: na najbliži ceo broj
 const rsdFmt = (n: number) => new Intl.NumberFormat("sr-RS").format(Math.round(n));
+
+/** Dopuni rezultat brojem paleta i kilogramima iz tabele PREVOZ. */
+function saPrevozom(r: Rezultat): Rezultat {
+  const pr = izracunajPrevoz(r);
+  return { ...r, palete: pr.palete, tezinaKg: pr.kg };
+}
 
 /** Visina u redovima od 20 cm. Ako nije ceo broj redova, vraća dve najbliže opcije. */
 export function redoviZaVisinu(visina: number, modul = 0.20) {
@@ -149,11 +186,11 @@ export function izracunaj(u: Ulaz, p: Podesavanja = PODRAZUMEVANO): Rezultat {
       ukupno: p.cenaObloga != null ? Math.round(m2Naplata * p.cenaObloga) : null,
     });
     const ukupno = stavke.reduce((s, x) => s + (x.ukupno ?? 0), 0);
-    return {
+    return saPrevozom({
       rezim: "obloga", polja: 0, stubovi: 0, stvarniRazmak: 0, redovaPolja: 0, redovaStuba: 0,
       duzinaZida: 0, m2: r2(m2), stavke, ukupno, cenaNepotpuna: p.cenaObloga == null,
-      tezinaKg: Math.round(kom * p.tezinaObloga), palete: 0, napomene, racun,
-    };
+      tezinaKg: 0, palete: 0, napomene, racun,   // popunjava se ispod, iz tabele PREVOZ
+    });
   }
 
   // ---------- redovi ----------
@@ -175,11 +212,11 @@ export function izracunaj(u: Ulaz, p: Podesavanja = PODRAZUMEVANO): Rezultat {
       napomene.push("Okapnice nisu uračunate. Nisu obavezne, ali se preporučuju: štite šupljine bloka od vode i mraza i daju završni izgled.");
     }
     const ukupno = stavke.reduce((s, x) => s + (x.ukupno ?? 0), 0);
-    return {
+    return saPrevozom({
       rezim: "zid", polja: 0, stubovi: 0, stvarniRazmak: 0, redovaPolja, redovaStuba: 0,
       duzinaZida: r2(L), m2: r2(L * redovaPolja * p.modulVisina), stavke, ukupno, cenaNepotpuna: false,
-      tezinaKg: Math.round(zidni * p.tezinaZidni), palete: Math.ceil(zidni / p.paleta), napomene, racun,
-    };
+      tezinaKg: 0, palete: 0, napomene, racun,
+    });
   }
 
   // ---------- OGRADA ----------
@@ -224,12 +261,11 @@ export function izracunaj(u: Ulaz, p: Podesavanja = PODRAZUMEVANO): Rezultat {
   else napomene.push("Kapije nisu oduzete. Ako klijent ima kapiju, upiši njenu širinu.");
 
   const ukupno = stavke.reduce((s, x) => s + (x.ukupno ?? 0), 0);
-  return {
+  return saPrevozom({
     rezim: "ograda", polja, stubovi, stvarniRazmak: r2(stvarniRazmak), redovaPolja, redovaStuba,
     duzinaZida: r2(Lz), m2: r2(Lz * redovaPolja * p.modulVisina), stavke, ukupno, cenaNepotpuna: false,
-    tezinaKg: Math.round(zidni * p.tezinaZidni + stubni * p.tezinaStubni),
-    palete: Math.ceil(zidni / p.paleta), napomene, racun,
-  };
+    tezinaKg: 0, palete: 0, napomene, racun,
+  });
 }
 
 /** Ponuda u formatu za DM / WhatsApp / Viber (pravila, deo 8). */
@@ -263,7 +299,7 @@ export function internaBeleska(u: Ulaz, r: Rezultat): string {
   const red: string[] = ["Kako je računato:"];
   red.push(...r.racun.map((x) => "  " + x));
   red.push(`  Rezerva +5 % na svaku stavku, količine zaokružene na najbliži ceo broj.`);
-  if (r.rezim === "ograda") red.push(`  Težina ≈ ${rsdFmt(r.tezinaKg)} kg, zidni blok ${r.palete} paleta (72/paleta).`);
+  red.push(`  Prevoz: ${r.palete} paleta, ≈ ${rsdFmt(r.tezinaKg)} kg.`);
   red.push("", "Nije uključeno: temelj, prevoz, ugradnja, alu paneli i ispune, kapije. To dodaje Luka.");
   if (r.napomene.length) { red.push("", "Proveriti:"); red.push(...r.napomene.map((x) => "  " + x)); }
   return red.join("\n");

@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Sidebar } from "@/components/Sidebar";
 import { Logo } from "@/components/ui";
 import {
-  izracunaj, ponudaTekst, internaBeleska, redoviZaVisinu, obimPlaca,
+  izracunaj, ponudaTekst, internaBeleska, redoviZaVisinu, obimPlaca, izracunajPrevoz,
   CENOVNIK, ZAVRSNE_BOJE, PODRAZUMEVANO, POCETNI_ULAZ,
   type Ulaz, type Podesavanja, type Boja, type BojaZavrsnih, type Rezim,
 } from "@/lib/kalkulator";
@@ -45,7 +45,7 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
   const [p, setP] = useState<Podesavanja>(PODRAZUMEVANO);
   const [pod, setPod] = useState(false);
   const [ari, setAri] = useState("");
-  const [kopirano, setKopirano] = useState<"" | "ponuda" | "beleska">("");
+  const [kopirano, setKopirano] = useState<"" | "ponuda" | "beleska" | "prevoz">("");
   const [pon, setPon] = useState<PonudaMeta>(PONUDA_META);
   const [bezTransporta, setBezTransporta] = useState(false);
 
@@ -73,9 +73,21 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
 
   const broj = (k: keyof Ulaz) => (n: number) => setU((s) => ({ ...s, [k]: n }));
   const pbroj = (k: keyof Podesavanja) => (n: number) => setP((s) => ({ ...s, [k]: n }));
-  const kopiraj = async (sta: "ponuda" | "beleska") => {
+  const prevoz = izracunajPrevoz(r);
+  const brFmt = (n: number) => new Intl.NumberFormat("sr-RS").format(n);
+  const prevozTekst = () => {
+    const red = ["Deko Pro, prevoz materijala", "Utovar: Mladenovac"];
+    if (u.mesto.trim()) red.push(`Istovar: ${u.mesto.trim()}`);
+    red.push("");
+    for (const x of prevoz.redovi) red.push(`${x.naziv}: ${brFmt(x.kom)} kom, ${x.palete} paleta, ${brFmt(x.kg)} kg`);
+    red.push("", `UKUPNO: ${prevoz.palete} paleta, ${brFmt(prevoz.kg)} kg`);
+    return red.join("\n");
+  };
+
+  const kopiraj = async (sta: "ponuda" | "beleska" | "prevoz") => {
     try {
-      await navigator.clipboard.writeText(sta === "ponuda" ? ponudaTekst(u, r) : internaBeleska(u, r));
+      await navigator.clipboard.writeText(
+        sta === "ponuda" ? ponudaTekst(u, r) : sta === "prevoz" ? prevozTekst() : internaBeleska(u, r));
       setKopirano(sta); setTimeout(() => setKopirano(""), 1600);
     } catch { /* prazno */ }
   };
@@ -244,7 +256,7 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
               {obloga && <>
                 <Plocica label="Površina" value={`${r.m2} m²`} sub="po strani" />
                 <Plocica label="Obloga" value={String(r.stavke[0]?.kom ?? 0)} sub={`12,5 kom/m² + 5 % = ${r.stavke[0]?.dodatak ?? "—"}`} />
-                <Plocica label="Težina" value={`≈ ${new Intl.NumberFormat("sr-RS").format(r.tezinaKg)} kg`} sub="~8 kg/kom" />
+                <Plocica label="Težina" value={`≈ ${new Intl.NumberFormat("sr-RS").format(r.tezinaKg)} kg`} sub="6 kg/kom" />
               </>}
               <Plocica label="Ukupno" value={r.cenaNepotpuna ? "—" : rsd(r.ukupno)} sub={r.cenaNepotpuna ? "cena nije potvrđena" : "materijal sa PDV-om"} zlato />
             </div>
@@ -283,13 +295,55 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-3 text-xs text-muted">
                 <span>
                   Rezerva <b className="text-ink">+{p.rezervaPct} %</b> na svaku stavku
-                  {!obloga && <> · težina ≈ <b className="text-ink">{new Intl.NumberFormat("sr-RS").format(r.tezinaKg)} kg</b> · zidni blok <b className="text-ink">{r.palete}</b> paleta</>}
                 </span>
                 <span className="flex gap-2">
                   <button type="button" onClick={() => kopiraj("beleska")} className="btn btn-sm btn-ghost btn-plain">{kopirano === "beleska" ? "Kopirano ✓" : "Beleška za nas"}</button>
                   <button type="button" onClick={() => kopiraj("ponuda")} className="btn btn-sm btn-plain">{kopirano === "ponuda" ? "Kopirano ✓" : "Kopiraj ponudu"}</button>
                 </span>
               </div>
+            </div>
+
+            {/* prevoz: palete i kilogrami, za dogovor sa prevoznikom */}
+            <div className="card overflow-hidden">
+              <div className="flex flex-wrap items-center justify-between gap-2 px-4 pt-4">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Prevoz — za dostavljača</div>
+                <span className="text-[11px] text-muted">palete se zaokružuju naviše</span>
+              </div>
+              <table className="mt-3 w-full text-sm">
+                <thead>
+                  <tr className="border-y border-line bg-wash/70 text-left text-[11px] uppercase tracking-wider text-muted [&>th]:whitespace-nowrap">
+                    <th className="px-4 py-2 font-semibold">Proizvod</th>
+                    <th className="px-2 py-2 text-right font-semibold">Kom</th>
+                    <th className="px-2 py-2 text-right font-semibold">Palete</th>
+                    <th className="px-4 py-2 text-right font-semibold">Kg</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {prevoz.redovi.map((x) => (
+                    <tr key={x.naziv} className="border-b border-line last:border-0">
+                      <td className="px-4 py-2 text-ink">{x.naziv} <span className="text-muted">{x.poPaleti}/paleta · {x.kgPoKom} kg</span></td>
+                      <td className="whitespace-nowrap px-2 py-2 text-right tabular-nums">{brFmt(x.kom)}</td>
+                      <td className="whitespace-nowrap px-2 py-2 text-right font-semibold tabular-nums">{x.palete}</td>
+                      <td className="whitespace-nowrap px-4 py-2 text-right tabular-nums">{brFmt(x.kg)}</td>
+                    </tr>
+                  ))}
+                  <tr className="bg-wash/70">
+                    <td className="px-4 py-2.5 font-semibold text-ink">Svega</td>
+                    <td />
+                    <td className="whitespace-nowrap px-2 py-2.5 text-right font-display text-[17px] font-bold tabular-nums text-navy">{prevoz.palete}</td>
+                    <td className="whitespace-nowrap px-4 py-2.5 text-right font-display text-[17px] font-bold tabular-nums text-navy">{brFmt(prevoz.kg)}</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-3 text-xs text-muted">
+                <span>≈ <b className="text-ink">{(prevoz.kg / 1000).toFixed(1)} t</b>. Javi prevozniku palete i kilograme, pa cenu upiši dole u ponudu.</span>
+                <button type="button" onClick={() => kopiraj("prevoz")} className="btn btn-sm btn-plain">{kopirano === "prevoz" ? "Kopirano ✓" : "Kopiraj za dostavljača"}</button>
+              </div>
+              {prevoz.napomene.length > 0 && (
+                <div className="border-t border-line bg-wash/50 px-4 py-2.5 text-[11px] leading-relaxed text-muted">
+                  {prevoz.napomene.map((n) => <p key={n}>{n}</p>)}
+                </div>
+              )}
             </div>
 
             {/* zvanična ponuda po templateu 184/26 */}
