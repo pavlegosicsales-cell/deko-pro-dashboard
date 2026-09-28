@@ -336,7 +336,7 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
                 </tbody>
               </table>
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-3 text-xs text-muted">
-                <span>≈ <b className="text-ink">{(prevoz.kg / 1000).toFixed(1)} t</b>. Javi prevozniku palete i kilograme, pa cenu upiši dole u ponudu.</span>
+                <span>≈ <b className="text-ink">{(prevoz.kg / 1000).toFixed(1).replace(".", ",")} t</b>. Javi prevozniku palete i kilograme, pa cenu upiši dole u ponudu.</span>
                 <button type="button" onClick={() => kopiraj("prevoz")} className="btn btn-sm btn-plain">{kopirano === "prevoz" ? "Kopirano ✓" : "Kopiraj za dostavljača"}</button>
               </div>
               {prevoz.napomene.length > 0 && (
