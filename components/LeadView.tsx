@@ -163,8 +163,9 @@ export function LeadView({ leadovi, tabelaFali, demo, login, migracijaFali }: { 
   const nNovi = opt.filter((l) => l.status === "nov").length;
   const nNije = opt.filter((l) => l.status === "nije_se_javio").length;
   const nDospeli = opt.filter((l) => jeDospeo(l, danas)).length;
-  const nVruci = opt.filter((l) => OTVORENI.has(l.status) && l.temperatura === "vruc").length;
-  const nTopli = opt.filter((l) => OTVORENI.has(l.status) && l.temperatura === "topao").length;
+  // podnaslov „Prioritetni" broji samo medju onima koje treba pozvati, kao i sama kartica
+  const nVruci = opt.filter((l) => POGLEDI.pozvati(l, danas) && l.temperatura === "vruc").length;
+  const nTopli = opt.filter((l) => POGLEDI.pozvati(l, danas) && l.temperatura === "topao").length;
   const nazivPogleda: Record<Pogled, string> = { pozvati: "Pozvati", prioritet: "Prioritetni", dostaviti_ponudu: "Dostaviti ponudu", ponuda: "Čeka odgovor na ponudu", kupci: "Kupci", zakazani: "Zakazani pozivi", odustali: "Odustali", svi: "Svi leadovi" };
 
   return (
