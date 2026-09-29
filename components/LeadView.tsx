@@ -8,7 +8,7 @@ import { brojNaDan, danasKljuc, pomeriDan } from "@/lib/analitika";
 import { Card, PlusIco, Logo } from "@/components/ui";
 import { Sidebar } from "@/components/Sidebar";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
-import { STATUSI, OTVORENI, SVI_PROIZVODI, SVI_IZVORI, DETALJI, staFali, obuhvatKratko, modelKratko, modelLabel, label, normalizujProizvod, DRUGO, TEMPERATURE, TIPOVI_KUPCA, RAZLOZI, ROKOVI, temperatura, type Detalji } from "@/lib/opcije";
+import { STATUSI, SVI_PROIZVODI, SVI_IZVORI, DETALJI, staFali, obuhvatKratko, modelKratko, modelLabel, label, normalizujProizvod, DRUGO, TEMPERATURE, TIPOVI_KUPCA, RAZLOZI, ROKOVI, temperatura, type Detalji } from "@/lib/opcije";
 import { LeadWizard } from "@/components/LeadWizard";
 import { telLink, smsLink, waLink, viberLink } from "@/lib/lead";
 import { pre, rsd } from "@/lib/format";
@@ -390,7 +390,7 @@ function LeadTabela({ leadovi, procene, danas, onStatus, onBeleska, onDatum, onP
                 <td className="px-4 py-3 whitespace-nowrap">{l.izvor ? <span className="tag tag-gold">{label(SVI_IZVORI, l.izvor)}</span> : <span className="text-muted">—</span>}</td>
                 <td className="max-w-[380px] px-4 py-3">
                   <ZaPoziv l={l} />
-                  <ProcenaOznaka p={procene.get(l.id)} />
+                  <ProcenaOznaka p={procene.get(l.id)} l={l} />
                   {fali(l).length > 0 && <div className="mt-1"><span className="tag tag-warn max-w-full whitespace-normal text-left leading-snug">Nepotpun: {fali(l).join(", ")}</span></div>}
                   {l.info ? <p className="mt-1 whitespace-pre-wrap text-[13px] leading-snug text-ink/85">{l.info}</p> : null}
                   <Beleska id={l.id} vrednost={l.ishod_beleska} onSave={onBeleska} mala />
@@ -480,7 +480,7 @@ function LeadKartica({ l, procena, danas, onStatus, onBeleska, onDatum, onPriori
       </div>
 
       <ZaPoziv l={l} />
-      <ProcenaOznaka p={procena} />
+      <ProcenaOznaka p={procena} l={l} />
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {temperatura(l.temperatura) && <span className="tag" style={{ background: temperatura(l.temperatura)!.boja, borderColor: temperatura(l.temperatura)!.boja, color: "#fff" }}>{temperatura(l.temperatura)!.l}</span>}
         {l.tip_kupca && <span className="tag">{label(TIPOVI_KUPCA, l.tip_kupca)}</span>}
@@ -530,17 +530,20 @@ function LeadKartica({ l, procena, danas, onStatus, onBeleska, onDatum, onPriori
 }
 
 /* Procena vrednosti projekta iz kalkulatora, sa linkom da se otvori u kalkulatoru sa istim merama. */
-function ProcenaOznaka({ p }: { p?: Procena }) {
-  if (!p) return null;
-  const u = p.ulaz;
-  const href = `/kalkulator?duzina=${u.duzina}&razmak=${u.razmak}&vp=${u.visinaPolja}&vs=${u.visinaStuba}&boja=${u.boja}&bz=${u.bojaZavrsnih}`
-    + (u.brojKapija ? `&bk=${u.brojKapija}&kapije=${u.sirinaKapija}` : "") + (u.zatvoren ? "&zatvoren=1" : "") + (u.spojena ? "&spojena=1" : "");
-  const opis = `${u.duzina} m · polje ${u.visinaPolja} · stub ${u.visinaStuba} · razmak ${u.razmak} · ${bojaNaziv(u.boja)}`;
-  // Bez iznosa na kartici (Pavle, 27.09.2026.); vrednost služi samo za redosled. Link nosi mere u kalkulator.
+function ProcenaOznaka({ p, l }: { p?: Procena; l: LeadRow }) {
+  // U „Dostaviti ponudu" dugme ima svaki lead, i bez mera: kalkulator izabere lead i popuni sve što ima.
+  if (!p && l.status !== "dostaviti_ponudu") return null;
+  const href = `/kalkulator?lead=${l.id}`;
+  const u = p?.ulaz;
+  const opis = u ? `${u.duzina} m · polje ${u.visinaPolja} · stub ${u.visinaStuba} · razmak ${u.razmak} · ${bojaNaziv(u.boja)}` : "bez mera, upisuju se ručno";
+  // Bez iznosa na kartici (Pavle, 27.09.2026.); vrednost služi samo za redosled. Link bira lead u kalkulatoru.
+  const istaknuto = l.status === "dostaviti_ponudu";
   return (
     <div className="mt-1">
-      <Link href={href} title={`Otvori u kalkulatoru: ${opis}${p.pretpostavke.length ? ` (pretpostavljeno: ${p.pretpostavke.join(", ")})` : ""}`}
-        className="inline-flex items-center gap-1 text-[12px] text-muted underline-offset-2 hover:text-navy hover:underline">
+      <Link href={href} title={`Otvori u kalkulatoru sa ovim leadom: ${opis}${p?.pretpostavke.length ? ` (pretpostavljeno: ${p.pretpostavke.join(", ")})` : ""}`}
+        className={istaknuto
+          ? "inline-flex items-center gap-1 rounded-full border border-navy bg-navy px-2.5 py-1 text-[12px] font-semibold text-white hover:bg-navy/90"
+          : "inline-flex items-center gap-1 text-[12px] text-muted underline-offset-2 hover:text-navy hover:underline"}>
         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M8 6h8M8 11h2M12 11h2M8 15h2M12 15h2M16 15v3" /></svg>
         Kalkulator
       </Link>

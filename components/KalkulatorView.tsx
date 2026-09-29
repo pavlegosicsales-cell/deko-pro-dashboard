@@ -76,10 +76,32 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
   const [vraceno, setVraceno] = useState(false);
   const prviPut = useRef(true);
 
+  /* Izbor leada: povlači mere, boje, kapije, oblik, mesto, ime kupca i Pajina pitanja. Posle toga se sve može menjati. */
+  const izabrani = leadId ? leadovi.find((l) => l.id === leadId) ?? null : null;
+  const qq = trazi.trim().toLowerCase();
+  const pogodjeni = qq && !(izabrani && imeLeada(izabrani).toLowerCase() === qq)
+    ? leadovi.filter((l) => [imeLeada(l), l.telefon ?? "", l.lokacija ?? ""].some((x) => x.toLowerCase().includes(qq))).slice(0, 8)
+    : [];
+  const izaberiLead = (l: LeadKratko) => {
+    const d = l.detalji ?? {};
+    const x = ulazIzLeada(l);
+    const rezim: Rezim = l.proizvod === "potporni_zid" ? "zid" : l.proizvod === "oblaganje" ? "obloga" : "ograda";
+    setU((s) => (x ? { ...x.ulaz, rezim } : { ...s, rezim, mesto: l.lokacija ?? s.mesto }));
+    setPretpostavke(x?.pretpostavke ?? (l.duzina_m ? [] : ["lead nema dužinu, mere upiši ručno"]));
+    setPon((s) => ({ ...s, kupac: imeLeada(l) }));
+    setPaja({ ime: l.ime || imeLeada(l), lokacija: l.lokacija ?? "", temelj: d.temelj ?? "", iskop: d.iskop ?? "", cokla: d.cokla ?? "", dodatniRadovi: d.dodatni_radovi ?? "" });
+    setLeadId(l.id); setTrazi(imeLeada(l)); setOtvoren(false);
+  };
+  const otkaciLead = () => { setLeadId(null); setTrazi(""); setPretpostavke([]); };
+
   /* Unos se pamti u pregledacu, pa se vracanjem na kalkulator nista ne gubi.
      Ako adresa nosi mere (npr. klik sa kartice leada), one imaju prednost nad zapamcenim.
      Broj ponude se NE predlaze: ponude prave i ljudi van dashboarda. */
   useEffect(() => {
+    // ?lead=<id> sa kartice leada: izaberi ga odmah, sve popunjeno, i ne diraj zapamćeno stanje
+    const izLeada = sp.get("lead") ? leadovi.find((x) => x.id === sp.get("lead")) : null;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (izLeada) { izaberiLead(izLeada); setPon((st) => ({ ...st, datum: datumPonude() })); return; }
     const izAdrese = ["rezim", "duzina", "razmak", "vp", "vs", "kapije", "povrsina", "boja", "mesto", "sb"]
       .some((k) => sp.get(k) !== null);
     let sacuvano: Sacuvano | null = null;
@@ -88,7 +110,7 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
     try { sastavio = localStorage.getItem("deko.ponuda.sastavio") || sastavio; } catch { /* prazno */ }
     const danas = danasnjiDatum();
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+     
     setPon((st) => ({
       ...st, ...(sacuvano?.pon ?? {}), sastavio: sacuvano?.pon?.sastavio || sastavio,
       // datum se osvezava ako je zapamceno od ranijeg dana, da se ponuda ne posalje sa starim datumom
@@ -129,23 +151,6 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
     setLeadId(null); setTrazi(""); setPaja(PRAZNA_PAJA); setPretpostavke([]);
   };
 
-  /* Izbor leada: povlači mere, boje, kapije, oblik, mesto, ime kupca i Pajina pitanja. Posle toga se sve može menjati. */
-  const izabrani = leadId ? leadovi.find((l) => l.id === leadId) ?? null : null;
-  const qq = trazi.trim().toLowerCase();
-  const pogodjeni = qq && !(izabrani && imeLeada(izabrani).toLowerCase() === qq)
-    ? leadovi.filter((l) => [imeLeada(l), l.telefon ?? "", l.lokacija ?? ""].some((x) => x.toLowerCase().includes(qq))).slice(0, 8)
-    : [];
-  const izaberiLead = (l: LeadKratko) => {
-    const d = l.detalji ?? {};
-    const x = ulazIzLeada(l);
-    const rezim: Rezim = l.proizvod === "potporni_zid" ? "zid" : l.proizvod === "oblaganje" ? "obloga" : "ograda";
-    setU((s) => (x ? { ...x.ulaz, rezim } : { ...s, rezim, mesto: l.lokacija ?? s.mesto }));
-    setPretpostavke(x?.pretpostavke ?? (l.duzina_m ? [] : ["lead nema dužinu, mere upiši ručno"]));
-    setPon((s) => ({ ...s, kupac: imeLeada(l) }));
-    setPaja({ ime: l.ime || imeLeada(l), lokacija: l.lokacija ?? "", temelj: d.temelj ?? "", iskop: d.iskop ?? "", cokla: d.cokla ?? "", dodatniRadovi: d.dodatni_radovi ?? "" });
-    setLeadId(l.id); setTrazi(imeLeada(l)); setOtvoren(false);
-  };
-  const otkaciLead = () => { setLeadId(null); setTrazi(""); setPretpostavke([]); };
 
   const faliZaPonudu = [
     !pon.kupac.trim() && "ime i prezime kupca",
