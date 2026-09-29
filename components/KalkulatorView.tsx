@@ -19,6 +19,10 @@ import { PONUDA_META, datumPonude, uAdresu, type PonudaMeta } from "@/lib/ponuda
   Tri režima: ograda sa stubovima, pun zid bez stubova, dekorativna obloga.
 */
 
+const KLJUC = "deko.kalkulator.v1";
+const danasnjiDatum = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Belgrade" });
+type Sacuvano = { kad: string; u: Ulaz; p: Podesavanja; pon: PonudaMeta; bezTransporta: boolean };
+
 const REZIMI: { v: Rezim; l: string; opis: string }[] = [
   { v: "ograda", l: "Ograda", opis: "stubovi i polja" },
   { v: "zid", l: "Pun zid", opis: "bez stubova" },
@@ -51,15 +55,58 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
   const [pon, setPon] = useState<PonudaMeta>(PONUDA_META);
   const [bezTransporta, setBezTransporta] = useState(false);
 
-  // Broj ponude se NE predlaze: ponude prave i ljudi van dashboarda, pa bi predlog bio pogresan.
-  // Pamti se samo ko je sastavio.
+  const [vraceno, setVraceno] = useState(false);
+  const prviPut = useRef(true);
+
+  /* Unos se pamti u pregledacu, pa se vracanjem na kalkulator nista ne gubi.
+     Ako adresa nosi mere (npr. klik sa kartice leada), one imaju prednost nad zapamcenim.
+     Broj ponude se NE predlaze: ponude prave i ljudi van dashboarda. */
   useEffect(() => {
+    const izAdrese = ["rezim", "duzina", "razmak", "vp", "vs", "kapije", "povrsina", "boja", "mesto", "sb"]
+      .some((k) => sp.get(k) !== null);
+    let sacuvano: Sacuvano | null = null;
+    try { sacuvano = JSON.parse(localStorage.getItem(KLJUC) || "null"); } catch { /* prazno */ }
     let sastavio = "Luka Jovanović";
     try { sastavio = localStorage.getItem("deko.ponuda.sastavio") || sastavio; } catch { /* prazno */ }
-    // Datum i potpis postoje samo u pregledacu, pa se upisuju posle montiranja (inace puca hidracija).
+    const danas = danasnjiDatum();
+
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setPon((s) => ({ ...s, sastavio, datum: datumPonude() }));
-  }, []);
+    setPon((st) => ({
+      ...st, ...(sacuvano?.pon ?? {}), sastavio: sacuvano?.pon?.sastavio || sastavio,
+      // datum se osvezava ako je zapamceno od ranijeg dana, da se ponuda ne posalje sa starim datumom
+      datum: !sacuvano || sacuvano.kad !== danas ? datumPonude() : (sacuvano.pon?.datum || datumPonude()),
+    }));
+    if (sacuvano) {
+      if (!izAdrese && sacuvano.u) {
+         
+        setU((st) => ({ ...st, ...sacuvano.u, rucne: sacuvano.u.rucne?.length ? sacuvano.u.rucne : st.rucne }));
+      }
+       
+      if (sacuvano.p) setP((st) => ({ ...st, ...sacuvano.p }));
+       
+      setBezTransporta(!!sacuvano.bezTransporta);
+       
+      if (!izAdrese) setVraceno(true);
+    }
+  }, [sp]);
+
+  // svaka izmena se odmah pamti
+  useEffect(() => {
+    if (prviPut.current) { prviPut.current = false; return; }
+    try {
+      localStorage.setItem(KLJUC, JSON.stringify({ kad: danasnjiDatum(), u, p, pon, bezTransporta }));
+    } catch { /* prazno */ }
+  }, [u, p, pon, bezTransporta]);
+
+  const isprazni = () => {
+    try { localStorage.removeItem(KLJUC); } catch { /* prazno */ }
+    setU(POCETNI_ULAZ);
+    setP(PODRAZUMEVANO);
+    setPon({ ...PONUDA_META, datum: datumPonude(), sastavio: pon.sastavio });
+    setBezTransporta(false);
+    setAri("");
+    setVraceno(false);
+  };
 
   const faliZaPonudu = [
     !pon.kupac.trim() && "ime i prezime kupca",
@@ -266,6 +313,13 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
                   )}
                 </div>
                 <p className="mt-1.5 text-[11px] text-muted">Kvadratni plac. Duguljast ima veći obim, uvek tražiti stvarne mere.</p>
+              </div>
+            )}
+
+            {vraceno && (
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-[10px] bg-wash px-3 py-2.5 text-[12px] text-muted">
+                <span>Vraćeno ono što si poslednji put upisao.</span>
+                <button type="button" onClick={isprazni} className="font-semibold text-ink underline underline-offset-2">Isprazni</button>
               </div>
             )}
 
