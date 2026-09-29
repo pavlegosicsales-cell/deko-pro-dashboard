@@ -4,7 +4,8 @@
   podrazumevanu (START: polje 0,8 / stub 1,6; PRIVAT: 1,8 / 2,0; razmak 2 m; natur siva
   kao najjeftinija) i to navodi u `pretpostavke`, da se zna koliko je procena gruba.
 */
-import { izracunaj, CENOVNIK, POCETNI_ULAZ, type Boja, type Ulaz } from "@/lib/kalkulator";
+import { izracunaj, CENOVNIK, POCETNI_ULAZ, type Boja, type BojaZavrsnih, type Ulaz } from "@/lib/kalkulator";
+import { kapijeIzTeksta } from "@/lib/opcije";
 
 type LeadZaProcenu = {
   proizvod?: string | null; duzina_m?: number | null; obuhvat?: string | null;
@@ -58,7 +59,16 @@ export function proceniLead(l: LeadZaProcenu): Procena | null {
   let boja = bojaKljuc(d.boja);
   if (!boja) { boja = "natur_siva"; pretpostavke.push("natur siva"); }
 
-  const ulaz: Ulaz = { ...POCETNI_ULAZ, rezim: "ograda", duzina: Number(l.duzina_m), razmak, visinaPolja, visinaStuba, boja };
+  // posle poziva: boja kapa, kapije i oblik ograde (ako su upisani)
+  const bz = (d.boja_zavrsnih ?? "").toLowerCase();
+  const bojaZavrsnih: BojaZavrsnih = bz.startsWith("crn") ? "crna" : bz.startsWith("bel") ? "bela" : "siva";
+  const kap = kapijeIzTeksta(d.kapije);
+  const oblik = (d.oblik ?? "").toLowerCase();
+  const ulaz: Ulaz = {
+    ...POCETNI_ULAZ, rezim: "ograda", duzina: Number(l.duzina_m), razmak, visinaPolja, visinaStuba, boja, bojaZavrsnih,
+    brojKapija: kap.broj, sirinaKapija: kap.sirina,
+    zatvoren: oblik.includes("plac"), spojena: oblik.includes("nastavlja"),
+  };
   const r = izracunaj(ulaz);
   return { rsd: r.ukupno, ulaz, pretpostavke };
 }

@@ -228,13 +228,26 @@ export function LeadWizard({ lead, onClose, akcija, pocetniKorak = 0 }: { lead?:
               <details className="rounded-[10px] border border-dashed border-line" open={Object.entries(v.d).some(([k, x]) => x && !["model", "boja", "kolicina", "spec_materijala"].includes(k))}>
                 <summary className="cursor-pointer px-3 py-2.5 text-sm font-semibold text-ink">Detalji za ponudu <span className="font-normal text-muted">(poželjno)</span></summary>
                 <div className="grid grid-cols-2 gap-3 border-t border-line px-3 py-3">
-                  {DETALJI.filter(({ k }) => !["model", "boja", "kolicina"].includes(k) && (k !== "pristup" || prevoz) && (ograda || !["visina_stuba", "visina_polja", "razmak_stubova"].includes(k))).map(({ k, l, tip }) => (
-                    <Field key={k} label={l + (tip === "m" ? " (m)" : tip === "kom" ? " (kom)" : "")} puno={tip === "tekst"}>
-                      {tip === "tekst"
-                        ? <input value={v.d[k] ?? ""} onChange={(e) => setD(k, e.target.value)} className="inp inp-sm" />
+                  {DETALJI.filter(({ k }) => !["model", "boja", "kolicina"].includes(k) && (k !== "pristup" || prevoz)
+                    && (ograda || !["visina_stuba", "visina_polja", "razmak_stubova", "oblik", "kapije"].includes(k))
+                    && (k !== "temelj_sirina" || v.d.temelj === "Ima")).map((d) => {
+                    const { k, l, tip } = d;
+                    const opcije = "opcije" in d ? d.opcije : null;
+                    return (
+                    <Field key={k} label={l + (tip === "m" ? " (m)" : tip === "kom" ? " (kom)" : tip === "cm" ? " (cm)" : tip === "kapije" ? " (m)" : "")} puno={tip === "tekst"}>
+                      {opcije
+                        ? <select value={v.d[k] ?? ""} onChange={(e) => setD(k, e.target.value)} className="inp inp-sm">
+                            <option value="">—</option>
+                            {opcije.map((o) => <option key={o} value={o}>{o}</option>)}
+                          </select>
+                        : tip === "tekst"
+                        ? <input value={v.d[k] ?? ""} onChange={(e) => setD(k, e.target.value)} className="inp inp-sm" placeholder={k === "dodatni_radovi" ? "npr. rušenje stare ograde, iskop" : undefined} />
+                        : tip === "kapije"
+                        ? <input value={v.d[k] ?? ""} onChange={(e) => setD(k, e.target.value)} className="inp inp-sm" placeholder="npr. 1 + 5" />
                         : <input value={v.d[k] ?? ""} onChange={(e) => setD(k, e.target.value)} inputMode="decimal" className="inp inp-sm" />}
                     </Field>
-                  ))}
+                    );
+                  })}
                 </div>
               </details>
 

@@ -33,7 +33,9 @@ const uIshodu = (l: LeadRow) => (l.status !== "nov" && l.status_od ? pre(l.statu
 // Lukine kategorije (gornje kartice = filteri). „Pozvati" = svi koje tek treba zvati.
 const POGLEDI = {
   pozvati: (l: LeadRow, danas: string) => l.status === "nov" || l.status === "nije_se_javio" || jeDospeo(l, danas),
-  prioritet: (l: LeadRow, danas: string) => OTVORENI.has(l.status) && (!!l.prioritet || jeDospeo(l, danas) || l.temperatura === "vruc" || l.temperatura === "topao"),
+  // Prioritetni su PODSKUP onih koje treba pozvati: zvezdica, dospeo podsetnik, vruć ili topao.
+  // (Ranije su tu ulazili i vrući iz „Dostaviti ponudu" i „Čeka odgovor", pa je Prioritetnih bilo više nego Pozvati.)
+  prioritet: (l: LeadRow, danas: string) => POGLEDI.pozvati(l, danas) && (!!l.prioritet || jeDospeo(l, danas) || l.temperatura === "vruc" || l.temperatura === "topao"),
   dostaviti_ponudu: (l: LeadRow) => l.status === "dostaviti_ponudu",
   ponuda: (l: LeadRow) => l.status === "ponuda",
   kupci: (l: LeadRow) => l.status === "zatvoren",
@@ -530,7 +532,8 @@ function LeadKartica({ l, procena, danas, onStatus, onBeleska, onDatum, onPriori
 function ProcenaOznaka({ p }: { p?: Procena }) {
   if (!p) return null;
   const u = p.ulaz;
-  const href = `/kalkulator?duzina=${u.duzina}&razmak=${u.razmak}&vp=${u.visinaPolja}&vs=${u.visinaStuba}&boja=${u.boja}`;
+  const href = `/kalkulator?duzina=${u.duzina}&razmak=${u.razmak}&vp=${u.visinaPolja}&vs=${u.visinaStuba}&boja=${u.boja}&bz=${u.bojaZavrsnih}`
+    + (u.brojKapija ? `&bk=${u.brojKapija}&kapije=${u.sirinaKapija}` : "") + (u.zatvoren ? "&zatvoren=1" : "") + (u.spojena ? "&spojena=1" : "");
   const opis = `${u.duzina} m · polje ${u.visinaPolja} · stub ${u.visinaStuba} · razmak ${u.razmak} · ${bojaNaziv(u.boja)}`;
   // Bez iznosa na kartici (Pavle, 27.09.2026.); vrednost služi samo za redosled. Link nosi mere u kalkulator.
   return (
@@ -642,7 +645,7 @@ function ZaPoziv({ l }: { l: LeadRow }) {
   const [otvoreno, setOtvoreno] = useState(false);
   const glavno = [l.lokacija, l.duzina_m != null ? `${l.duzina_m} m` : null, modelKratko(l.ispuna), modelLabel(l.detalji?.model)].filter(Boolean);
   const d = l.detalji ?? {};
-  const det = DETALJI.filter(({ k }) => d[k] && k !== "model").map(({ k, l: naziv, tip }) => ({ naziv, v: d[k] + (tip === "m" ? " m" : tip === "kom" ? " kom" : "") }));
+  const det = DETALJI.filter(({ k }) => d[k] && k !== "model").map(({ k, l: naziv, tip }) => ({ naziv, v: d[k] + (tip === "m" ? " m" : tip === "kom" ? " kom" : tip === "cm" ? " cm" : tip === "kapije" ? " m" : "") }));
   if (!glavno.length && !det.length) return null;
   return (
     <div className="mt-2 text-[13px] leading-snug">

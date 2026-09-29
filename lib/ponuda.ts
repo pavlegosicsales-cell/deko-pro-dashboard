@@ -5,7 +5,7 @@
 */
 import {
   bojaNaziv, zavrsnaNaziv, VRSTE, type Ulaz, type Rezultat, type Stavka,
-  type RucnaStavka, type VrstaStavke,
+  type RucnaStavka, type VrstaStavke, type Deonica,
 } from "@/lib/kalkulator";
 
 /** Podaci koje Pavle ili Luka upisuju pre nego što se ponuda napravi. */
@@ -68,6 +68,14 @@ const mesto = (s: Stavka) => {
   return i < 0 ? REDOSLED.length : i;
 };
 
+/** Ponuda kakva stoji u tabu „Ponude" (tabela ponude, migracija-6). */
+export type SacuvanaPonuda = {
+  id: string; broj: string; datum: string; kupac: string; mesto: string | null; rezim: string | null;
+  ukupno_rsd: number; transport_eur: number | null; sa_istovarom: boolean; sastavio: string | null;
+  redovi: PonudaRed[]; adresa: string | null; lead_id: string | null; created_at: string;
+};
+export type NovaPonuda = Omit<SacuvanaPonuda, "id" | "created_at" | "lead_id"> & { lead_id?: string | null };
+
 export const PRAZAN_RED: PonudaRed = { naziv: "", jedinica: "", cena: "", kolicina: "", ukupno: "0.00", prazan: true };
 
 /** Tabela ponude: uvek 6 redova, kao u templateu. */
@@ -93,6 +101,18 @@ export function ponudaRedovi(u: Ulaz, r: Rezultat, brojRedova = 6): PonudaRed[] 
 
 /* --- prenos kalkulatora u stranu ponude preko adrese --- */
 
+/** Deonice u adresi: „20:0.8:1.6:0:0,10:1.2:1.6:1:3" = dužina:polje:stub:brojKapija:širinaKapija */
+export const kodirajDeonice = (d: Deonica[]) =>
+  d.filter((x) => x.duzina > 0).map((x) => [x.duzina, x.visinaPolja, x.visinaStuba, x.brojKapija, x.sirinaKapija].join(":")).join(",");
+
+export function dekodirajDeonice(s: string | null): Deonica[] {
+  if (!s) return [];
+  return s.split(",").map((d) => d.split(":").map(Number))
+    .filter((d) => d.length >= 2 && d[0] > 0)
+    .map((d) => ({ duzina: d[0], visinaPolja: d[1] || 0.8, visinaStuba: d[2] || 1.6, brojKapija: d[3] || 0, sirinaKapija: d[4] || 0 }));
+}
+
+
 /** Ručne stavke u adresi: „zidni:150:445,stubni:40,kapa:8". Cena je neobavezna. */
 export const kodirajRucne = (r: RucnaStavka[]) =>
   r.filter((x) => x.kolicina > 0)
@@ -114,7 +134,8 @@ export function dekodirajRucne(s: string | null): RucnaStavka[] {
 export function uAdresu(u: Ulaz, m: PonudaMeta): string {
   const q = new URLSearchParams({
     rezim: u.rezim, duzina: String(u.duzina), razmak: String(u.razmak),
-    vp: String(u.visinaPolja), vs: String(u.visinaStuba), kapije: String(u.sirinaKapija),
+    vp: String(u.visinaPolja), vs: String(u.visinaStuba), kapije: String(u.sirinaKapija), bk: String(u.brojKapija),
+    deonice: u.poDeonicama ? kodirajDeonice(u.deonice) : "",
     povrsina: String(u.povrsina), boja: u.boja, bz: u.bojaZavrsnih,
     rucno: u.rezim === "rucno" ? kodirajRucne(u.rucne) : "",
     zatvoren: u.zatvoren ? "1" : "", spojena: u.spojena ? "1" : "", okapnice: u.saOkapnicama ? "1" : "",

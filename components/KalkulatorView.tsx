@@ -11,7 +11,7 @@ import {
   type Ulaz, type Podesavanja, type Boja, type BojaZavrsnih, type Rezim, type VrstaStavke,
 } from "@/lib/kalkulator";
 import { rsd } from "@/lib/format";
-import { PONUDA_META, datumPonude, uAdresu, type PonudaMeta } from "@/lib/ponuda";
+import { PONUDA_META, datumPonude, uAdresu, dekodirajDeonice, type PonudaMeta } from "@/lib/ponuda";
 
 /*
   Kalkulator po pravilima iz „Deko Pro – pravila za računanje ograda, zidova i obloga" (27.09.2026.):
@@ -41,6 +41,12 @@ function izUrla(sp: URLSearchParams): Ulaz {
     visinaStuba: n("vs", POCETNI_ULAZ.visinaStuba),
     boja: boja && CENOVNIK.some((c) => c.v === boja) ? boja : POCETNI_ULAZ.boja,
     stubniBlok: sp.get("sb") !== "0",
+    sirinaKapija: n("kapije", 0),
+    brojKapija: n("bk", 0),
+    zatvoren: sp.get("zatvoren") === "1",
+    spojena: sp.get("spojena") === "1",
+    bojaZavrsnih: (["siva", "crna", "bela"].includes(sp.get("bz") ?? "") ? sp.get("bz") : "siva") as BojaZavrsnih,
+    ...(sp.get("deonice") ? { poDeonicama: true, deonice: dekodirajDeonice(sp.get("deonice")) } : {}),
     mesto: sp.get("mesto") ?? "",
   };
 }
@@ -200,19 +206,20 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
             </div>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
-              {!obloga && !rucno && (
+              {!obloga && !rucno && !u.poDeonicama && (
                 <Polje label={ograda ? "Dužina ograde (m)" : "Dužina zida (m)"} hint="sa stubovima">
                   <BrojInput decimalno={true} value={u.duzina} onChange={broj("duzina")} className="inp"  />
                 </Polje>
               )}
               {ograda && <Polje label="Razmak stubova (m)" hint="svetli otvor"><BrojInput decimalno={true} value={u.razmak} onChange={broj("razmak")} className="inp"  /></Polje>}
-              {!obloga && !rucno && (
+              {!obloga && !rucno && !u.poDeonicama && (
                 <Polje label={ograda ? "Visina polja (m)" : "Visina zida (m)"} hint={`${rp.redova} redova`} puno={zid}>
                   <BrojInput decimalno={true} value={u.visinaPolja} onChange={broj("visinaPolja")} className="inp"  />
                 </Polje>
               )}
-              {ograda && <Polje label="Visina stuba (m)" hint={`${rs.redova} redova`}><BrojInput decimalno={true} value={u.visinaStuba} onChange={broj("visinaStuba")} className="inp"  /></Polje>}
-              {ograda && <Polje label="Kapije, ukupna širina (m)" hint="oduzima se od zida"><BrojInput decimalno={true} value={u.sirinaKapija} onChange={broj("sirinaKapija")} className="inp"  /></Polje>}
+              {ograda && !u.poDeonicama && <Polje label="Visina stuba (m)" hint={`${rs.redova} redova`}><BrojInput decimalno={true} value={u.visinaStuba} onChange={broj("visinaStuba")} className="inp"  /></Polje>}
+              {ograda && !u.poDeonicama && <Polje label="Broj kapija" hint="stub sa obe strane"><BrojInput decimalno={false} value={u.brojKapija} onChange={broj("brojKapija")} className="inp" /></Polje>}
+              {ograda && !u.poDeonicama && <Polje label="Kapije, ukupna širina (m)" hint="ne zida se"><BrojInput decimalno={true} value={u.sirinaKapija} onChange={broj("sirinaKapija")} className="inp"  /></Polje>}
               {obloga && <Polje label="Površina (m²)" hint="dužina × visina, po strani"><BrojInput decimalno={true} value={u.povrsina} onChange={broj("povrsina")} className="inp"  /></Polje>}
 
               <Polje label="Boja bloka" puno={obloga}>
@@ -262,12 +269,56 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
               </div>
             )}
 
+            {/* deonice: visina nije ista na celoj ogradi */}
+            {(ograda || zid) && (
+              <div className="mt-4">
+                <label className="flex items-center gap-2.5 text-sm text-ink">
+                  <input type="checkbox" checked={u.poDeonicama} onChange={(e) => setU((s) => ({ ...s, poDeonicama: e.target.checked }))} className="h-4 w-4 accent-[#0B1E3B]" />
+                  {ograda ? "Visina nije ista na celoj ogradi" : "Visina nije ista na celom zidu"} <span className="text-muted">(deonice)</span>
+                </label>
+                {u.poDeonicama && (
+                  <div className="mt-2">
+                    <div className={`grid gap-1.5 px-0.5 text-[10px] font-semibold uppercase tracking-wider text-muted ${ograda ? "grid-cols-[1fr_1fr_1fr_56px_1fr_26px]" : "grid-cols-[1fr_1fr_26px]"}`}>
+                      <span>Dužina m</span><span>{ograda ? "Polje m" : "Visina m"}</span>
+                      {ograda && <><span>Stub m</span><span>Kap.</span><span>Kapije m</span></>}<span />
+                    </div>
+                    <div className="mt-1 flex flex-col gap-1.5">
+                      {u.deonice.map((d, i) => {
+                        const men = (izm: Partial<typeof d>) => setU((s) => ({ ...s, deonice: s.deonice.map((x, j) => (j === i ? { ...x, ...izm } : x)) }));
+                        return (
+                          <div key={i} className={`grid items-center gap-1.5 ${ograda ? "grid-cols-[1fr_1fr_1fr_56px_1fr_26px]" : "grid-cols-[1fr_1fr_26px]"}`}>
+                            <BrojInput decimalno value={d.duzina} onChange={(n) => men({ duzina: n })} className="inp inp-sm" />
+                            <BrojInput decimalno value={d.visinaPolja} onChange={(n) => men({ visinaPolja: n })} className="inp inp-sm" />
+                            {ograda && <>
+                              <BrojInput decimalno value={d.visinaStuba} onChange={(n) => men({ visinaStuba: n })} className="inp inp-sm" />
+                              <BrojInput decimalno={false} value={d.brojKapija} onChange={(n) => men({ brojKapija: n })} className="inp inp-sm" />
+                              <BrojInput decimalno value={d.sirinaKapija} onChange={(n) => men({ sirinaKapija: n })} className="inp inp-sm" />
+                            </>}
+                            <button type="button" aria-label="Ukloni deonicu" disabled={u.deonice.length <= 1}
+                              onClick={() => setU((s) => ({ ...s, deonice: s.deonice.filter((_, j) => j !== i) }))}
+                              className="rounded-[8px] border border-line py-1 text-muted hover:border-accent hover:text-ink disabled:opacity-30">×</button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-2">
+                      <span className="text-[11px] text-muted">Ukupno <b className="text-ink">{Math.round(u.deonice.reduce((a, d) => a + (d.duzina || 0), 0) * 100) / 100} m</b>. Stub na spoju deonica je zajednički.</span>
+                      <button type="button" onClick={() => setU((s) => ({ ...s, deonice: [...s.deonice, { ...s.deonice[s.deonice.length - 1], duzina: 0 }] }))} className="btn btn-sm btn-plain">+ Deonica</button>
+                    </div>
+                    {u.deonice.some((d) => !redoviZaVisinu(d.visinaPolja).jeCeo || (ograda && !redoviZaVisinu(d.visinaStuba).jeCeo)) && (
+                      <p className="mt-2 text-[11px] text-muted">Neka visina nije ceo broj redova od 20 cm; kalkulator uzima niži ceo broj redova.</p>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* opcije visine kad nije ceo broj redova */}
-            {!obloga && !rucno && !rp.jeCeo && (
+            {!obloga && !rucno && !u.poDeonicama && !rp.jeCeo && (
               <Opcije naslov={ograda ? "Visina polja nije ceo broj redova" : "Visina zida nije ceo broj redova"}
                 opcije={rp.opcije} izaberi={(v) => setU((s) => ({ ...s, visinaPolja: v }))} />
             )}
-            {ograda && !rs.jeCeo && (
+            {ograda && !u.poDeonicama && !rs.jeCeo && (
               <Opcije naslov="Visina stuba nije ceo broj redova" opcije={rs.opcije} izaberi={(v) => setU((s) => ({ ...s, visinaStuba: v }))} />
             )}
 

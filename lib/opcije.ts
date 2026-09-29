@@ -57,7 +57,7 @@ export const MODELI_OGRADE = [
 export const modelKratko = (v: string | null | undefined) => MODELI_OGRADE.find((o) => o.v === v)?.k ?? null;
 
 // Boje bloka iz cenovnika (business details, deo 4).
-export const BOJE = ["Natur siva", "Žuta", "Braon", "Oranž", "Crvena", "Zelena", "Crna", "Kapučino", "Multikolor Rok", "Multikolor Rast"] as const;
+export const BOJE = ["Natur siva", "Žuta", "Braon", "Oranž", "Crvena", "Zelena", "Crna", "Kapućino", "Multikolor Rock", "Multikolor Rast"] as const;
 
 // Poželjni detalji za ponudu (JSON kolona `detalji`). Redosled = redosled u formi i na kartici.
 export const DETALJI = [
@@ -71,11 +71,25 @@ export const DETALJI = [
   { k: "br_stubnih", l: "Stubnih blokova", tip: "kom" },
   { k: "br_kapa", l: "Kapa", tip: "kom" },
   { k: "br_okapnica", l: "Okapnica", tip: "kom" },
+  // posle poziva (Pavle, 30.09.2026.): idu u ponudu i u kalkulator
+  { k: "boja_zavrsnih", l: "Boja kapa i okapnica", tip: "izbor", opcije: ["Siva", "Crna", "Bela"] },
+  { k: "oblik", l: "Ograda", tip: "izbor", opcije: ["Otvorena linija", "Ograđuje ceo plac", "Nastavlja se na drugu ogradu", "Drugo"] },
+  { k: "kapije", l: "Kapije, širine", tip: "kapije" },          // „1 + 5" = dve kapije, 6 m
+  { k: "temelj", l: "Temelj", tip: "izbor", opcije: ["Nema", "Ima"] },
+  { k: "temelj_sirina", l: "Širina temelja", tip: "cm" },
+  { k: "dodatni_radovi", l: "Dodatni radovi", tip: "tekst" },
   { k: "spec_materijala", l: "Specifikacija materijala", tip: "tekst" },
   { k: "budzet", l: "Okvirni budžet", tip: "tekst" },
   { k: "pristup", l: "Pristup za kamion / istovar", tip: "tekst" },
 ] as const;
 export type Detalji = Partial<Record<(typeof DETALJI)[number]["k"], string>>;
+
+/** „1 + 5", „1,2 i 4", „6m" -> { broj, sirina }; prazno -> 0/0 */
+export function kapijeIzTeksta(t: string | null | undefined): { broj: number; sirina: number } {
+  if (!t) return { broj: 0, sirina: 0 };
+  const brojevi = (t.replace(/,(?=\d)/g, ".").match(/\d+(\.\d+)?/g) ?? []).map(Number).filter((n) => n > 0);
+  return { broj: brojevi.length, sirina: Math.round(brojevi.reduce((a, b) => a + b, 0) * 100) / 100 };
+}
 
 // Šta Luka traži kao obavezno pre poziva (Lukina poruka 24.09.2026.). Dužina i
 // „samo blokovi / sa panelima" važe samo kad gradi ogradu.

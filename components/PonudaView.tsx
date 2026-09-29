@@ -4,7 +4,8 @@ import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { izracunaj, CENOVNIK, POCETNI_ULAZ, type Ulaz, type Boja, type BojaZavrsnih, type Rezim } from "@/lib/kalkulator";
-import { ponudaRedovi, svegaFmt, datumPonude, dekodirajRucne, transportLinija, type PonudaMeta } from "@/lib/ponuda";
+import { ponudaRedovi, svegaFmt, datumPonude, dekodirajRucne, dekodirajDeonice, transportLinija, type PonudaMeta, type SacuvanaPonuda } from "@/lib/ponuda";
+import { sacuvajPonudu } from "@/app/ponude/actions";
 import { napraviPonudaPdf, imeFajla } from "@/lib/ponudaPdf";
 
 /*
@@ -25,6 +26,7 @@ function izUrla(sp: URLSearchParams): { u: Ulaz; m: PonudaMeta } {
     visinaPolja: n("vp", POCETNI_ULAZ.visinaPolja),
     visinaStuba: n("vs", POCETNI_ULAZ.visinaStuba),
     sirinaKapija: n("kapije", 0),
+    brojKapija: n("bk", 0),
     povrsina: n("povrsina", POCETNI_ULAZ.povrsina),
     zatvoren: sp.get("zatvoren") === "1",
     spojena: sp.get("spojena") === "1",
@@ -33,6 +35,7 @@ function izUrla(sp: URLSearchParams): { u: Ulaz; m: PonudaMeta } {
     boja: boja && CENOVNIK.some((c) => c.v === boja) ? boja : POCETNI_ULAZ.boja,
     bojaZavrsnih: (sp.get("bz") as BojaZavrsnih) ?? "siva",
     rucne: dekodirajRucne(sp.get("rucno")),
+    ...(sp.get("deonice") ? { poDeonicama: true, deonice: dekodirajDeonice(sp.get("deonice")) } : {}),
   };
   const t = sp.get("transport");
   const m: PonudaMeta = {
@@ -108,18 +111,38 @@ html, body { background: #6b7280; margin: 0; }
 }
 `;
 
-export function PonudaView() {
+export function PonudaView({ sacuvana, nijeNadjena }: { sacuvana?: SacuvanaPonuda | null; nijeNadjena?: boolean }) {
   const sp = useSearchParams();
-  const { u, m } = izUrla(sp);
-  const r = izracunaj(u);
-  const redovi = ponudaRedovi(u, r);
+  const izracunato = izUrla(sp);
+  const r = izracunaj(izracunato.u);
+  // Sačuvana ponuda se prikazuje TAČNO kako je poslata (redovi iz baze), a nova se računa iz adrese.
+  const u = izracunato.u;
+  const m: PonudaMeta = sacuvana
+    ? { broj: sacuvana.broj, datum: sacuvana.datum, kupac: sacuvana.kupac, transportEur: sacuvana.transport_eur, saIstovarom: sacuvana.sa_istovarom, sastavio: sacuvana.sastavio || "Luka Jovanović" }
+    : izracunato.m;
+  const redovi = sacuvana ? sacuvana.redovi : ponudaRedovi(u, r);
+  const ukupno = sacuvana ? Number(sacuvana.ukupno_rsd) : r.ukupno;
+  const [uPonudama, setUPonudama] = useState<"" | "radi" | "jeste" | "greska">(sacuvana ? "jeste" : "");
+  const [porukaPonude, setPorukaPonude] = useState("");
+
+  const staviUPonude = async () => {
+    setUPonudama("radi");
+    const q = typeof window !== "undefined" ? window.location.search.replace(/^\?/, "") : "";
+    const rez = await sacuvajPonudu({
+      broj: m.broj, datum: m.datum, kupac: m.kupac, mesto: u.mesto.trim() || null, rezim: u.rezim,
+      ukupno_rsd: ukupno, transport_eur: m.transportEur, sa_istovarom: m.saIstovarom, sastavio: m.sastavio,
+      redovi: redovi.filter((x) => !x.prazan), adresa: q,
+    });
+    setPorukaPonude(rez.msg ?? "");
+    setUPonudama(rez.ok ? "jeste" : "greska");
+  };
   const fali = [!m.kupac.trim() && "ime i prezime kupca", !m.broj.trim() && "broj ponude"].filter(Boolean);
   const [stanje, setStanje] = useState<"" | "radi" | "gotovo" | "greska">("");
 
   const sacuvaj = async () => {
     setStanje("radi");
     try {
-      const blob = await napraviPonudaPdf(u, r, m);
+      const blob = await napraviPonudaPdf(redovi, ukupno, m);
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob);
       a.download = imeFajla(m);
@@ -143,6 +166,14 @@ export function PonudaView() {
         <button type="button" onClick={sacuvaj} disabled={stanje === "radi" || fali.length > 0} className="dug">
           {stanje === "radi" ? "Pravim PDF…" : stanje === "gotovo" ? "Sačuvano ✓" : "Sačuvaj u PDF"}
         </button>
+        {sacuvana
+          ? <Link href="/ponude" className="dug dug-tih">U Ponudama ✓</Link>
+          : <button type="button" onClick={staviUPonude} disabled={uPonudama === "radi" || uPonudama === "jeste" || fali.length > 0} className="dug dug-tih">
+              {uPonudama === "radi" ? "Stavljam…" : uPonudama === "jeste" ? "U Ponudama ✓" : "Stavi u Ponude"}
+            </button>}
+        {nijeNadjena && <span className="fali">Ta ponuda ne postoji u Ponudama.</span>}
+        {uPonudama === "greska" && <span className="fali">{porukaPonude}</span>}
+        {uPonudama === "jeste" && porukaPonude && <span className="savet">{porukaPonude}</span>}
         {fali.length > 0
           ? <span className="fali">Fali {fali.join(" i ")}. Vrati se u kalkulator i upiši.</span>
           : stanje === "greska"
@@ -193,7 +224,7 @@ export function PonudaView() {
               <tr className="svega">
                 <td className="c1" />
                 <td className="c2 zeleno levo-tekst" colSpan={3}>Svega:</td>
-                <td className="c5 zeleno iznos zadnji">{svegaFmt(r.ukupno)}</td>
+                <td className="c5 zeleno iznos zadnji">{svegaFmt(ukupno)}</td>
               </tr>
             </tbody>
           </table>

@@ -6,8 +6,7 @@
   rastojanjima od vrha strane, pa izgleda isto.
   Fontovi: Carlito (iste mere kao Calibri) i Arimo (iste mere kao Arial) — imaju č, ć, š, ž, đ.
 */
-import type { Ulaz, Rezultat } from "@/lib/kalkulator";
-import { ponudaRedovi, svegaFmt, transportLinija, type PonudaMeta } from "@/lib/ponuda";
+import { svegaFmt, transportLinija, type PonudaMeta, type PonudaRed } from "@/lib/ponuda";
 
 const VIS = 841.89;          // A4 visina
 const SIR = 595.28;          // A4 širina
@@ -32,7 +31,7 @@ const DEBELO = 1.8;          // kolona sa nazivom je u templateu deblje uokviren
 // razmaci uslova ispod tabele, mereni od dna tabele
 const USLOVI = [24.31, 38.23, 51.55, 64.87, 78.19, 91.51, 104.83, 118.15, 131.47];
 
-export async function napraviPonudaPdf(u: Ulaz, r: Rezultat, m: PonudaMeta): Promise<Blob> {
+export async function napraviPonudaPdf(redovi: PonudaRed[], ukupno: number, m: PonudaMeta): Promise<Blob> {
   const [{ PDFDocument, rgb }, fontkitMod] = await Promise.all([
     import("pdf-lib"),
     import("@pdf-lib/fontkit"),
@@ -110,7 +109,6 @@ export async function napraviPonudaPdf(u: Ulaz, r: Rezultat, m: PonudaMeta): Pro
   dvored("Ukupno/", "DIN", SREDINA.ukupno);
 
   /* ---------- redovi ---------- */
-  const redovi = ponudaRedovi(u, r);
   const sirinaNaziva = X.c1 - 81.5 - 2;
   const prelomi = (t: string): string[] => {
     if (!t || arial.widthOfTextAtSize(t, 10.1) <= sirinaNaziva) return t ? [t] : [];
@@ -147,7 +145,7 @@ export async function napraviPonudaPdf(u: Ulaz, r: Rezultat, m: PonudaMeta): Pro
   const svegaVrh = vrh, svegaDno = vrh + RED_1;
   str.drawRectangle({ x: 251.4, y: y(svegaDno), width: 527.2 - 251.4, height: RED_1, color: ZELENA_POZ });
   pisi("Svega:", 253.2, svegaDno - 3.53, obican, 10.1, ZELENA_TXT);
-  desno(svegaFmt(r.ukupno), 516.1, svegaDno - 3.53, obican, 10.1, ZELENA_TXT);
+  desno(svegaFmt(ukupno), 516.1, svegaDno - 3.53, obican, 10.1, ZELENA_TXT);
 
   /* ---------- linije tabele ---------- */
   vodoravna(X.levo, X.desno, TABELA_VRH);

@@ -73,6 +73,8 @@ export const PODRAZUMEVANO: Podesavanja = {
   blokovaPoReduStuba: 1, rezervaPct: 5, partnerske: false,
 };
 
+export type Deonica = { duzina: number; visinaPolja: number; visinaStuba: number; brojKapija: number; sirinaKapija: number };
+
 export type Ulaz = {
   rezim: Rezim;
   // ograda i zid
@@ -80,7 +82,11 @@ export type Ulaz = {
   visinaPolja: number;     // m (kod zida: visina zida)
   visinaStuba: number;     // m (samo ograda)
   razmak: number;          // m, željeni svetli otvor između stubova (samo ograda)
-  sirinaKapija: number;    // m, ukupna širina kapija i otvora; oduzima se od zidanog dela
+  sirinaKapija: number;    // m, ukupna širina svih kapija
+  brojKapija: number;      // svaka kapija ima stub sa obe strane, pa broj kapija menja broj stubova
+  // deonice: kad visina polja ili zida nije ista na celoj ograди
+  poDeonicama: boolean;
+  deonice: Deonica[];
   zatvoren: boolean;       // zatvoren obim: stubova koliko i polja
   spojena: boolean;        // nastavlja se na drugu ogradu: jedan stub manje (zajednički)
   saOkapnicama: boolean;   // kod punog zida okapnice nisu obavezne
@@ -97,7 +103,12 @@ export type Ulaz = {
 
 export const POCETNI_ULAZ: Ulaz = {
   rezim: "ograda", duzina: 20, visinaPolja: 0.8, visinaStuba: 1.6, razmak: 2,
-  sirinaKapija: 0, zatvoren: false, spojena: false, saOkapnicama: true, stubniBlok: true,
+  sirinaKapija: 0, brojKapija: 0, zatvoren: false, spojena: false, saOkapnicama: true, stubniBlok: true,
+  poDeonicama: false,
+  deonice: [
+    { duzina: 10, visinaPolja: 0.8, visinaStuba: 1.6, brojKapija: 0, sirinaKapija: 0 },
+    { duzina: 10, visinaPolja: 1.2, visinaStuba: 1.6, brojKapija: 0, sirinaKapija: 0 },
+  ],
   povrsina: 10, boja: "natur_siva", bojaZavrsnih: "siva", mesto: "",
   rucne: [
     { vrsta: "zidni", kolicina: 0, cena: null },
@@ -237,6 +248,50 @@ export function izracunaj(u: Ulaz, p: Podesavanja = PODRAZUMEVANO): Rezultat {
     });
   }
 
+  // ---------- DEONICE: visina nije ista na celoj ogradi ----------
+  // Svaka deonica se računa kao svoja ograda (ili zid) sa svojom visinom i svojim kapijama,
+  // a stub na spoju dve deonice je zajednički, pa svaka sledeća deonica ide kao „spojena".
+  if ((u.rezim === "ograda" || u.rezim === "zid") && u.poDeonicama && u.deonice.length > 0) {
+    const delovi = u.deonice.filter((d) => d.duzina > 0).map((d, i) => izracunaj({
+      ...u, poDeonicama: false,
+      duzina: d.duzina, visinaPolja: d.visinaPolja, visinaStuba: d.visinaStuba,
+      brojKapija: d.brojKapija, sirinaKapija: d.sirinaKapija,
+      zatvoren: i === 0 ? u.zatvoren : false,
+      spojena: i === 0 ? u.spojena : true,
+    }, p));
+    if (delovi.length === 0) return saPrevozom({
+      rezim: u.rezim, polja: 0, stubovi: 0, stvarniRazmak: 0, redovaPolja: 0, redovaStuba: 0,
+      duzinaZida: 0, m2: 0, stavke: [], ukupno: 0, cenaNepotpuna: false, tezinaKg: 0, palete: 0,
+      napomene: ["Upiši bar jednu deonicu sa dužinom."], racun: [],
+    });
+    const spojeno = new Map<string, Stavka>();
+    for (const d of delovi) for (const st of d.stavke) {
+      const ima = spojeno.get(st.naziv);
+      if (ima) { ima.kom += st.kom; ima.ukupno = ima.cena != null ? ima.kom * ima.cena : null; }
+      else spojeno.set(st.naziv, { ...st });
+    }
+    const stavkeSve = [...spojeno.values()];
+    const polja = delovi.reduce((a, d) => a + d.polja, 0);
+    const stubovi = delovi.reduce((a, d) => a + d.stubovi, 0);
+    const duzinaZida = r2(delovi.reduce((a, d) => a + d.duzinaZida, 0));
+    const racunSve: string[] = [];
+    delovi.forEach((d, i) => {
+      const deo = u.deonice.filter((x) => x.duzina > 0)[i];
+      racunSve.push(`Deonica ${i + 1}: ${deo.duzina} m, polje ${deo.visinaPolja} m${u.rezim === "ograda" ? `, stub ${deo.visinaStuba} m` : ""}${i > 0 ? " (stub na spoju zajednički)" : ""}`);
+      racunSve.push(...d.racun.map((x) => "  " + x));
+    });
+    const napomeneSve = [...new Set(delovi.flatMap((d) => d.napomene.filter((n) => !n.startsWith("Ograda se nastavlja"))))];
+    if (u.spojena) napomeneSve.unshift("Ograda se nastavlja na drugu: stub na spoju je zajednički, pa je oduzet jedan stub i jedna kapa.");
+    return saPrevozom({
+      rezim: u.rezim, polja, stubovi, stvarniRazmak: polja > 0 ? r2(duzinaZida / polja) : 0,
+      redovaPolja: delovi[0].redovaPolja, redovaStuba: delovi[0].redovaStuba,
+      duzinaZida, m2: r2(delovi.reduce((a, d) => a + d.m2, 0)),
+      stavke: stavkeSve, ukupno: stavkeSve.reduce((a, x) => a + (x.ukupno ?? 0), 0),
+      cenaNepotpuna: delovi.some((d) => d.cenaNepotpuna), tezinaKg: 0, palete: 0,
+      napomene: napomeneSve, racun: racunSve,
+    });
+  }
+
   // ---------- OBLOGA ----------
   if (u.rezim === "obloga") {
     const m2 = Math.max(0, u.povrsina);
@@ -292,19 +347,28 @@ export function izracunaj(u: Ulaz, p: Podesavanja = PODRAZUMEVANO): Rezultat {
   const redovaStuba = rs.redova;
   if (redovaStuba < redovaPolja) napomene.push("Stub je niži od polja. Proveri visine.");
 
-  // polja i stubovi
-  const polja = Math.max(1, zaokruzi((L - p.modulStub) / (R + p.modulStub)));
-  let stubovi = u.zatvoren ? polja : polja + 1;
-  if (u.spojena && !u.zatvoren) { stubovi -= 1; napomene.push("Ograda se nastavlja na drugu: stub na spoju je zajednički, pa je oduzet jedan stub i jedna kapa."); }
-  const duzinaBezStubova = Math.max(0, L - stubovi * p.modulStub);
-  const stvarniRazmak = duzinaBezStubova / polja;
-  racun.push(`Polja: zaokruži((${L} − ${p.modulStub}) / (${R} + ${p.modulStub})) = ${polja}; stubova ${stubovi}`);
-  if (Math.abs(stvarniRazmak - R) > 0.02) napomene.push(`Sa ${polja} polja stvarni razmak je ${r2(stvarniRazmak)} m umesto ${R} m (polja se rasporede po celoj dužini).`);
-
-  // kapije zauzimaju mesto polja: njihova širina se ne zida
+  // Kapije: svaka kapija visi između dva stuba, pa je ona „polje" svoje širine.
+  // Ograda = polja + kapije, a stubova ima za jedan više (otvorena linija), isto (zatvoren obim)
+  // ili za jedan manje (nastavlja se na drugu ogradu). Zato broj kapija menja broj stubova:
+  // jedna kapija od 6 m zauzme mesto dva polja (jedan stub manje), dve kapije 1 + 5 m
+  // imaju stub i između sebe.
   const kapije = Math.max(0, u.sirinaKapija);
-  const Lz = Math.max(0, duzinaBezStubova - kapije);
-  if (kapije > 0) racun.push(`Zidani deo: ${r2(duzinaBezStubova)} − ${kapije} m kapija = ${r2(Lz)} m`);
+  let brojKapija = Math.max(0, zaokruzi(u.brojKapija));
+  if (kapije > 0 && brojKapija === 0) { brojKapija = 1; napomene.push("Upisana je širina kapija, a ne i broj: računam jednu kapiju."); }
+  if (kapije === 0 && brojKapija > 0) { brojKapija = 0; napomene.push("Upisan je broj kapija bez širine: kapije nisu uračunate."); }
+  // Polja se broje kao za otvorenu liniju; zatvoren obim ili spoj sa drugom ogradom
+  // oduzima TAČNO jedan stub (Lukino pravilo), a oslobođenih 0,4 m ide u zidani deo.
+  const manjeStubova = u.zatvoren ? 1 : (u.spojena ? 1 : 0);
+  const polja = Math.max(brojKapija > 0 ? 0 : 1,
+    zaokruzi((L - kapije - (brojKapija + 1) * p.modulStub) / (R + p.modulStub)));
+  const stubovi = Math.max(1, polja + brojKapija + 1 - manjeStubova);
+  if (u.spojena && !u.zatvoren) napomene.push("Ograda se nastavlja na drugu: stub na spoju je zajednički, pa je oduzet jedan stub i jedna kapa.");
+  const Lz = Math.max(0, L - kapije - stubovi * p.modulStub);          // zidani deo, bez stubova i kapija
+  const stvarniRazmak = polja > 0 ? Lz / polja : 0;
+  if (brojKapija > 0) racun.push(`Polja: zaokruži((${L} − ${kapije} m kapija − ${brojKapija + 1} × ${p.modulStub}) / (${R} + ${p.modulStub})) = ${polja}; kapija ${brojKapija}; stubova ${polja} + ${brojKapija} + 1${manjeStubova ? " − " + manjeStubova : ""} = ${stubovi}`);
+  else racun.push(`Polja: zaokruži((${L} − ${p.modulStub}) / (${R} + ${p.modulStub})) = ${polja}; stubova ${stubovi}`);
+  if (polja > 0 && Math.abs(stvarniRazmak - R) > 0.02) napomene.push(`Sa ${polja} polja stvarni razmak je ${r2(stvarniRazmak)} m umesto ${R} m (polja se rasporede po celoj dužini).`);
+  if (kapije > 0) racun.push(`Zidani deo: ${L} − ${kapije} m kapija − ${stubovi} × ${p.modulStub} = ${r2(Lz)} m`);
   else racun.push(`Zidani deo: ${L} − ${stubovi} × ${p.modulStub} = ${r2(Lz)} m`);
 
   // Kad je cokla 20–30 cm, stubni blok od 40 cm bi virio, pa se i stubovi zidaju zidnim blokom.
@@ -334,8 +398,8 @@ export function izracunaj(u: Ulaz, p: Podesavanja = PODRAZUMEVANO): Rezultat {
     { naziv: `Kapa ${zavrsnaNaziv(u.bojaZavrsnih)}`, opis: "50 × 50 cm", kom: kape, jedinica: "kapa", cena: p.cenaKapa, ukupno: kape * p.cenaKapa },
     { naziv: `Okapnica ${zavrsnaNaziv(u.bojaZavrsnih)}`, opis: "50 × 30 cm", kom: okapnice, jedinica: "okapnica", cena: p.cenaOkapnica, ukupno: okapnice * p.cenaOkapnica },
   );
-  if (kapije > 0) napomene.push(`Kapije (${kapije} m) su oduzete od zidanog dela. Same kapije, ispune i rasveta se ugovaraju posebno.`);
-  else napomene.push("Kapije nisu oduzete. Ako klijent ima kapiju, upiši njenu širinu.");
+  if (kapije > 0) napomene.push(`${brojKapija} ${brojKapija === 1 ? "kapija" : "kapije"} (ukupno ${kapije} m) ${brojKapija === 1 ? "ima" : "imaju"} stub sa obe strane i ne zida se. Same kapije, ispune i rasveta se ugovaraju posebno.`);
+  else napomene.push("Kapije nisu uračunate. Ako klijent ima kapiju, upiši broj i ukupnu širinu.");
 
   const ukupno = stavke.reduce((s, x) => s + (x.ukupno ?? 0), 0);
   return saPrevozom({
@@ -358,10 +422,12 @@ export function ponudaTekst(u: Ulaz, r: Rezultat): string {
     red.push(`Obloga ${r.m2} m²`, "");
   } else if (r.rezim === "zid") {
     red.push(`Ponuda – zid ${boja}${mesto ? `, ${mesto}` : ""}`, "");
-    red.push(`Zid ${u.duzina}m (visina ${r2(r.redovaPolja * 0.2)}m, ${r.redovaPolja} redova)`, "");
+    if (u.poDeonicama) red.push(`Zid ${r2(u.deonice.reduce((a, d) => a + d.duzina, 0))}m: ` + u.deonice.filter((d) => d.duzina > 0).map((d) => `${d.duzina}m visine ${d.visinaPolja}m`).join(" + "), "");
+    else red.push(`Zid ${u.duzina}m (visina ${r2(r.redovaPolja * 0.2)}m, ${r.redovaPolja} redova)`, "");
   } else {
     red.push(`Ponuda – ograda ${boja}${mesto ? `, ${mesto}` : ""}`, "");
-    red.push(`Ograda ${u.duzina}m (stubovi ${r2(r.redovaStuba * 0.2)}m, polja ${r2(r.redovaPolja * 0.2)}m, razmak između stubova ${r.stvarniRazmak}m)`, "");
+    if (u.poDeonicama) red.push(`Ograda ${r2(u.deonice.reduce((a, d) => a + d.duzina, 0))}m: ` + u.deonice.filter((d) => d.duzina > 0).map((d) => `${d.duzina}m (stubovi ${d.visinaStuba}m, polja ${d.visinaPolja}m)`).join(" + ") + `, razmak između stubova ${r.stvarniRazmak}m`, "");
+    else red.push(`Ograda ${u.duzina}m (stubovi ${r2(r.redovaStuba * 0.2)}m, polja ${r2(r.redovaPolja * 0.2)}m, razmak između stubova ${r.stvarniRazmak}m)`, "");
   }
 
   for (const s of r.stavke) {
