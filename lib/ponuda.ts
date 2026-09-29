@@ -118,6 +118,7 @@ export function uAdresu(u: Ulaz, m: PonudaMeta): string {
     povrsina: String(u.povrsina), boja: u.boja, bz: u.bojaZavrsnih,
     rucno: u.rezim === "rucno" ? kodirajRucne(u.rucne) : "",
     zatvoren: u.zatvoren ? "1" : "", spojena: u.spojena ? "1" : "", okapnice: u.saOkapnicama ? "1" : "",
+    sb: u.stubniBlok ? "" : "0",
     broj: m.broj, datum: m.datum, kupac: m.kupac, sastavio: m.sastavio,
     transport: m.transportEur == null ? "" : String(m.transportEur),
     istovar: m.saIstovarom ? "" : "0",

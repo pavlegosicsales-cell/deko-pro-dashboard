@@ -36,6 +36,7 @@ function izUrla(sp: URLSearchParams): Ulaz {
     visinaPolja: n("vp", POCETNI_ULAZ.visinaPolja),
     visinaStuba: n("vs", POCETNI_ULAZ.visinaStuba),
     boja: boja && CENOVNIK.some((c) => c.v === boja) ? boja : POCETNI_ULAZ.boja,
+    stubniBlok: sp.get("sb") !== "0",
     mesto: sp.get("mesto") ?? "",
   };
 }
@@ -225,6 +226,15 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
 
             {ograda && (
               <div className="mt-3 flex flex-col gap-2">
+                <label className="flex items-start gap-2.5 text-sm text-ink">
+                  <input type="checkbox" checked={u.stubniBlok} onChange={(e) => setU((s) => ({ ...s, stubniBlok: e.target.checked }))} className="mt-0.5 h-4 w-4 accent-[#0B1E3B]" />
+                  <span>
+                    Koristi stubni blok <span className="text-muted">(39 × 39)</span>
+                    {!u.stubniBlok && <span className="mt-0.5 block text-[11px] leading-relaxed text-muted">
+                      Isključeno: i stubovi se zidaju zidnim blokom. Tako se radi kad je cokla 20 ili 30 cm, pa bi stubni blok od 40 cm virio.
+                    </span>}
+                  </span>
+                </label>
                 <label className="flex items-center gap-2.5 text-sm text-ink">
                   <input type="checkbox" checked={u.zatvoren} onChange={(e) => setU((s) => ({ ...s, zatvoren: e.target.checked }))} className="h-4 w-4 accent-[#0B1E3B]" />
                   Zatvoren obim placa (stubova koliko i polja)
@@ -269,6 +279,7 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
                 <Polje label="Modul dužine (m)" hint="blok + fuga"><BrojInput decimalno={true} value={p.modulDuzina} onChange={pbroj("modulDuzina")} className="inp inp-sm"  /></Polje>
                 <Polje label="Modul visine (m)" hint="red + fuga"><BrojInput decimalno={true} value={p.modulVisina} onChange={pbroj("modulVisina")} className="inp inp-sm"  /></Polje>
                 <Polje label="Širina stuba (m)"><BrojInput decimalno={true} value={p.modulStub} onChange={pbroj("modulStub")} className="inp inp-sm"  /></Polje>
+                <Polje label="Zidnih u redu stuba" hint="kad nema stubnog"><BrojInput decimalno={false} value={p.blokovaPoReduStuba} onChange={pbroj("blokovaPoReduStuba")} className="inp inp-sm" /></Polje>
                 <Polje label="Okapnica (RSD)"><BrojInput decimalno={false} value={p.cenaOkapnica} onChange={pbroj("cenaOkapnica")} className="inp inp-sm"  /></Polje>
                 <Polje label="Kapa (RSD)"><BrojInput decimalno={false} value={p.cenaKapa} onChange={pbroj("cenaKapa")} className="inp inp-sm"  /></Polje>
                 <Polje label="Obloga (RSD/m²)" hint="1.174 sa PDV-om" puno>

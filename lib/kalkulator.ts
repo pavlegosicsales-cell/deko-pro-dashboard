@@ -62,6 +62,7 @@ export type Podesavanja = {
   cenaOkapnica: number;   // RSD
   cenaKapa: number;       // RSD
   cenaObloga: number | null; // RSD/m² sa PDV-om; potvrdio Luka 28.09.2026. (null = ne računaj cenu)
+  blokovaPoReduStuba: number; // kad se stub zida zidnim blokom: koliko blokova ide u jedan red
   rezervaPct: number;     // OBAVEZNO 5 %
   partnerske: boolean;    // interne cene za saradnike (zidni −25, stubni −10)
 };
@@ -69,7 +70,7 @@ export type Podesavanja = {
 export const PODRAZUMEVANO: Podesavanja = {
   modulDuzina: 0.40, modulVisina: 0.20, modulStub: 0.40, okapnicaDuzina: 0.50,
   cenaOkapnica: 705, cenaKapa: 1315, cenaObloga: 1174,
-  rezervaPct: 5, partnerske: false,
+  blokovaPoReduStuba: 1, rezervaPct: 5, partnerske: false,
 };
 
 export type Ulaz = {
@@ -83,6 +84,7 @@ export type Ulaz = {
   zatvoren: boolean;       // zatvoren obim: stubova koliko i polja
   spojena: boolean;        // nastavlja se na drugu ogradu: jedan stub manje (zajednički)
   saOkapnicama: boolean;   // kod punog zida okapnice nisu obavezne
+  stubniBlok: boolean;     // false = i stubovi se zidaju zidnim blokom (cokla 20–30 cm, stubni od 40 cm bi virio)
   // obloga
   povrsina: number;        // m²
   // ručni unos
@@ -95,7 +97,7 @@ export type Ulaz = {
 
 export const POCETNI_ULAZ: Ulaz = {
   rezim: "ograda", duzina: 20, visinaPolja: 0.8, visinaStuba: 1.6, razmak: 2,
-  sirinaKapija: 0, zatvoren: false, spojena: false, saOkapnicama: true,
+  sirinaKapija: 0, zatvoren: false, spojena: false, saOkapnicama: true, stubniBlok: true,
   povrsina: 10, boja: "natur_siva", bojaZavrsnih: "siva", mesto: "",
   rucne: [
     { vrsta: "zidni", kolicina: 0, cena: null },
@@ -305,17 +307,29 @@ export function izracunaj(u: Ulaz, p: Podesavanja = PODRAZUMEVANO): Rezultat {
   if (kapije > 0) racun.push(`Zidani deo: ${r2(duzinaBezStubova)} − ${kapije} m kapija = ${r2(Lz)} m`);
   else racun.push(`Zidani deo: ${L} − ${stubovi} × ${p.modulStub} = ${r2(Lz)} m`);
 
-  const stubni = zaokruzi(stubovi * redovaStuba * rez);
-  const zidni = zaokruzi((Lz / p.modulDuzina) * redovaPolja * rez);
+  // Kad je cokla 20–30 cm, stubni blok od 40 cm bi virio, pa se i stubovi zidaju zidnim blokom.
+  const uStubu = Math.max(1, p.blokovaPoReduStuba);
+  const zidniUPolju = (Lz / p.modulDuzina) * redovaPolja;
+  const zidniUStubovima = u.stubniBlok ? 0 : stubovi * redovaStuba * uStubu;
+  const stubni = u.stubniBlok ? zaokruzi(stubovi * redovaStuba * rez) : 0;
+  const zidni = zaokruzi((zidniUPolju + zidniUStubovima) * rez);
   const kape = zaokruzi(stubovi * rez);
   const okapnice = zaokruzi((Lz / p.okapnicaDuzina) * rez);
-  racun.push(`Stubni: ${stubovi} × ${redovaStuba} × ${rez} = ${stubni} kom`);
-  racun.push(`Zidni: (${r2(Lz)} / ${p.modulDuzina}) × ${redovaPolja} × ${rez} = ${zidni} kom`);
+  if (u.stubniBlok) {
+    racun.push(`Stubni: ${stubovi} × ${redovaStuba} × ${rez} = ${stubni} kom`);
+    racun.push(`Zidni: (${r2(Lz)} / ${p.modulDuzina}) × ${redovaPolja} × ${rez} = ${zidni} kom`);
+  } else {
+    racun.push(`Bez stubnog bloka: i stubovi se zidaju zidnim blokom, ${uStubu} po redu stuba.`);
+    racun.push(`Zidni: (polja ${r2(zidniUPolju)} + stubovi ${stubovi} × ${redovaStuba} × ${uStubu}) × ${rez} = ${zidni} kom`);
+    napomene.push("Stubovi se zidaju zidnim blokom, pa stubnog bloka nema u ponudi. Proveri da li kapa 50 × 50 pristaje na takav stub.");
+  }
   racun.push(`Kape: ${stubovi} × ${rez} = ${kape} kom`);
   racun.push(`Okapnice: (${r2(Lz)} / ${p.okapnicaDuzina}) × ${rez} = ${okapnice} kom`);
 
-  stavke.push(
+  if (u.stubniBlok) stavke.push(
     { naziv: `Stubni blok ${bojaNaziv(u.boja)}`, opis: "19 × 39 × 39 cm", kom: stubni, jedinica: "blokova", cena: cenaStubni, ukupno: stubni * cenaStubni },
+  );
+  stavke.push(
     { naziv: `Zidni blok ${bojaNaziv(u.boja)}`, opis: "19 × 19 × 39 cm", kom: zidni, jedinica: "blokova", cena: cenaZidni, ukupno: zidni * cenaZidni },
     { naziv: `Kapa ${zavrsnaNaziv(u.bojaZavrsnih)}`, opis: "50 × 50 cm", kom: kape, jedinica: "kapa", cena: p.cenaKapa, ukupno: kape * p.cenaKapa },
     { naziv: `Okapnica ${zavrsnaNaziv(u.bojaZavrsnih)}`, opis: "50 × 30 cm", kom: okapnice, jedinica: "okapnica", cena: p.cenaOkapnica, ukupno: okapnice * p.cenaOkapnica },

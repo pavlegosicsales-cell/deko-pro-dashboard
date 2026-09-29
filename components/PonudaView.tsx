@@ -29,6 +29,7 @@ function izUrla(sp: URLSearchParams): { u: Ulaz; m: PonudaMeta } {
     zatvoren: sp.get("zatvoren") === "1",
     spojena: sp.get("spojena") === "1",
     saOkapnicama: sp.get("okapnice") !== null ? sp.get("okapnice") === "1" : true,
+    stubniBlok: sp.get("sb") !== "0",
     boja: boja && CENOVNIK.some((c) => c.v === boja) ? boja : POCETNI_ULAZ.boja,
     bojaZavrsnih: (sp.get("bz") as BojaZavrsnih) ?? "siva",
     rucne: dekodirajRucne(sp.get("rucno")),
