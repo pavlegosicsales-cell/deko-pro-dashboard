@@ -70,22 +70,17 @@ export function porukaZaPaju(p: PajaPolja, u: Ulaz, r: Rezultat, saPonudom: bool
 
 export const pajaLink = (tekst: string) => waLink(PAJA_TEL, tekst);
 
-/* Larisa vodi finansije i pravi predračun. Kad je posao samo materijal i prevoz, njoj ide ponuda
-   sa molbom za predračun, pa predračun ide kupcu. Njen broj još nije upisan: dok ga nema,
-   link otvara WhatsApp sa gotovim tekstom, a kontakt se bira ručno. */
-export const LARISA_TEL = "";
+/* Larisa („Finansije", Viber +381 63 251 382) pravi predračun za uplatu kupca. Zahtev ide u Viber grupu
+   „Predračuni i kontrola uplata PROMOBET" (Larisa, Luka, miki, Pavle Starčević, Pavle), uz PDF ponude.
+   Poruka je uvek ista (Pavle, 30.09.2026.):
+   „Dobar dan Larisa :), trebaće mi predračun za uplatu klijenta, Ime Prezime 06xxxxxxx"
+   Viber link ne može da cilja baš tu grupu, pa `viber://forward?text=` otvori Viber sa gotovom porukom,
+   a Pavle izabere grupu. PDF ponude se prikači ručno. */
+export const LARISA_TEL = "063251382";
+export const LARISA_GRUPA = "Predračuni i kontrola uplata PROMOBET";
 
-export function porukaZaLarisu(kupac: string, mesto: string, broj: string, u: Ulaz, r: Rezultat, transport?: { eur: number | null; saIstovarom: boolean }): string {
-  const red = [
-    "Zdravo Larisa, treba mi predračun za ovu ponudu:",
-    `Kupac: ${kupac}${mesto ? `, ${mesto}` : ""}`,
-    broj ? `Ponuda br. ${broj}` : "",
-    "",
-    ponudaTekst(u, r),
-  ];
-  if (transport && transport.eur != null && transport.eur > 0) red.push("", `Transport ${transport.saIstovarom ? "sa istovarom" : "bez istovara"}: ${transport.eur}e`);
-  return red.filter((x, i, a) => !(x === "" && a[i - 1] === "")).join("\n");
-}
+export const porukaZaLarisu = (kupac: string, telefon: string) =>
+  `Dobar dan Larisa :), trebaće mi predračun za uplatu klijenta, ${kupac.trim()} ${telefon.trim()}`.trim();
 
-export const larisaLink = (tekst: string) =>
-  LARISA_TEL ? waLink(LARISA_TEL, tekst) : `https://wa.me/?text=${encodeURIComponent(tekst)}`;
+export const larisaViberLink = (tekst: string) => `viber://forward?text=${encodeURIComponent(tekst)}`;
+export const larisaWaLink = (tekst: string) => waLink(LARISA_TEL, tekst);

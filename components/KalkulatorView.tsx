@@ -13,7 +13,7 @@ import {
 import { rsd } from "@/lib/format";
 import { PONUDA_META, datumPonude, uAdresu, dekodirajDeonice, type PonudaMeta } from "@/lib/ponuda";
 import { ulazIzLeada, type LeadZaProcenu } from "@/lib/procena";
-import { porukaZaPaju, pajaLink, idePonudaPaji, PRAZNA_PAJA, porukaZaLarisu, larisaLink, type PajaPolja } from "@/lib/paja";
+import { porukaZaPaju, pajaLink, idePonudaPaji, PRAZNA_PAJA, porukaZaLarisu, larisaViberLink, LARISA_GRUPA, type PajaPolja } from "@/lib/paja";
 import { PREVOZNICI, predloziPrevoznika, prevoznikLink } from "@/lib/prevoznici";
 
 /*
@@ -24,7 +24,7 @@ import { PREVOZNICI, predloziPrevoznika, prevoznikLink } from "@/lib/prevoznici"
 
 const KLJUC = "deko.kalkulator.v1";
 const danasnjiDatum = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Belgrade" });
-type Sacuvano = { kad: string; u: Ulaz; p: Podesavanja; pon: PonudaMeta; bezTransporta: boolean; leadId?: string | null; paja?: PajaPolja };
+type Sacuvano = { kad: string; u: Ulaz; p: Podesavanja; pon: PonudaMeta; bezTransporta: boolean; leadId?: string | null; paja?: PajaPolja; telefonKupca?: string };
 
 /** Lead kako ga kalkulator vidi: dovoljno da popuni ponudu i poruku za Paju. */
 export type LeadKratko = LeadZaProcenu & { id: string; ime: string | null; prezime: string | null; telefon: string | null; status: string; obuhvat?: string | null };
@@ -73,6 +73,7 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
   const [otvoren, setOtvoren] = useState(false);
   const [pretpostavke, setPretpostavke] = useState<string[]>([]);
   const [paja, setPaja] = useState<PajaPolja>(PRAZNA_PAJA);
+  const [telefonKupca, setTelefonKupca] = useState("");
   const [vraceno, setVraceno] = useState(false);
   const prviPut = useRef(true);
 
@@ -90,6 +91,7 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
     setPretpostavke(x?.pretpostavke ?? (l.duzina_m ? [] : ["lead nema dužinu, mere upiši ručno"]));
     setPon((s) => ({ ...s, kupac: imeLeada(l) }));
     setPaja({ ime: l.ime || imeLeada(l), lokacija: l.lokacija ?? "", temelj: d.temelj ?? "", iskop: d.iskop ?? "", cokla: d.cokla ?? "", dodatniRadovi: d.dodatni_radovi ?? "" });
+    setTelefonKupca(l.telefon ?? "");
     setLeadId(l.id); setTrazi(imeLeada(l)); setOtvoren(false);
   };
   const otkaciLead = () => { setLeadId(null); setTrazi(""); setPretpostavke([]); };
@@ -127,6 +129,7 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
       setBezTransporta(!!sacuvano.bezTransporta);
       if (sacuvano.leadId) { setLeadId(sacuvano.leadId); const l = leadovi.find((x) => x.id === sacuvano!.leadId); if (l) setTrazi(imeLeada(l)); }
       if (sacuvano.paja) setPaja({ ...PRAZNA_PAJA, ...sacuvano.paja });
+      if (sacuvano.telefonKupca) setTelefonKupca(sacuvano.telefonKupca);
        
       if (!izAdrese) setVraceno(true);
     }
@@ -136,9 +139,9 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
   useEffect(() => {
     if (prviPut.current) { prviPut.current = false; return; }
     try {
-      localStorage.setItem(KLJUC, JSON.stringify({ kad: danasnjiDatum(), u, p, pon, bezTransporta, leadId, paja }));
+      localStorage.setItem(KLJUC, JSON.stringify({ kad: danasnjiDatum(), u, p, pon, bezTransporta, leadId, paja, telefonKupca }));
     } catch { /* prazno */ }
-  }, [u, p, pon, bezTransporta, leadId, paja]);
+  }, [u, p, pon, bezTransporta, leadId, paja, telefonKupca]);
 
   const isprazni = () => {
     try { localStorage.removeItem(KLJUC); } catch { /* prazno */ }
@@ -148,7 +151,7 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
     setBezTransporta(false);
     setAri("");
     setVraceno(false);
-    setLeadId(null); setTrazi(""); setPaja(PRAZNA_PAJA); setPretpostavke([]);
+    setLeadId(null); setTrazi(""); setPaja(PRAZNA_PAJA); setPretpostavke([]); setTelefonKupca("");
   };
 
 
@@ -686,15 +689,19 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
               <p className="mt-2 text-[11px] leading-relaxed text-muted">
                 {izabrani?.obuhvat === "kljuc_u_ruke"
                   ? <>Ovaj lead je <b className="text-ink">ključ u ruke</b>: prvo Paji za ugradnju, pa kad stigne i ta ponuda, kupcu.</>
-                  : <>Kad je posao <b className="text-ink">samo materijal i prevoz</b>: ponuda ide Larisi, ona pravi predračun, predračun ide kupcu.</>}
-                {" "}Broj Larise još nije upisan, pa se kontakt bira u WhatsAppu.
+                  : <>Kad je posao <b className="text-ink">samo materijal i prevoz</b>: poruka + PDF ponude idu u Viber grupu „{LARISA_GRUPA}“, Larisa pravi predračun, predračun ide kupcu.</>}
               </p>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <Polje label="Ime i prezime kupca"><input value={pon.kupac} onChange={(e) => setPon((s) => ({ ...s, kupac: e.target.value }))} className="inp inp-sm" /></Polje>
+                <Polje label="Telefon kupca"><input value={telefonKupca} onChange={(e) => setTelefonKupca(e.target.value)} inputMode="tel" className="inp inp-sm" placeholder="06x xxx xxxx" /></Polje>
+              </div>
+              <pre className="mt-3 whitespace-pre-wrap rounded-[10px] bg-wash p-3 font-sans text-[12px] leading-snug text-ink">{porukaZaLarisu(pon.kupac, telefonKupca)}</pre>
               <div className="mt-3 flex gap-2">
-                <a href={larisaLink(porukaZaLarisu(pon.kupac, u.mesto, pon.broj, u, r, { eur: bezTransporta ? null : pon.transportEur, saIstovarom: pon.saIstovarom }))}
-                  target="_blank" rel="noreferrer" className="btn btn-sm flex-1 justify-center text-center">Pošalji Larisi na WhatsApp</a>
-                <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(porukaZaLarisu(pon.kupac, u.mesto, pon.broj, u, r, { eur: bezTransporta ? null : pon.transportEur, saIstovarom: pon.saIstovarom })); setKopirano("beleska"); setTimeout(() => setKopirano(""), 1600); } catch { /* prazno */ } }}
+                <a href={larisaViberLink(porukaZaLarisu(pon.kupac, telefonKupca))} className="btn btn-sm flex-1 justify-center text-center">Pošalji u Viber grupu</a>
+                <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(porukaZaLarisu(pon.kupac, telefonKupca)); setKopirano("beleska"); setTimeout(() => setKopirano(""), 1600); } catch { /* prazno */ } }}
                   className="btn btn-sm btn-plain">Kopiraj</button>
               </div>
+              <p className="mt-2 text-[11px] text-muted">Viber se otvori sa gotovom porukom, izabereš grupu „{LARISA_GRUPA}“ i pošalješ. PDF ponude prikači posle „Sačuvaj u PDF“.</p>
             </div>
 
             <div className="card p-4 text-xs leading-relaxed text-muted">
