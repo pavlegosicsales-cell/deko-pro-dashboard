@@ -45,6 +45,7 @@ function izUrla(sp: URLSearchParams): { u: Ulaz; m: PonudaMeta } {
     sastavio: sp.get("sastavio") || "Luka Jovanović",
     saIstovarom: sp.get("istovar") !== "0",
     transportEur: t == null || t === "" ? null : Number(t),
+    leadId: sp.get("lead") || null,
   };
   return { u, m };
 }
@@ -131,7 +132,7 @@ export function PonudaView({ sacuvana, nijeNadjena }: { sacuvana?: SacuvanaPonud
     const rez = await sacuvajPonudu({
       broj: m.broj, datum: m.datum, kupac: m.kupac, mesto: u.mesto.trim() || null, rezim: u.rezim,
       ukupno_rsd: ukupno, transport_eur: m.transportEur, sa_istovarom: m.saIstovarom, sastavio: m.sastavio,
-      redovi: redovi.filter((x) => !x.prazan), adresa: q,
+      redovi: redovi.filter((x) => !x.prazan), adresa: q, lead_id: m.leadId ?? null,
     });
     setPorukaPonude(rez.msg ?? "");
     setUPonudama(rez.ok ? "jeste" : "greska");

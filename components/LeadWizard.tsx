@@ -229,8 +229,8 @@ export function LeadWizard({ lead, onClose, akcija, pocetniKorak = 0 }: { lead?:
                 <summary className="cursor-pointer px-3 py-2.5 text-sm font-semibold text-ink">Detalji za ponudu <span className="font-normal text-muted">(poželjno)</span></summary>
                 <div className="grid grid-cols-2 gap-3 border-t border-line px-3 py-3">
                   {DETALJI.filter(({ k }) => !["model", "boja", "kolicina"].includes(k) && (k !== "pristup" || prevoz)
-                    && (ograda || !["visina_stuba", "visina_polja", "razmak_stubova", "oblik", "kapije"].includes(k))
-                    && (k !== "temelj_sirina" || v.d.temelj === "Ima")).map((d) => {
+                    && (ograda || !["visina_stuba", "visina_polja", "razmak_stubova", "oblik", "kapije", "stubni_blok"].includes(k))
+                    && (k !== "temelj_sirina" || /^(Ima|Uradi)/.test(v.d.temelj ?? ""))).map((d) => {
                     const { k, l, tip } = d;
                     const opcije = "opcije" in d ? d.opcije : null;
                     return (

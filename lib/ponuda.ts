@@ -16,6 +16,7 @@ export type PonudaMeta = {
   transportEur: number | null;   // null = bez transporta (preuzimanje), linija se ne štampa
   saIstovarom: boolean;          // linija glasi „sa istovarom" ili „bez istovara"
   sastavio: string;
+  leadId?: string | null;        // lead iz koga je ponuda napravljena (tab Ponude)
 };
 
 export type PonudaRed = {
@@ -143,6 +144,7 @@ export function uAdresu(u: Ulaz, m: PonudaMeta): string {
     broj: m.broj, datum: m.datum, kupac: m.kupac, sastavio: m.sastavio,
     transport: m.transportEur == null ? "" : String(m.transportEur),
     istovar: m.saIstovarom ? "" : "0",
+    lead: m.leadId ?? "",
   });
   for (const [k, v] of [...q.entries()]) if (v === "") q.delete(k);
   return "/ponuda?" + q.toString();

@@ -12,6 +12,9 @@ import {
 } from "@/lib/kalkulator";
 import { rsd } from "@/lib/format";
 import { PONUDA_META, datumPonude, uAdresu, dekodirajDeonice, type PonudaMeta } from "@/lib/ponuda";
+import { ulazIzLeada, type LeadZaProcenu } from "@/lib/procena";
+import { porukaZaPaju, pajaLink, idePonudaPaji, PRAZNA_PAJA, porukaZaLarisu, larisaLink, type PajaPolja } from "@/lib/paja";
+import { PREVOZNICI, predloziPrevoznika, prevoznikLink } from "@/lib/prevoznici";
 
 /*
   Kalkulator po pravilima iz „Deko Pro – pravila za računanje ograda, zidova i obloga" (27.09.2026.):
@@ -21,7 +24,11 @@ import { PONUDA_META, datumPonude, uAdresu, dekodirajDeonice, type PonudaMeta } 
 
 const KLJUC = "deko.kalkulator.v1";
 const danasnjiDatum = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Belgrade" });
-type Sacuvano = { kad: string; u: Ulaz; p: Podesavanja; pon: PonudaMeta; bezTransporta: boolean };
+type Sacuvano = { kad: string; u: Ulaz; p: Podesavanja; pon: PonudaMeta; bezTransporta: boolean; leadId?: string | null; paja?: PajaPolja };
+
+/** Lead kako ga kalkulator vidi: dovoljno da popuni ponudu i poruku za Paju. */
+export type LeadKratko = LeadZaProcenu & { id: string; ime: string | null; prezime: string | null; telefon: string | null; status: string; obuhvat?: string | null };
+const imeLeada = (l: LeadKratko) => [l.ime, l.prezime].filter(Boolean).join(" ") || "Bez imena";
 
 const REZIMI: { v: Rezim; l: string; opis: string }[] = [
   { v: "ograda", l: "Ograda", opis: "stubovi i polja" },
@@ -51,16 +58,21 @@ function izUrla(sp: URLSearchParams): Ulaz {
   };
 }
 
-export function KalkulatorView({ uRedu }: { uRedu: number }) {
+export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi?: LeadKratko[] }) {
   const sp = useSearchParams();
   const [u, setU] = useState<Ulaz>(() => izUrla(sp));
   const [p, setP] = useState<Podesavanja>(PODRAZUMEVANO);
   const [pod, setPod] = useState(false);
   const [ari, setAri] = useState("");
-  const [kopirano, setKopirano] = useState<"" | "ponuda" | "beleska" | "prevoz">("");
+  const [kopirano, setKopirano] = useState<"" | "ponuda" | "beleska" | "prevoz" | "paja">("");
   const [pon, setPon] = useState<PonudaMeta>(PONUDA_META);
   const [bezTransporta, setBezTransporta] = useState(false);
 
+  const [leadId, setLeadId] = useState<string | null>(null);
+  const [trazi, setTrazi] = useState("");
+  const [otvoren, setOtvoren] = useState(false);
+  const [pretpostavke, setPretpostavke] = useState<string[]>([]);
+  const [paja, setPaja] = useState<PajaPolja>(PRAZNA_PAJA);
   const [vraceno, setVraceno] = useState(false);
   const prviPut = useRef(true);
 
@@ -91,18 +103,20 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
       if (sacuvano.p) setP((st) => ({ ...st, ...sacuvano.p }));
        
       setBezTransporta(!!sacuvano.bezTransporta);
+      if (sacuvano.leadId) { setLeadId(sacuvano.leadId); const l = leadovi.find((x) => x.id === sacuvano!.leadId); if (l) setTrazi(imeLeada(l)); }
+      if (sacuvano.paja) setPaja({ ...PRAZNA_PAJA, ...sacuvano.paja });
        
       if (!izAdrese) setVraceno(true);
     }
-  }, [sp]);
+  }, [sp, leadovi]);
 
   // svaka izmena se odmah pamti
   useEffect(() => {
     if (prviPut.current) { prviPut.current = false; return; }
     try {
-      localStorage.setItem(KLJUC, JSON.stringify({ kad: danasnjiDatum(), u, p, pon, bezTransporta }));
+      localStorage.setItem(KLJUC, JSON.stringify({ kad: danasnjiDatum(), u, p, pon, bezTransporta, leadId, paja }));
     } catch { /* prazno */ }
-  }, [u, p, pon, bezTransporta]);
+  }, [u, p, pon, bezTransporta, leadId, paja]);
 
   const isprazni = () => {
     try { localStorage.removeItem(KLJUC); } catch { /* prazno */ }
@@ -112,7 +126,26 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
     setBezTransporta(false);
     setAri("");
     setVraceno(false);
+    setLeadId(null); setTrazi(""); setPaja(PRAZNA_PAJA); setPretpostavke([]);
   };
+
+  /* Izbor leada: povlači mere, boje, kapije, oblik, mesto, ime kupca i Pajina pitanja. Posle toga se sve može menjati. */
+  const izabrani = leadId ? leadovi.find((l) => l.id === leadId) ?? null : null;
+  const qq = trazi.trim().toLowerCase();
+  const pogodjeni = qq && !(izabrani && imeLeada(izabrani).toLowerCase() === qq)
+    ? leadovi.filter((l) => [imeLeada(l), l.telefon ?? "", l.lokacija ?? ""].some((x) => x.toLowerCase().includes(qq))).slice(0, 8)
+    : [];
+  const izaberiLead = (l: LeadKratko) => {
+    const d = l.detalji ?? {};
+    const x = ulazIzLeada(l);
+    const rezim: Rezim = l.proizvod === "potporni_zid" ? "zid" : l.proizvod === "oblaganje" ? "obloga" : "ograda";
+    setU((s) => (x ? { ...x.ulaz, rezim } : { ...s, rezim, mesto: l.lokacija ?? s.mesto }));
+    setPretpostavke(x?.pretpostavke ?? (l.duzina_m ? [] : ["lead nema dužinu, mere upiši ručno"]));
+    setPon((s) => ({ ...s, kupac: imeLeada(l) }));
+    setPaja({ ime: l.ime || imeLeada(l), lokacija: l.lokacija ?? "", temelj: d.temelj ?? "", iskop: d.iskop ?? "", cokla: d.cokla ?? "", dodatniRadovi: d.dodatni_radovi ?? "" });
+    setLeadId(l.id); setTrazi(imeLeada(l)); setOtvoren(false);
+  };
+  const otkaciLead = () => { setLeadId(null); setTrazi(""); setPretpostavke([]); };
 
   const faliZaPonudu = [
     !pon.kupac.trim() && "ime i prezime kupca",
@@ -122,7 +155,7 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
 
   const napraviPonudu = () => {
     try { localStorage.setItem("deko.ponuda.sastavio", pon.sastavio); } catch { /* prazno */ }
-    window.open(uAdresu(u, { ...pon, transportEur: bezTransporta ? null : pon.transportEur }), "_blank");
+    window.open(uAdresu(u, { ...pon, transportEur: bezTransporta ? null : pon.transportEur, leadId }), "_blank");
   };
   const r = izracunaj(u, p);
 
@@ -140,10 +173,11 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
     return red.join("\n");
   };
 
-  const kopiraj = async (sta: "ponuda" | "beleska" | "prevoz") => {
+  const pajaTekst = porukaZaPaju(paja, u, r, idePonudaPaji(paja), { eur: bezTransporta ? null : pon.transportEur, saIstovarom: pon.saIstovarom });
+  const kopiraj = async (sta: "ponuda" | "beleska" | "prevoz" | "paja") => {
     try {
       await navigator.clipboard.writeText(
-        sta === "ponuda" ? ponudaTekst(u, r) : sta === "prevoz" ? prevozTekst() : internaBeleska(u, r));
+        sta === "ponuda" ? ponudaTekst(u, r) : sta === "prevoz" ? prevozTekst() : sta === "paja" ? pajaTekst : internaBeleska(u, r));
       setKopirano(sta); setTimeout(() => setKopirano(""), 1600);
     } catch { /* prazno */ }
   };
@@ -204,6 +238,30 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
                 </button>
               ))}
             </div>
+
+            {/* izbor leada: sve što je upisano posle poziva dolazi ovde samo */}
+            <div className="relative mt-4">
+              <input value={trazi} onChange={(e) => { setTrazi(e.target.value); setOtvoren(true); if (leadId) setLeadId(null); }}
+                onFocus={() => setOtvoren(true)} onBlur={() => setTimeout(() => setOtvoren(false), 150)}
+                placeholder="Izaberi lead… (ime, telefon ili mesto)" className={`inp ${izabrani ? "pr-9 font-semibold" : ""}`} />
+              {izabrani && <button type="button" onClick={otkaciLead} aria-label="Otkači lead" className="absolute right-2 top-1/2 -translate-y-1/2 rounded px-1.5 text-muted hover:text-ink">✕</button>}
+              {otvoren && pogodjeni.length > 0 && (
+                <div className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-[10px] border border-line bg-white shadow-lg">
+                  {pogodjeni.map((l) => (
+                    <button key={l.id} type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => izaberiLead(l)}
+                      className="flex w-full flex-col items-start px-3 py-2 text-left hover:bg-wash">
+                      <span className="text-sm font-semibold text-ink">{imeLeada(l)}</span>
+                      <span className="text-[11px] text-muted">{[l.lokacija, l.duzina_m ? `${l.duzina_m} m` : null, l.telefon].filter(Boolean).join(" · ")}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {izabrani && (
+              <p className="mt-1.5 text-[11px] leading-relaxed text-muted">
+                Povučeno iz leada. Sve ispod možeš da menjaš ručno.{pretpostavke.length > 0 && <> Pretpostavljeno: <b className="text-ink">{pretpostavke.join(", ")}</b>.</>}
+              </p>
+            )}
 
             <div className="mt-4 grid grid-cols-2 gap-3">
               {!obloga && !rucno && !u.poDeonicama && (
@@ -499,9 +557,25 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
                   </tr>
                 </tbody>
               </table>
-              <div className="flex flex-wrap items-center justify-between gap-2 border-t border-line px-4 py-3 text-xs text-muted">
-                <span>≈ <b className="text-ink">{(prevoz.kg / 1000).toFixed(1).replace(".", ",")} t</b>. Javi prevozniku palete i kilograme, pa cenu upiši dole u ponudu.</span>
-                <button type="button" onClick={() => kopiraj("prevoz")} className="btn btn-sm btn-plain">{kopirano === "prevoz" ? "Kopirano ✓" : "Kopiraj za dostavljača"}</button>
+              <div className="border-t border-line px-4 py-3 text-xs text-muted">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span>≈ <b className="text-ink">{(prevoz.kg / 1000).toFixed(1).replace(".", ",")} t</b>. Pošalji prevozniku, pa cenu upiši dole u ponudu.</span>
+                  <button type="button" onClick={() => kopiraj("prevoz")} className="btn btn-sm btn-ghost btn-plain">{kopirano === "prevoz" ? "Kopirano ✓" : "Kopiraj"}</button>
+                </div>
+                {/* prevoznici po broju paleta: Rocko do 3, Miloš (sa istovarom) do 10, Marko (bez istovara) do 22 */}
+                <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                  {PREVOZNICI.map((pr) => {
+                    const predlog = predloziPrevoznika(prevoz.palete, bezTransporta ? undefined : pon.saIstovarom) === pr.kljuc;
+                    return (
+                      <a key={pr.kljuc} href={prevoznikLink(pr, prevozTekst())} target="_blank" rel="noreferrer"
+                        className={`flex flex-col rounded-[10px] border px-3 py-2 transition-colors ${predlog ? "border-navy bg-navy text-white" : "border-line bg-white text-ink hover:border-accent"}`}>
+                        <span className="text-[13px] font-semibold">{pr.ime} · WhatsApp{predlog && <span className="ml-1 text-[10px] font-normal opacity-80">(predlog)</span>}</span>
+                        <span className={`text-[10px] leading-snug ${predlog ? "text-white/75" : "text-muted"}`}>{pr.opis}</span>
+                      </a>
+                    );
+                  })}
+                </div>
+                {prevoz.palete > 22 && <p className="mt-2 text-[11px]">Preko 22 palete: ide u više tura, dogovori sa Markom.</p>}
               </div>
               {prevoz.napomene.length > 0 && (
                 <div className="border-t border-line bg-wash/50 px-4 py-2.5 text-[11px] leading-relaxed text-muted">
@@ -509,6 +583,48 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
                 </div>
               )}
             </div>
+
+            {/* poruka za Paju: ponude za ugradnju (WhatsApp) */}
+            {(ograda || zid) && (
+              <div className="card p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Poruka za Paju</div>
+                  <span className="text-[11px] text-muted">ponude za ugradnju · WhatsApp +381 63 1781032</span>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <Polje label="Ime kupca"><input value={paja.ime} onChange={(e) => setPaja((s) => ({ ...s, ime: e.target.value }))} className="inp inp-sm" /></Polje>
+                  <Polje label="Lokacija"><input value={paja.lokacija} onChange={(e) => setPaja((s) => ({ ...s, lokacija: e.target.value }))} className="inp inp-sm" /></Polje>
+                  <Polje label="Temelj">
+                    <select value={paja.temelj} onChange={(e) => setPaja((s) => ({ ...s, temelj: e.target.value }))} className="inp inp-sm">
+                      <option value="">—</option>
+                      {["Ima temelj", "Uradiće sam", "Treba mu temelj"].map((o) => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </Polje>
+                  <Polje label="Postoji iskop">
+                    <select value={paja.iskop} onChange={(e) => setPaja((s) => ({ ...s, iskop: e.target.value }))} className="inp inp-sm">
+                      <option value="">—</option><option value="Da">Da</option><option value="Ne">Ne</option>
+                    </select>
+                  </Polje>
+                  <Polje label="Cokla pripremljena">
+                    <select value={paja.cokla} onChange={(e) => setPaja((s) => ({ ...s, cokla: e.target.value }))} className="inp inp-sm">
+                      <option value="">—</option><option value="Da">Da</option><option value="Ne">Ne</option>
+                    </select>
+                  </Polje>
+                  <Polje label="Dodatni radovi"><input value={paja.dodatniRadovi} onChange={(e) => setPaja((s) => ({ ...s, dodatniRadovi: e.target.value }))} className="inp inp-sm" placeholder="nista" /></Polje>
+                </div>
+                <p className="mt-2 text-[11px] leading-relaxed text-muted">
+                  {idePonudaPaji(paja)
+                    ? <>Klijent ima temelj ili ga radi sam: uz specifikaciju ide i <b className="text-ink">ponuda za materijal i dostavu</b> (Pajino pravilo).</>
+                    : paja.temelj ? <>Klijentu treba temelj: Paji ide <b className="text-ink">samo specifikacija</b>.</> : <>Izaberi temelj da se zna ide li i ponuda za materijal.</>}
+                </p>
+                <pre className="mt-3 max-h-72 overflow-auto whitespace-pre-wrap rounded-[10px] bg-wash p-3 font-sans text-[12px] leading-snug text-ink">{pajaTekst}</pre>
+                <div className="mt-3 flex gap-2">
+                  <a href={pajaLink(pajaTekst)} target="_blank" rel="noreferrer" className="btn btn-sm flex-1 justify-center text-center">Pošalji Paji na WhatsApp</a>
+                  <button type="button" onClick={() => kopiraj("paja")} className="btn btn-sm btn-plain">{kopirano === "paja" ? "Kopirano ✓" : "Kopiraj"}</button>
+                </div>
+                <p className="mt-2 text-[11px] text-muted">WhatsApp link nosi samo tekst. PDF ponude, ako treba, prikači u razgovoru posle „Sačuvaj u PDF“.</p>
+              </div>
+            )}
 
             {/* zvanična ponuda po templateu 184/26 */}
             <div className="card p-4">
@@ -554,6 +670,26 @@ export function KalkulatorView({ uRedu }: { uRedu: number }) {
                   ? <>Fali: <b className="text-ink">{faliZaPonudu.join(", ")}</b>.</>
                   : <>{"Otvara se list ponude, pa „Štampaj / Sačuvaj kao PDF“. Kapije, ispune, temelj i ugradnja se ne unose ovde."}</>}
               </p>
+            </div>
+
+            {/* Larisa: predračun za kupca kad je posao samo materijal i prevoz */}
+            <div className="card p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Poruka za Larisu</div>
+                <span className="text-[11px] text-muted">finansije · predračun za kupca</span>
+              </div>
+              <p className="mt-2 text-[11px] leading-relaxed text-muted">
+                {izabrani?.obuhvat === "kljuc_u_ruke"
+                  ? <>Ovaj lead je <b className="text-ink">ključ u ruke</b>: prvo Paji za ugradnju, pa kad stigne i ta ponuda, kupcu.</>
+                  : <>Kad je posao <b className="text-ink">samo materijal i prevoz</b>: ponuda ide Larisi, ona pravi predračun, predračun ide kupcu.</>}
+                {" "}Broj Larise još nije upisan, pa se kontakt bira u WhatsAppu.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <a href={larisaLink(porukaZaLarisu(pon.kupac, u.mesto, pon.broj, u, r, { eur: bezTransporta ? null : pon.transportEur, saIstovarom: pon.saIstovarom }))}
+                  target="_blank" rel="noreferrer" className="btn btn-sm flex-1 justify-center text-center">Pošalji Larisi na WhatsApp</a>
+                <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(porukaZaLarisu(pon.kupac, u.mesto, pon.broj, u, r, { eur: bezTransporta ? null : pon.transportEur, saIstovarom: pon.saIstovarom })); setKopirano("beleska"); setTimeout(() => setKopirano(""), 1600); } catch { /* prazno */ } }}
+                  className="btn btn-sm btn-plain">Kopiraj</button>
+              </div>
             </div>
 
             <div className="card p-4 text-xs leading-relaxed text-muted">

@@ -75,8 +75,11 @@ export const DETALJI = [
   { k: "boja_zavrsnih", l: "Boja kapa i okapnica", tip: "izbor", opcije: ["Siva", "Crna", "Bela"] },
   { k: "oblik", l: "Ograda", tip: "izbor", opcije: ["Otvorena linija", "Ograđuje ceo plac", "Nastavlja se na drugu ogradu", "Drugo"] },
   { k: "kapije", l: "Kapije, širine", tip: "kapije" },          // „1 + 5" = dve kapije, 6 m
-  { k: "temelj", l: "Temelj", tip: "izbor", opcije: ["Nema", "Ima"] },
+  { k: "temelj", l: "Temelj", tip: "izbor", opcije: ["Ima temelj", "Uradiće sam", "Treba mu temelj"] },
   { k: "temelj_sirina", l: "Širina temelja", tip: "cm" },
+  { k: "iskop", l: "Postoji iskop za temelj", tip: "izbor", opcije: ["Da", "Ne"] },
+  { k: "cokla", l: "Cokla već pripremljena", tip: "izbor", opcije: ["Da", "Ne"] },
+  { k: "stubni_blok", l: "Koristi stubni blok", tip: "izbor", opcije: ["Da", "Ne"] },
   { k: "dodatni_radovi", l: "Dodatni radovi", tip: "tekst" },
   { k: "spec_materijala", l: "Specifikacija materijala", tip: "tekst" },
   { k: "budzet", l: "Okvirni budžet", tip: "tekst" },

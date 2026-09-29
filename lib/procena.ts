@@ -7,8 +7,8 @@
 import { izracunaj, CENOVNIK, POCETNI_ULAZ, type Boja, type BojaZavrsnih, type Ulaz } from "@/lib/kalkulator";
 import { kapijeIzTeksta } from "@/lib/opcije";
 
-type LeadZaProcenu = {
-  proizvod?: string | null; duzina_m?: number | null; obuhvat?: string | null;
+export type LeadZaProcenu = {
+  proizvod?: string | null; duzina_m?: number | null; obuhvat?: string | null; lokacija?: string | null;
   detalji?: Partial<Record<string, string>> | null;
 };
 
@@ -42,8 +42,8 @@ const bojaKljuc = (t: string | undefined | null): Boja | null => {
   return null;
 };
 
-export function proceniLead(l: LeadZaProcenu): Procena | null {
-  // bez dužine nema procene (ključ u ruke bez mera isto ne možemo)
+/** Ulaz kalkulatora iz leada: mere, boje, kapije i oblik iz detalja; što fali, pretpostavlja se i navodi. */
+export function ulazIzLeada(l: LeadZaProcenu): { ulaz: Ulaz; pretpostavke: string[] } | null {
   if (l.duzina_m == null || l.duzina_m <= 0) return null;
   const d = l.detalji ?? {};
   const pretpostavke: string[] = [];
@@ -68,9 +68,17 @@ export function proceniLead(l: LeadZaProcenu): Procena | null {
     ...POCETNI_ULAZ, rezim: "ograda", duzina: Number(l.duzina_m), razmak, visinaPolja, visinaStuba, boja, bojaZavrsnih,
     brojKapija: kap.broj, sirinaKapija: kap.sirina,
     zatvoren: oblik.includes("plac"), spojena: oblik.includes("nastavlja"),
+    stubniBlok: !(d.stubni_blok ?? "").toLowerCase().startsWith("n"),
+    mesto: l.lokacija ?? "",
   };
-  const r = izracunaj(ulaz);
-  return { rsd: r.ukupno, ulaz, pretpostavke };
+  return { ulaz, pretpostavke };
+}
+
+export function proceniLead(l: LeadZaProcenu): Procena | null {
+  const x = ulazIzLeada(l);
+  if (!x) return null;
+  const r = izracunaj(x.ulaz);
+  return { rsd: r.ukupno, ulaz: x.ulaz, pretpostavke: x.pretpostavke };
 }
 
 export const bojaNaziv = (b: Boja) => CENOVNIK.find((c) => c.v === b)?.l ?? b;
