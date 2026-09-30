@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import type { LeadRow } from "@/components/LeadView";
 import { Sidebar } from "@/components/Sidebar";
+import { MobilniMeni } from "@/components/MobilniMeni";
 import { Logo } from "@/components/ui";
 import { Sat } from "@/components/Sat";
 import { OTVORENI, SVI_IZVORI, TIPOVI_KUPCA, TEMPERATURE, RAZLOZI, label } from "@/lib/opcije";
@@ -55,6 +56,7 @@ export function AnalitikaView({ leadovi }: { leadovi: LeadRow[] }) {
   return (
     <div className="min-h-screen bg-wash lg:pl-64">
       <Sidebar uRedu={uRedu} />
+      <MobilniMeni uRedu={uRedu} />
 
       {/* Mobilni header */}
       <header className="pointer-events-none fixed inset-x-0 top-3 z-40 sm:top-5 lg:hidden">
@@ -84,7 +86,7 @@ export function AnalitikaView({ leadovi }: { leadovi: LeadRow[] }) {
         </div>
       </section>
 
-      <main className="mx-auto w-full max-w-3xl px-4 py-5 sm:py-7 lg:max-w-none lg:px-8 lg:py-6">
+      <main className="mx-auto w-full max-w-3xl px-4 pb-24 pt-5 sm:pt-7 lg:max-w-none lg:px-8 lg:py-6">
         {/* Hero brojevi */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
           <Plocica label="Stiglo danas" value={brojNaDan(leadovi, danas)} sub={`juče ${brojNaDan(leadovi, juce)}`} />

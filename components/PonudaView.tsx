@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { izracunaj, spojiRezultate, opisDela, CENOVNIK, POCETNI_ULAZ, type Ulaz, type Boja, type BojaZavrsnih, type Rezim } from "@/lib/kalkulator";
@@ -65,8 +65,9 @@ html, body { background: #6b7280; margin: 0; }
 .fali { background: #fde68a; color: #7c2d12; border-radius: 8px; padding: 9px 14px; font-weight: 600; }
 
 /* ---------- list papira ---------- */
+.omot { margin: 0 auto 24px; overflow: hidden; }
 .list { position: relative; box-sizing: border-box; width: 595.28pt; min-height: 841.89pt;
-  margin: 0 auto 24px; background: #fff; font-family: Calibri, Carlito, "Segoe UI", sans-serif;
+  margin: 0; background: #fff; font-family: Calibri, Carlito, "Segoe UI", sans-serif;
   font-size: 10.1pt; line-height: 1; color: #000; box-shadow: 0 6px 24px rgba(0,0,0,.35); }
 .logo { position: absolute; left: 80pt; top: 68pt; height: 69pt; width: auto; }
 .naslov { position: absolute; left: 118pt; top: 146.5pt; font-size: 11pt; font-weight: 700; white-space: nowrap; }
@@ -110,7 +111,8 @@ html, body { background: #6b7280; margin: 0; }
 @media print {
   html, body { background: #fff; }
   .alatke { display: none; }
-  .list { margin: 0; box-shadow: none; }
+  .list { margin: 0; box-shadow: none; transform: none !important; }
+  .omot { width: auto !important; height: auto !important; overflow: visible; }
   .zeleno { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
 `;
@@ -128,6 +130,14 @@ export function PonudaView({ sacuvana, nijeNadjena }: { sacuvana?: SacuvanaPonud
     : izracunato.m;
   const redovi = sacuvana ? sacuvana.redovi : ponudaRedovi(u, r);
   const ukupno = sacuvana ? Number(sacuvana.ukupno_rsd) : r.ukupno;
+  // Na telefonu je list (794 px) širi od ekrana, pa se skalira da stane; na kompu ostaje 1:1.
+  const [skala, setSkala] = useState(1);
+  useEffect(() => {
+    const meri = () => setSkala(Math.min(1, (window.innerWidth - 16) / 794));
+    meri();
+    window.addEventListener("resize", meri);
+    return () => window.removeEventListener("resize", meri);
+  }, []);
   const [uPonudama, setUPonudama] = useState<"" | "radi" | "jeste" | "greska">(sacuvana ? "jeste" : "");
   const [porukaPonude, setPorukaPonude] = useState("");
 
@@ -220,7 +230,8 @@ export function PonudaView({ sacuvana, nijeNadjena }: { sacuvana?: SacuvanaPonud
             : <span className="savet">Ovo ispod je pregled. Dugme skida gotov PDF, bez štampača.</span>}
       </div>
 
-      <div className="list">
+      <div className="omot" style={{ width: Math.round(794 * skala), height: Math.round(1123 * skala) }}>
+      <div className="list" style={{ transform: `scale(${skala})`, transformOrigin: "top left" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/promobet-logo.png" alt="PromoBet" className="logo" />
 
@@ -280,6 +291,7 @@ export function PonudaView({ sacuvana, nijeNadjena }: { sacuvana?: SacuvanaPonud
             <p>Ponudu sastavio: {m.sastavio}</p>
           </div>
         </div>
+      </div>
       </div>
     </>
   );

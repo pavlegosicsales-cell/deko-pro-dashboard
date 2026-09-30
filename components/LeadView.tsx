@@ -7,6 +7,7 @@ import { Sat } from "@/components/Sat";
 import { brojNaDan, danasKljuc, pomeriDan } from "@/lib/analitika";
 import { Card, PlusIco, Logo } from "@/components/ui";
 import { Sidebar } from "@/components/Sidebar";
+import { MobilniMeni } from "@/components/MobilniMeni";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { STATUSI, SVI_PROIZVODI, SVI_IZVORI, DETALJI, staFali, obuhvatKratko, modelKratko, modelLabel, label, normalizujProizvod, DRUGO, TEMPERATURE, TIPOVI_KUPCA, RAZLOZI, ROKOVI, temperatura, type Detalji } from "@/lib/opcije";
 import { LeadWizard } from "@/components/LeadWizard";
@@ -172,6 +173,7 @@ export function LeadView({ leadovi, tabelaFali, demo, login, migracijaFali }: { 
     <div className="min-h-screen bg-wash lg:pl-64">
       <TopBar onDodaj={() => setModal(true)} login={login} />
       <Sidebar uRedu={broj("pozvati")} onDodaj={() => setModal(true)} login={login} />
+      <MobilniMeni uRedu={broj("pozvati")} />
 
       {/* Page head: navy + foto + preliv, kao naslovne trake unutrašnjih strana sajta */}
       <section className="page-head">
@@ -213,7 +215,7 @@ export function LeadView({ leadovi, tabelaFali, demo, login, migracijaFali }: { 
         </div>
       </section>
 
-      <main className="mx-auto w-full max-w-3xl px-4 py-5 sm:py-7 lg:max-w-none lg:px-8 lg:py-6">
+      <main className="mx-auto w-full max-w-3xl px-4 pb-24 pt-5 sm:pt-7 lg:max-w-none lg:px-8 lg:py-6">
         {demo && (
           <div className="card mb-4 border-l-4 border-l-gold p-4 text-sm">
             <p className="h3 text-[15px]">Probni podaci</p>
@@ -282,7 +284,7 @@ export function LeadView({ leadovi, tabelaFali, demo, login, migracijaFali }: { 
 
       {/* Plutajuće „+" na telefonu, da se lead doda jednim palcem */}
       <button onClick={() => setModal(true)} aria-label="Novi lead"
-        className="fixed bottom-5 right-4 z-30 grid h-14 w-14 place-items-center rounded-full bg-gold text-navy shadow-[0_10px_30px_rgba(11,30,59,.35)] transition-transform active:scale-95 sm:hidden">
+        className="fixed bottom-[calc(76px+env(safe-area-inset-bottom))] right-4 z-30 grid h-14 w-14 place-items-center rounded-full bg-gold text-navy shadow-[0_10px_30px_rgba(11,30,59,.35)] transition-transform active:scale-95 sm:hidden">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg>
       </button>
 
@@ -558,7 +560,8 @@ function Kvalifikacija({ l, onKval, mala }: { l: LeadRow; onKval: (id: string, p
   return (
     <div className={`flex items-center gap-2 ${mala ? "mt-1.5" : "mt-2"}`}>
       <button type="button" onClick={sledeca} title="Kvalitet leada: tap menja (vruć → topao → hladan)"
-        className={`inp inp-sm flex shrink-0 items-center gap-1.5 font-semibold ${mala ? "px-2.5" : ""}`}
+        // .inp ima width: 100 %, pa je dugme gutalo ceo red i guralo „Tip kupca" van ekrana na telefonu (w-auto to gasi)
+        className={`inp inp-sm flex w-auto shrink-0 items-center gap-1.5 font-semibold ${mala ? "px-2.5" : ""}`}
         style={t ? { color: t.boja, borderColor: t.boja } : undefined}>
         <span className="h-2.5 w-2.5 rounded-full" style={{ background: t?.boja ?? "#C7D2E4" }} />{t?.l ?? "Kvalitet?"}
       </button>

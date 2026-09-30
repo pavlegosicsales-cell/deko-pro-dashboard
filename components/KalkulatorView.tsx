@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Sidebar } from "@/components/Sidebar";
+import { MobilniMeni } from "@/components/MobilniMeni";
 import { Logo } from "@/components/ui";
 import {
   izracunaj, ponudaTekst, ponudaTekstDelovi, internaBeleska, redoviZaVisinu, obimPlaca, izracunajPrevoz, spojiRezultate, opisDela,
@@ -216,6 +217,7 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
   return (
     <div className="min-h-screen bg-wash lg:pl-64">
       <Sidebar uRedu={uRedu} />
+      <MobilniMeni uRedu={uRedu} />
 
       <header className="pointer-events-none fixed inset-x-0 top-3 z-40 sm:top-5 lg:hidden">
         <div className="pointer-events-auto mx-auto w-full max-w-3xl px-3 sm:px-4">
@@ -244,7 +246,7 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
         </div>
       </section>
 
-      <main className="mx-auto w-full max-w-3xl px-4 py-5 sm:py-7 lg:max-w-none lg:px-8 lg:py-6">
+      <main className="mx-auto w-full max-w-3xl px-4 pb-24 pt-5 sm:pt-7 lg:max-w-none lg:px-8 lg:py-6">
         <div className="grid gap-4 lg:grid-cols-[400px_1fr]">
           {/* ---------------- Unos ---------------- */}
           <div className="card p-4 sm:p-5">
