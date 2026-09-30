@@ -409,6 +409,72 @@ export function izracunaj(u: Ulaz, p: Podesavanja = PODRAZUMEVANO): Rezultat {
   });
 }
 
+/** Kratak opis dela ponude: „Ograda 20 m", „Pun zid 10 m", „Obloga 8 m²", „Ručno". */
+export function opisDela(u: Ulaz): string {
+  const duz = u.poDeonicama ? u.deonice.reduce((a, d) => a + (d.duzina || 0), 0) : u.duzina;
+  if (u.rezim === "ograda") return `Ograda ${r2(duz)} m`;
+  if (u.rezim === "zid") return `Pun zid ${r2(duz)} m`;
+  if (u.rezim === "obloga") return `Obloga ${r2(u.povrsina)} m²`;
+  return "Ručno";
+}
+
+/** Više delova u jednoj ponudi (ograda + zid, ograda drugačije visine, obloga…): stavke se
+    sabiraju po nazivu, iznosi i prevoz takođe. Polja i stubovi se sabiraju radi pregleda. */
+export function spojiRezultate(rezultati: Rezultat[], opisi: string[] = []): Rezultat {
+  const spojeno = new Map<string, Stavka>();
+  for (const d of rezultati) for (const st of d.stavke) {
+    const ima = spojeno.get(st.naziv);
+    if (ima) {
+      ima.kom += st.kom;
+      ima.ukupno = ima.cena != null ? Math.round(ima.kom * ima.cena * (ima.jedinicaCene === "m²" ? 1 / 12.5 : 1)) : null;
+      if (ima.jedinicaCene === "m²") ima.dodatak = `${r2(ima.kom / 12.5)} m²`;
+    } else spojeno.set(st.naziv, { ...st });
+  }
+  const stavke = [...spojeno.values()];
+  const racun: string[] = [];
+  rezultati.forEach((d, i) => {
+    racun.push(`Deo ${i + 1}${opisi[i] ? `: ${opisi[i]}` : ""}`);
+    racun.push(...d.racun.map((x) => "  " + x));
+  });
+  const prvi = rezultati[0];
+  return saPrevozom({
+    rezim: prvi?.rezim ?? "ograda",
+    polja: rezultati.reduce((a, d) => a + d.polja, 0),
+    stubovi: rezultati.reduce((a, d) => a + d.stubovi, 0),
+    stvarniRazmak: prvi?.stvarniRazmak ?? 0,
+    redovaPolja: prvi?.redovaPolja ?? 0, redovaStuba: prvi?.redovaStuba ?? 0,
+    duzinaZida: r2(rezultati.reduce((a, d) => a + d.duzinaZida, 0)),
+    m2: r2(rezultati.reduce((a, d) => a + d.m2, 0)),
+    stavke, ukupno: stavke.reduce((a, x) => a + (x.ukupno ?? 0), 0),
+    cenaNepotpuna: rezultati.some((d) => d.cenaNepotpuna),
+    tezinaKg: 0, palete: 0,
+    napomene: [...new Set(rezultati.flatMap((d) => d.napomene))],
+    racun,
+  });
+}
+
+/** Ponuda za DM kad ima više delova: naslov, red po delu, pa spojene stavke. */
+export function ponudaTekstDelovi(delovi: Ulaz[], r: Rezultat): string {
+  const prvi = delovi[0];
+  const mesto = prvi.mesto.trim();
+  const boje = [...new Set(delovi.map((d) => bojaNaziv(d.boja).toLowerCase()))].join(" i ");
+  const red: string[] = [`Ponuda – materijal ${boje}${mesto ? `, ${mesto}` : ""}`, ""];
+  for (const d of delovi) {
+    const rr = izracunaj(d);
+    if (d.rezim === "ograda") red.push(`${opisDela(d)} (stubovi ${r2(rr.redovaStuba * 0.2)}m, polja ${r2(rr.redovaPolja * 0.2)}m, razmak između stubova ${rr.stvarniRazmak}m)`);
+    else if (d.rezim === "zid") red.push(`${opisDela(d)} (visina ${r2(rr.redovaPolja * 0.2)}m, ${rr.redovaPolja} redova)`);
+    else red.push(opisDela(d));
+  }
+  red.push("");
+  for (const s of r.stavke) {
+    const cena = s.cena != null ? `${rsdFmt(s.cena)}din/${s.jedinicaCene ?? "kom"}` : "[cena – proveriti]";
+    red.push(`${s.naziv} (${cena}) (${s.opis})`);
+    red.push(`${s.kom} ${s.jedinica}${s.dodatak ? ` (${s.dodatak})` : ""} = ${s.ukupno != null ? rsdFmt(s.ukupno) + "din" : "[___]"}`);
+  }
+  red.push("", `UKUPNO: ${rsdFmt(r.ukupno)}din${r.cenaNepotpuna ? " (bez stavki kojima cena nije potvrđena)" : ""}`);
+  return red.join("\n");
+}
+
 /** Ponuda u formatu za DM / WhatsApp / Viber (pravila, deo 8). */
 export function ponudaTekst(u: Ulaz, r: Rezultat): string {
   const boja = bojaNaziv(u.boja).toLowerCase();

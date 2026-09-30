@@ -26,7 +26,7 @@ export const idePonudaPaji = (p: PajaPolja) => p.temelj.startsWith("Ima") || p.t
 const daNe = (v: string) => (v.toLowerCase().startsWith("d") ? "da" : v.toLowerCase().startsWith("n") ? "ne" : v || "");
 const m = (n: number) => `${String(n).replace(".", ",")}m`;
 
-export function porukaZaPaju(p: PajaPolja, u: Ulaz, r: Rezultat, saPonudom: boolean, transport?: { eur: number | null; saIstovarom: boolean }): string {
+export function porukaZaPaju(p: PajaPolja, u: Ulaz, r: Rezultat, saPonudom: boolean, transport?: { eur: number | null; saIstovarom: boolean }, ostali: string[] = [], tekstPonude?: string): string {
   const deonice = u.poDeonicama ? u.deonice.filter((d) => d.duzina > 0) : [];
   const duzina = deonice.length ? deonice.reduce((a, d) => a + d.duzina, 0) : u.duzina;
   const visinaPolja = deonice.length ? deonice.map((d) => m(d.visinaPolja)).join(" / ") : m(u.visinaPolja);
@@ -59,9 +59,10 @@ export function porukaZaPaju(p: PajaPolja, u: Ulaz, r: Rezultat, saPonudom: bool
     const sk = deonice.length ? deonice.reduce((a, d) => a + d.sirinaKapija, 0) : u.sirinaKapija;
     red.push(`* *Kapije:* ${bk} kom, ukupno ${m(sk)}`);
   }
+  if (ostali.length) red.push(`* *Ostali delovi:* ${ostali.join(", ")}`);
   if (saPonudom) {
     const prevoz = izracunajPrevoz(r);
-    red.push("", "*PONUDA ZA MATERIJAL*", ponudaTekst(u, r));
+    red.push("", "*PONUDA ZA MATERIJAL*", tekstPonude ?? ponudaTekst(u, r));
     red.push("", `Prevoz: ${prevoz.palete} paleta, ${prevoz.kg} kg`);
     if (transport && transport.eur != null && transport.eur > 0) red.push(`Transport ${transport.saIstovarom ? "sa istovarom" : "bez istovara"}: ${transport.eur}e`);
   }

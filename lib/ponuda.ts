@@ -4,7 +4,7 @@
   raspored je u components/PonudaView.tsx, a ovde su samo podaci i format.
 */
 import {
-  bojaNaziv, zavrsnaNaziv, VRSTE, type Ulaz, type Rezultat, type Stavka,
+  bojaNaziv, zavrsnaNaziv, VRSTE, POCETNI_ULAZ, type Ulaz, type Rezultat, type Stavka,
   type RucnaStavka, type VrstaStavke, type Deonica,
 } from "@/lib/kalkulator";
 
@@ -53,12 +53,14 @@ export function datumPonude(d = new Date()): string {
 
 /** Naziv proizvoda onako kako je napisan u templateu, sa bojom iz kalkulatora. */
 function nazivZaPonudu(s: Stavka, u: Ulaz): string {
+  // boja se čita iz naziva stavke („Zidni blok Kapućino"), da ponuda sa više delova različitih boja bude tačna
+  const iz = (prefiks: string) => s.naziv.slice(prefiks.length).trim().toLowerCase() || bojaNaziv(u.boja).toLowerCase();
   const boja = bojaNaziv(u.boja).toLowerCase();
   const zav = zavrsnaNaziv(u.bojaZavrsnih).toLowerCase();
-  if (s.naziv.startsWith("Zidni blok")) return `Dekorativni blok ${boja} 19x19x39cm`;
-  if (s.naziv.startsWith("Stubni blok")) return `Dekorativni stubni blok ${boja} 19x39x39cm`;
-  if (s.naziv.startsWith("Okapnica")) return `betonska okapnica ${zav} 50x30cm`;
-  if (s.naziv.startsWith("Kapa")) return `betonska kapa ${zav} 50x50cm`;
+  if (s.naziv.startsWith("Zidni blok")) return `Dekorativni blok ${iz("Zidni blok")} 19x19x39cm`;
+  if (s.naziv.startsWith("Stubni blok")) return `Dekorativni stubni blok ${iz("Stubni blok")} 19x39x39cm`;
+  if (s.naziv.startsWith("Okapnica")) return `betonska okapnica ${iz("Okapnica") || zav} 50x30cm`;
+  if (s.naziv.startsWith("Kapa")) return `betonska kapa ${iz("Kapa") || zav} 50x50cm`;
   if (s.naziv.startsWith("Dekorativna obloga")) return `Dekorativna obloga ${boja} 5x19x39cm`;
   return s.naziv;
 }
@@ -133,8 +135,22 @@ export function dekodirajRucne(s: string | null): RucnaStavka[] {
     }));
 }
 
-export function uAdresu(u: Ulaz, m: PonudaMeta): string {
+/** Delovi ponude u adresi (kad ih je više): sažet JSON, bez praznih spiskova. */
+const kompaktan = (d: Ulaz) => ({ ...d, rucne: d.rezim === "rucno" ? d.rucne : [], deonice: d.poDeonicama ? d.deonice : [] });
+export function dekodirajDelove(s: string | null): Ulaz[] {
+  if (!s) return [];
+  try {
+    const lista = JSON.parse(s) as Partial<Ulaz>[];
+    if (!Array.isArray(lista)) return [];
+    return lista.map((d) => ({ ...POCETNI_ULAZ, ...d, rucne: d.rucne?.length ? d.rucne : POCETNI_ULAZ.rucne, deonice: d.deonice?.length ? d.deonice : POCETNI_ULAZ.deonice }));
+  } catch { return []; }
+}
+
+export function uAdresu(prvi: Ulaz | Ulaz[], m: PonudaMeta): string {
+  const delovi = Array.isArray(prvi) ? prvi : [prvi];
+  const u = delovi[0];
   const q = new URLSearchParams({
+    delovi: delovi.length > 1 ? JSON.stringify(delovi.map(kompaktan)) : "",
     rezim: u.rezim, duzina: String(u.duzina), razmak: String(u.razmak),
     vp: String(u.visinaPolja), vs: String(u.visinaStuba), kapije: String(u.sirinaKapija), bk: String(u.brojKapija),
     deonice: u.poDeonicama ? kodirajDeonice(u.deonice) : "",

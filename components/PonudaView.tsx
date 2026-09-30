@@ -3,8 +3,8 @@
 import { useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { izracunaj, CENOVNIK, POCETNI_ULAZ, type Ulaz, type Boja, type BojaZavrsnih, type Rezim } from "@/lib/kalkulator";
-import { ponudaRedovi, svegaFmt, datumPonude, dekodirajRucne, dekodirajDeonice, transportLinija, type PonudaMeta, type SacuvanaPonuda } from "@/lib/ponuda";
+import { izracunaj, spojiRezultate, opisDela, CENOVNIK, POCETNI_ULAZ, type Ulaz, type Boja, type BojaZavrsnih, type Rezim } from "@/lib/kalkulator";
+import { ponudaRedovi, svegaFmt, datumPonude, dekodirajRucne, dekodirajDeonice, dekodirajDelove, transportLinija, type PonudaMeta, type SacuvanaPonuda } from "@/lib/ponuda";
 import { sacuvajPonudu } from "@/app/ponude/actions";
 import { napraviPonudaPdf, imeFajla } from "@/lib/ponudaPdf";
 import { porukaZaLarisu, larisaViberLink, LARISA_GRUPA } from "@/lib/paja";
@@ -16,7 +16,7 @@ import { porukaZaLarisu, larisaViberLink, LARISA_GRUPA } from "@/lib/paja";
   Papir je A4; template je bio Letter, ali je širina sadržaja ista (79,2 do 527,5 pt).
 */
 
-function izUrla(sp: URLSearchParams): { u: Ulaz; m: PonudaMeta } {
+function izUrla(sp: URLSearchParams): { u: Ulaz; m: PonudaMeta; delovi: Ulaz[] } {
   const n = (k: string, d: number) => { const v = parseFloat(sp.get(k) ?? ""); return isNaN(v) ? d : v; };
   const boja = sp.get("boja") as Boja | null;
   const u: Ulaz = {
@@ -49,7 +49,8 @@ function izUrla(sp: URLSearchParams): { u: Ulaz; m: PonudaMeta } {
     leadId: sp.get("lead") || null,
     telefon: sp.get("tel") || "",
   };
-  return { u, m };
+  const delovi = dekodirajDelove(sp.get("delovi"));
+  return { u: delovi[0] ?? u, m, delovi: delovi.length ? delovi : [u] };
 }
 
 const STIL = `
@@ -117,7 +118,9 @@ html, body { background: #6b7280; margin: 0; }
 export function PonudaView({ sacuvana, nijeNadjena }: { sacuvana?: SacuvanaPonuda | null; nijeNadjena?: boolean }) {
   const sp = useSearchParams();
   const izracunato = izUrla(sp);
-  const r = izracunaj(izracunato.u);
+  const r = izracunato.delovi.length > 1
+    ? spojiRezultate(izracunato.delovi.map((d) => izracunaj(d)), izracunato.delovi.map(opisDela))
+    : izracunaj(izracunato.u);
   // Sačuvana ponuda se prikazuje TAČNO kako je poslata (redovi iz baze), a nova se računa iz adrese.
   const u = izracunato.u;
   const m: PonudaMeta = sacuvana

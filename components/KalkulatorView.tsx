@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Sidebar } from "@/components/Sidebar";
 import { Logo } from "@/components/ui";
 import {
-  izracunaj, ponudaTekst, internaBeleska, redoviZaVisinu, obimPlaca, izracunajPrevoz,
+  izracunaj, ponudaTekst, ponudaTekstDelovi, internaBeleska, redoviZaVisinu, obimPlaca, izracunajPrevoz, spojiRezultate, opisDela,
   CENOVNIK, ZAVRSNE_BOJE, VRSTE, PODRAZUMEVANO, POCETNI_ULAZ,
   type Ulaz, type Podesavanja, type Boja, type BojaZavrsnih, type Rezim, type VrstaStavke,
 } from "@/lib/kalkulator";
@@ -24,7 +24,7 @@ import { izaberiPrevoznika, prevoznikLink } from "@/lib/prevoznici";
 
 const KLJUC = "deko.kalkulator.v1";
 const danasnjiDatum = () => new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Belgrade" });
-type Sacuvano = { kad: string; u: Ulaz; p: Podesavanja; pon: PonudaMeta; bezTransporta: boolean; leadId?: string | null; paja?: PajaPolja; telefonKupca?: string };
+type Sacuvano = { kad: string; u?: Ulaz; delovi?: Ulaz[]; aktivni?: number; p: Podesavanja; pon: PonudaMeta; bezTransporta: boolean; leadId?: string | null; paja?: PajaPolja; telefonKupca?: string };
 
 /** Lead kako ga kalkulator vidi: dovoljno da popuni ponudu i poruku za Paju. */
 export type LeadKratko = LeadZaProcenu & { id: string; ime: string | null; prezime: string | null; telefon: string | null; status: string; obuhvat?: string | null };
@@ -60,7 +60,13 @@ function izUrla(sp: URLSearchParams): Ulaz {
 
 export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi?: LeadKratko[] }) {
   const sp = useSearchParams();
-  const [u, setU] = useState<Ulaz>(() => izUrla(sp));
+  /* Ponuda može imati više delova (ograda + zid, ograda drugačije visine, obloga…). Uređuje se aktivni deo;
+     rezultat, prevoz i ponuda su zbir svih delova. */
+  const [delovi, setDelovi] = useState<Ulaz[]>(() => [izUrla(sp)]);
+  const [aktivni, setAktivni] = useState(0);
+  const u = delovi[Math.min(aktivni, delovi.length - 1)];
+  const setU = (f: Ulaz | ((s: Ulaz) => Ulaz)) =>
+    setDelovi((d) => d.map((x, i) => (i === Math.min(aktivni, d.length - 1) ? (typeof f === "function" ? f(x) : f) : x)));
   const [p, setP] = useState<Podesavanja>(PODRAZUMEVANO);
   const [pod, setPod] = useState(false);
   const [ari, setAri] = useState("");
@@ -87,7 +93,7 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
     const d = l.detalji ?? {};
     const x = ulazIzLeada(l);
     const rezim: Rezim = l.proizvod === "potporni_zid" ? "zid" : l.proizvod === "oblaganje" ? "obloga" : "ograda";
-    setU((s) => (x ? { ...x.ulaz, rezim } : { ...s, rezim, mesto: l.lokacija ?? s.mesto }));
+    setDelovi([x ? { ...x.ulaz, rezim } : { ...u, rezim, mesto: l.lokacija ?? u.mesto }]); setAktivni(0);
     setPretpostavke(x?.pretpostavke ?? (l.duzina_m ? [] : ["lead nema dužinu, mere upiši ručno"]));
     setPon((s) => ({ ...s, kupac: imeLeada(l) }));
     setPaja({ ime: imeLeada(l), lokacija: l.lokacija ?? "", temelj: d.temelj ?? "", iskop: d.iskop ?? "", cokla: d.cokla ?? "", dodatniRadovi: d.dodatni_radovi ?? "" });
@@ -112,40 +118,39 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
     try { sastavio = localStorage.getItem("deko.ponuda.sastavio") || sastavio; } catch { /* prazno */ }
     const danas = danasnjiDatum();
 
-     
     setPon((st) => ({
       ...st, ...(sacuvano?.pon ?? {}), sastavio: sacuvano?.pon?.sastavio || sastavio,
       // datum se osvezava ako je zapamceno od ranijeg dana, da se ponuda ne posalje sa starim datumom
       datum: !sacuvano || sacuvano.kad !== danas ? datumPonude() : (sacuvano.pon?.datum || datumPonude()),
     }));
     if (sacuvano) {
-      if (!izAdrese && sacuvano.u) {
-         
-        setU((st) => ({ ...st, ...sacuvano.u, rucne: sacuvano.u.rucne?.length ? sacuvano.u.rucne : st.rucne }));
+      if (!izAdrese && (sacuvano.delovi?.length || sacuvano.u)) {
+        const lista = (sacuvano.delovi?.length ? sacuvano.delovi : [sacuvano.u as Ulaz])
+          .map((d) => ({ ...POCETNI_ULAZ, ...d, rucne: d.rucne?.length ? d.rucne : POCETNI_ULAZ.rucne, deonice: d.deonice?.length ? d.deonice : POCETNI_ULAZ.deonice }));
+        setDelovi(lista); setAktivni(Math.min(sacuvano.aktivni ?? 0, lista.length - 1));
       }
-       
       if (sacuvano.p) setP((st) => ({ ...st, ...sacuvano.p }));
-       
       setBezTransporta(!!sacuvano.bezTransporta);
       if (sacuvano.leadId) { setLeadId(sacuvano.leadId); const l = leadovi.find((x) => x.id === sacuvano!.leadId); if (l) setTrazi(imeLeada(l)); }
       if (sacuvano.paja) setPaja({ ...PRAZNA_PAJA, ...sacuvano.paja });
       if (sacuvano.telefonKupca) setTelefonKupca(sacuvano.telefonKupca);
-       
       if (!izAdrese) setVraceno(true);
     }
+  // izaberiLead se pravi u svakom renderu; u zavisnostima bi efekat vrteo setState u krug
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sp, leadovi]);
 
   // svaka izmena se odmah pamti
   useEffect(() => {
     if (prviPut.current) { prviPut.current = false; return; }
     try {
-      localStorage.setItem(KLJUC, JSON.stringify({ kad: danasnjiDatum(), u, p, pon, bezTransporta, leadId, paja, telefonKupca }));
+      localStorage.setItem(KLJUC, JSON.stringify({ kad: danasnjiDatum(), delovi, aktivni, p, pon, bezTransporta, leadId, paja, telefonKupca }));
     } catch { /* prazno */ }
-  }, [u, p, pon, bezTransporta, leadId, paja, telefonKupca]);
+  }, [delovi, aktivni, p, pon, bezTransporta, leadId, paja, telefonKupca]);
 
   const isprazni = () => {
     try { localStorage.removeItem(KLJUC); } catch { /* prazno */ }
-    setU(POCETNI_ULAZ);
+    setDelovi([POCETNI_ULAZ]); setAktivni(0);
     setP(PODRAZUMEVANO);
     setPon({ ...PONUDA_META, datum: datumPonude(), sastavio: pon.sastavio });
     setBezTransporta(false);
@@ -163,9 +168,15 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
 
   const napraviPonudu = () => {
     try { localStorage.setItem("deko.ponuda.sastavio", pon.sastavio); } catch { /* prazno */ }
-    window.open(uAdresu(u, { ...pon, transportEur: bezTransporta ? null : pon.transportEur, leadId, telefon: telefonKupca }), "_blank");
+    window.open(uAdresu(delovi, { ...pon, transportEur: bezTransporta ? null : pon.transportEur, leadId, telefon: telefonKupca }), "_blank");
   };
-  const r = izracunaj(u, p);
+  const rDeo = izracunaj(u, p);                                   // aktivni deo, za pločice
+  const rezultatiDelova = delovi.map((d) => izracunaj(d, p));
+  const viseDelova = delovi.length > 1;
+  const r = viseDelova ? spojiRezultate(rezultatiDelova, delovi.map(opisDela)) : rDeo;   // sve zajedno
+  const tekstPonude = viseDelova ? ponudaTekstDelovi(delovi, r) : ponudaTekst(u, r);
+  const uZaPaju = delovi.find((d) => d.rezim === "ograda") ?? delovi.find((d) => d.rezim === "zid") ?? u;
+  const ostaliDelovi = viseDelova ? delovi.filter((d) => d !== uZaPaju).map(opisDela) : [];
 
   const broj = (k: keyof Ulaz) => (n: number) => setU((s) => ({ ...s, [k]: n }));
   const pbroj = (k: keyof Podesavanja) => (n: number) => setP((s) => ({ ...s, [k]: n }));
@@ -181,11 +192,11 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
     return red.join("\n");
   };
 
-  const pajaTekst = porukaZaPaju(paja, u, r, idePonudaPaji(paja), { eur: bezTransporta ? null : pon.transportEur, saIstovarom: pon.saIstovarom });
+  const pajaTekst = porukaZaPaju(paja, uZaPaju, r, idePonudaPaji(paja), { eur: bezTransporta ? null : pon.transportEur, saIstovarom: pon.saIstovarom }, ostaliDelovi, tekstPonude);
   const kopiraj = async (sta: "ponuda" | "beleska" | "prevoz" | "paja") => {
     try {
       await navigator.clipboard.writeText(
-        sta === "ponuda" ? ponudaTekst(u, r) : sta === "prevoz" ? prevozTekst() : sta === "paja" ? pajaTekst : internaBeleska(u, r));
+        sta === "ponuda" ? tekstPonude : sta === "prevoz" ? prevozTekst() : sta === "paja" ? pajaTekst : internaBeleska(u, r));
       setKopirano(sta); setTimeout(() => setKopirano(""), 1600);
     } catch { /* prazno */ }
   };
@@ -246,6 +257,17 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
                 </button>
               ))}
             </div>
+
+            {viseDelova && (
+              <div className="mt-3 flex flex-wrap gap-1.5">
+                {delovi.map((d, i) => (
+                  <span key={i} className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12px] ${i === aktivni ? "border-navy bg-navy text-white" : "border-line bg-white text-ink"}`}>
+                    <button type="button" onClick={() => setAktivni(i)} className="font-semibold">{i + 1}. {opisDela(d)}</button>
+                    <button type="button" aria-label="Ukloni deo" onClick={() => { setDelovi((st) => st.filter((_, j) => j !== i)); setAktivni((a) => Math.max(0, a >= i ? a - 1 : a)); }} className="opacity-70 hover:opacity-100">×</button>
+                  </span>
+                ))}
+              </div>
+            )}
 
             {/* izbor leada: sve što je upisano posle poziva dolazi ovde samo */}
             <div className="relative mt-4">
@@ -463,30 +485,52 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
                 </label>
               </div>
             )}
+
+            {/* još jedan deo u istoj ponudi: ograda + zid, ili ograda drugačije visine (Pavle, 30.09.2026.) */}
+            <div className="mt-4 rounded-[10px] border border-dashed border-line p-3">
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Dodaj deo u ovu ponudu</div>
+              <p className="mt-1 text-[11px] leading-relaxed text-muted">Kad kupac ima i zid i ogradu, ili ogradu različitih visina. Stavke svih delova se sabiraju u jednu ponudu.</p>
+              <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+                {REZIMI.map((x) => (
+                  <button key={x.v} type="button"
+                    onClick={() => { setDelovi((st) => [...st, { ...POCETNI_ULAZ, rezim: x.v, boja: u.boja, bojaZavrsnih: u.bojaZavrsnih, mesto: u.mesto }]); setAktivni(delovi.length); }}
+                    className="rounded-[10px] border border-line bg-white px-2 py-2 text-[13px] font-semibold text-ink hover:border-accent">+ {x.l}</button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* ---------------- Rezultat ---------------- */}
           <div className="flex flex-col gap-4">
+            {viseDelova && (
+              <div className="card flex flex-wrap gap-x-4 gap-y-1 p-3 text-xs text-muted">
+                {delovi.map((d, i) => (
+                  <button key={i} type="button" onClick={() => setAktivni(i)} className={i === aktivni ? "text-ink" : ""}>
+                    {i + 1}. <b className="text-ink">{opisDela(d)}</b> · {rsd(rezultatiDelova[i].ukupno)}
+                  </button>
+                ))}
+              </div>
+            )}
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {ograda && <>
-                <Plocica label="Polja" value={String(r.polja)} sub={`razmak ${r.stvarniRazmak} m`} />
-                <Plocica label="Stubova" value={String(r.stubovi)} sub={`${r.redovaStuba} redova`} />
-                <Plocica label="Zidani deo" value={`${r.duzinaZida} m`} sub={`${r.redovaPolja} redova · ${r.m2} m²`} />
+                <Plocica label="Polja" value={String(rDeo.polja)} sub={`razmak ${rDeo.stvarniRazmak} m`} />
+                <Plocica label="Stubova" value={String(rDeo.stubovi)} sub={`${rDeo.redovaStuba} redova`} />
+                <Plocica label="Zidani deo" value={`${rDeo.duzinaZida} m`} sub={`${rDeo.redovaPolja} redova · ${rDeo.m2} m²`} />
               </>}
               {zid && <>
-                <Plocica label="Dužina" value={`${r.duzinaZida} m`} sub={`${r.redovaPolja} redova`} />
-                <Plocica label="Površina" value={`${r.m2} m²`} sub="12,5 kom/m²" />
-                <Plocica label="Redova" value={String(r.redovaPolja)} sub="po 20 cm" />
+                <Plocica label="Dužina" value={`${rDeo.duzinaZida} m`} sub={`${rDeo.redovaPolja} redova`} />
+                <Plocica label="Površina" value={`${rDeo.m2} m²`} sub="12,5 kom/m²" />
+                <Plocica label="Redova" value={String(rDeo.redovaPolja)} sub="po 20 cm" />
               </>}
               {obloga && <>
-                <Plocica label="Površina" value={`${r.m2} m²`} sub="po strani" />
-                <Plocica label="Obloga" value={String(r.stavke[0]?.kom ?? 0)} sub={`12,5 kom/m² + 5 % = ${r.stavke[0]?.dodatak ?? "—"}`} />
-                <Plocica label="Težina" value={`≈ ${new Intl.NumberFormat("sr-RS").format(r.tezinaKg)} kg`} sub="6 kg/kom" />
+                <Plocica label="Površina" value={`${rDeo.m2} m²`} sub="po strani" />
+                <Plocica label="Obloga" value={String(rDeo.stavke[0]?.kom ?? 0)} sub={`12,5 kom/m² + 5 % = ${rDeo.stavke[0]?.dodatak ?? "—"}`} />
+                <Plocica label="Težina" value={`≈ ${new Intl.NumberFormat("sr-RS").format(rDeo.tezinaKg)} kg`} sub="6 kg/kom" />
               </>}
               {rucno && <>
-                <Plocica label="Stavki" value={String(r.stavke.length)} sub="u ponudi" />
-                <Plocica label="Komada" value={new Intl.NumberFormat("sr-RS").format(r.stavke.reduce((a, x) => a + x.kom, 0))} sub="svih stavki" />
-                <Plocica label="Težina" value={`≈ ${new Intl.NumberFormat("sr-RS").format(r.tezinaKg)} kg`} sub={`${r.palete} paleta`} />
+                <Plocica label="Stavki" value={String(rDeo.stavke.length)} sub="u ponudi" />
+                <Plocica label="Komada" value={new Intl.NumberFormat("sr-RS").format(rDeo.stavke.reduce((a, x) => a + x.kom, 0))} sub="svih stavki" />
+                <Plocica label="Težina" value={`≈ ${new Intl.NumberFormat("sr-RS").format(rDeo.tezinaKg)} kg`} sub={`${rDeo.palete} paleta`} />
               </>}
               <Plocica label="Ukupno" value={r.cenaNepotpuna ? "—" : rsd(r.ukupno)} sub={r.cenaNepotpuna ? "cena nije potvrđena" : "materijal sa PDV-om"} zlato />
             </div>
