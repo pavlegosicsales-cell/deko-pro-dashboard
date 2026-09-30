@@ -90,7 +90,7 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
     setU((s) => (x ? { ...x.ulaz, rezim } : { ...s, rezim, mesto: l.lokacija ?? s.mesto }));
     setPretpostavke(x?.pretpostavke ?? (l.duzina_m ? [] : ["lead nema dužinu, mere upiši ručno"]));
     setPon((s) => ({ ...s, kupac: imeLeada(l) }));
-    setPaja({ ime: l.ime || imeLeada(l), lokacija: l.lokacija ?? "", temelj: d.temelj ?? "", iskop: d.iskop ?? "", cokla: d.cokla ?? "", dodatniRadovi: d.dodatni_radovi ?? "" });
+    setPaja({ ime: imeLeada(l), lokacija: l.lokacija ?? "", temelj: d.temelj ?? "", iskop: d.iskop ?? "", cokla: d.cokla ?? "", dodatniRadovi: d.dodatni_radovi ?? "" });
     setTelefonKupca(l.telefon ?? "");
     setLeadId(l.id); setTrazi(imeLeada(l)); setOtvoren(false);
   };
@@ -600,7 +600,7 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
                   <span className="text-[11px] text-muted">ponude za ugradnju · WhatsApp +381 63 1781032</span>
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-3">
-                  <Polje label="Ime kupca"><input value={paja.ime} onChange={(e) => setPaja((s) => ({ ...s, ime: e.target.value }))} className="inp inp-sm" /></Polje>
+                  <Polje label="Ime i prezime kupca" hint="naslov poruke"><input value={paja.ime} onChange={(e) => setPaja((s) => ({ ...s, ime: e.target.value }))} className="inp inp-sm" /></Polje>
                   <Polje label="Lokacija"><input value={paja.lokacija} onChange={(e) => setPaja((s) => ({ ...s, lokacija: e.target.value }))} className="inp inp-sm" /></Polje>
                   <Polje label="Temelj">
                     <select value={paja.temelj} onChange={(e) => setPaja((s) => ({ ...s, temelj: e.target.value }))} className="inp inp-sm">
