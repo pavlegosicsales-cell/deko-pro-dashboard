@@ -14,7 +14,7 @@ import { rsd } from "@/lib/format";
 import { PONUDA_META, datumPonude, uAdresu, dekodirajDeonice, type PonudaMeta } from "@/lib/ponuda";
 import { ulazIzLeada, type LeadZaProcenu } from "@/lib/procena";
 import { porukaZaPaju, pajaLink, idePonudaPaji, PRAZNA_PAJA, porukaZaLarisu, larisaViberLink, LARISA_GRUPA, type PajaPolja } from "@/lib/paja";
-import { PREVOZNICI, predloziPrevoznika, prevoznikLink } from "@/lib/prevoznici";
+import { izaberiPrevoznika, prevoznikLink } from "@/lib/prevoznici";
 
 /*
   Kalkulator po pravilima iz „Deko Pro – pravila za računanje ograda, zidova i obloga" (27.09.2026.):
@@ -570,20 +570,21 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
                   <span>≈ <b className="text-ink">{(prevoz.kg / 1000).toFixed(1).replace(".", ",")} t</b>. Pošalji prevozniku, pa cenu upiši dole u ponudu.</span>
                   <button type="button" onClick={() => kopiraj("prevoz")} className="btn btn-sm btn-ghost btn-plain">{kopirano === "prevoz" ? "Kopirano ✓" : "Kopiraj"}</button>
                 </div>
-                {/* prevoznici po broju paleta: Rocko do 3, Miloš (sa istovarom) do 10, Marko (bez istovara) do 22 */}
-                <div className="mt-2.5 grid grid-cols-1 gap-2 sm:grid-cols-3">
-                  {PREVOZNICI.map((pr) => {
-                    const predlog = predloziPrevoznika(prevoz.palete, bezTransporta ? undefined : pon.saIstovarom) === pr.kljuc;
-                    return (
-                      <a key={pr.kljuc} href={prevoznikLink(pr, prevozTekst())} target="_blank" rel="noreferrer"
-                        className={`flex flex-col rounded-[10px] border px-3 py-2 transition-colors ${predlog ? "border-navy bg-navy text-white" : "border-line bg-white text-ink hover:border-accent"}`}>
-                        <span className="text-[13px] font-semibold">{pr.ime} · WhatsApp{predlog && <span className="ml-1 text-[10px] font-normal opacity-80">(predlog)</span>}</span>
-                        <span className={`text-[10px] leading-snug ${predlog ? "text-white/75" : "text-muted"}`}>{pr.opis}</span>
+                {/* kalkulator sam bira prevoznika po paletama i kilaži (Pavle, 30.09.2026.): bez nuđenja opcija */}
+                {(() => {
+                  const iz = izaberiPrevoznika(prevoz.palete, prevoz.kg, bezTransporta ? undefined : pon.saIstovarom);
+                  return (
+                    <div className="mt-2.5 flex flex-wrap items-center justify-between gap-2 rounded-[10px] bg-wash px-3 py-2.5">
+                      <div className="min-w-0">
+                        <div className="text-[13px] font-semibold text-ink">Ide {iz.prevoznik.vokativ === "Marko" ? "Marku" : iz.prevoznik.vokativ === "Miloše" ? "Milošu" : "Rocku"} <span className="font-normal text-muted">· {iz.prevoznik.opis}</span></div>
+                        <div className="text-[11px] text-muted">{iz.razlog}{iz.viseTura ? "" : "."}</div>
+                      </div>
+                      <a href={prevoznikLink(iz.prevoznik, prevozTekst())} target="_blank" rel="noreferrer" className="btn btn-sm">
+                        Pošalji {iz.prevoznik.ime === "Miloš" ? "Milošu" : iz.prevoznik.ime === "Marko" ? "Marku" : "Rocku"} na WhatsApp
                       </a>
-                    );
-                  })}
-                </div>
-                {prevoz.palete > 22 && <p className="mt-2 text-[11px]">Preko 22 palete: ide u više tura, dogovori sa Markom.</p>}
+                    </div>
+                  );
+                })()}
               </div>
               {prevoz.napomene.length > 0 && (
                 <div className="border-t border-line bg-wash/50 px-4 py-2.5 text-[11px] leading-relaxed text-muted">

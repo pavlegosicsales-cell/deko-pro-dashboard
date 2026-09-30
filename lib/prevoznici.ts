@@ -21,11 +21,21 @@ export const PREVOZNICI: Prevoznik[] = [
   { kljuc: "marko", ime: "Marko", vokativ: "Marko", tel: "062299017", opis: "šleper, cena bez istovara, do 22 palete", maxPaleta: 22, istovar: "bez" },
 ];
 
-/** Koga predložiti: najmanji prevoznik u koga staje sve; preko 22 palete ide Marko u više tura. */
-export function predloziPrevoznika(palete: number, saIstovarom?: boolean): Prevoznik["kljuc"] {
-  if (palete <= 3) return "rocko";
-  if (palete <= 10 && saIstovarom !== false) return "milos";
-  return "marko";
+// Najteža paleta je zidni blok: 72 × 17 kg = 1.224 kg. Nosivost u kg je izvedena iz broja paleta,
+// jer Pavle nije dao kilograme po prevozniku; kad ih da, upisati ovde.
+export const KG_PO_PALETI_MAX = 72 * 17;
+export const maxKg = (p: Prevoznik) => p.maxPaleta * KG_PO_PALETI_MAX;
+
+/** Kalkulator SAM bira prevoznika po paletama i kilaži (Pavle, 30.09.2026.): najmanji u koga staje sve.
+    Rocko do 3 palete; Miloš do 10 (cena sa istovarom); Marko do 22 (bez istovara); preko toga Marko u više tura.
+    Kad je ponuda bez istovara, Miloš se preskače, jer on daje cenu sa istovarom. */
+export function izaberiPrevoznika(palete: number, kg: number, saIstovarom?: boolean): { prevoznik: Prevoznik; razlog: string; viseTura: boolean } {
+  const staje = (p: Prevoznik) => palete <= p.maxPaleta && kg <= maxKg(p);
+  const [rocko, milos, marko] = PREVOZNICI;
+  if (staje(rocko)) return { prevoznik: rocko, razlog: `${palete} paleta i ${kg} kg stanu u kombi ili mali kamion`, viseTura: false };
+  if (staje(milos) && saIstovarom !== false) return { prevoznik: milos, razlog: `${palete} paleta i ${kg} kg, do 10 paleta, sa istovarom`, viseTura: false };
+  if (staje(marko)) return { prevoznik: marko, razlog: `${palete} paleta i ${kg} kg, šleper do 22 palete, bez istovara`, viseTura: false };
+  return { prevoznik: marko, razlog: `${palete} paleta i ${kg} kg je više od jednog šlepera (22 palete): ide u više tura`, viseTura: true };
 }
 
 export const porukaPrevozniku = (p: Prevoznik, telo: string) => `Dobar dan ${p.vokativ},\n${telo}`;
