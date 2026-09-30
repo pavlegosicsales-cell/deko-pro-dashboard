@@ -7,6 +7,7 @@ import { izracunaj, CENOVNIK, POCETNI_ULAZ, type Ulaz, type Boja, type BojaZavrs
 import { ponudaRedovi, svegaFmt, datumPonude, dekodirajRucne, dekodirajDeonice, transportLinija, type PonudaMeta, type SacuvanaPonuda } from "@/lib/ponuda";
 import { sacuvajPonudu } from "@/app/ponude/actions";
 import { napraviPonudaPdf, imeFajla } from "@/lib/ponudaPdf";
+import { porukaZaLarisu, larisaViberLink, LARISA_GRUPA } from "@/lib/paja";
 
 /*
   Ponuda za materijal, 1:1 po templateu „PONUDA BR. 184/26" (PromoBet, 20.08.2025.).
@@ -46,6 +47,7 @@ function izUrla(sp: URLSearchParams): { u: Ulaz; m: PonudaMeta } {
     saIstovarom: sp.get("istovar") !== "0",
     transportEur: t == null || t === "" ? null : Number(t),
     leadId: sp.get("lead") || null,
+    telefon: sp.get("tel") || "",
   };
   return { u, m };
 }
@@ -140,6 +142,36 @@ export function PonudaView({ sacuvana, nijeNadjena }: { sacuvana?: SacuvanaPonud
   const fali = [!m.kupac.trim() && "ime i prezime kupca", !m.broj.trim() && "broj ponude"].filter(Boolean);
   const [stanje, setStanje] = useState<"" | "radi" | "gotovo" | "greska">("");
 
+  /* Larisi u Viber grupu: poruka + PDF ZAJEDNO. Viber link nosi samo tekst, pa na telefonu ide sistemski
+     „Podeli" (Web Share API) sa fajlom i tekstom: Pavle bira Viber, pa grupu. Poruka se usput stavi i u
+     memoriju, ako Viber uz fajl izbaci tekst. Na računaru: PDF se skine i otvori se Viber sa tekstom. */
+  const [larisaStanje, setLarisaStanje] = useState<"" | "radi" | "gotovo" | "greska">("");
+  const larisi = async () => {
+    setLarisaStanje("radi");
+    const tekst = porukaZaLarisu(m.kupac, m.telefon ?? "");
+    try { await navigator.clipboard.writeText(tekst); } catch { /* prazno */ }
+    try {
+      const blob = await napraviPonudaPdf(redovi, ukupno, m);
+      const fajl = new File([blob], imeFajla(m), { type: "application/pdf" });
+      const nav = navigator as Navigator & { canShare?: (d: ShareData) => boolean };
+      if (nav.share && nav.canShare?.({ files: [fajl] })) {
+        await nav.share({ files: [fajl], text: tekst, title: imeFajla(m) });
+      } else {
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob); a.download = imeFajla(m);
+        document.body.appendChild(a); a.click();
+        setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+        window.location.href = larisaViberLink(tekst);
+      }
+      setLarisaStanje("gotovo");
+      setTimeout(() => setLarisaStanje(""), 3000);
+    } catch (e) {
+      if ((e as Error)?.name === "AbortError") { setLarisaStanje(""); return; }
+      console.error(e);
+      setLarisaStanje("greska");
+    }
+  };
+
   const sacuvaj = async () => {
     setStanje("radi");
     try {
@@ -172,6 +204,9 @@ export function PonudaView({ sacuvana, nijeNadjena }: { sacuvana?: SacuvanaPonud
           : <button type="button" onClick={staviUPonude} disabled={uPonudama === "radi" || uPonudama === "jeste" || fali.length > 0} className="dug dug-tih">
               {uPonudama === "radi" ? "Stavljam…" : uPonudama === "jeste" ? "U Ponudama ✓" : "Stavi u Ponude"}
             </button>}
+        <button type="button" onClick={larisi} disabled={larisaStanje === "radi" || fali.length > 0} className="dug dug-tih" title={`Poruka + PDF u Viber grupu „${LARISA_GRUPA}“`}>
+          {larisaStanje === "radi" ? "Pravim PDF…" : larisaStanje === "gotovo" ? "Poslato Larisi ✓" : larisaStanje === "greska" ? "Nije uspelo, probaj opet" : "Larisi u Viber grupu (poruka + PDF)"}
+        </button>
         {nijeNadjena && <span className="fali">Ta ponuda ne postoji u Ponudama.</span>}
         {uPonudama === "greska" && <span className="fali">{porukaPonude}</span>}
         {uPonudama === "jeste" && porukaPonude && <span className="savet">{porukaPonude}</span>}

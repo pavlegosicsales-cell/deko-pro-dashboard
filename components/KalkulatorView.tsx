@@ -163,7 +163,7 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
 
   const napraviPonudu = () => {
     try { localStorage.setItem("deko.ponuda.sastavio", pon.sastavio); } catch { /* prazno */ }
-    window.open(uAdresu(u, { ...pon, transportEur: bezTransporta ? null : pon.transportEur, leadId }), "_blank");
+    window.open(uAdresu(u, { ...pon, transportEur: bezTransporta ? null : pon.transportEur, leadId, telefon: telefonKupca }), "_blank");
   };
   const r = izracunaj(u, p);
 
@@ -702,7 +702,7 @@ export function KalkulatorView({ uRedu, leadovi = [] }: { uRedu: number; leadovi
                 <button type="button" onClick={async () => { try { await navigator.clipboard.writeText(porukaZaLarisu(pon.kupac, telefonKupca)); setKopirano("beleska"); setTimeout(() => setKopirano(""), 1600); } catch { /* prazno */ } }}
                   className="btn btn-sm btn-plain">Kopiraj</button>
               </div>
-              <p className="mt-2 text-[11px] text-muted">Viber se otvori sa gotovom porukom, izabereš grupu „{LARISA_GRUPA}“ i pošalješ. PDF ponude prikači posle „Sačuvaj u PDF“.</p>
+              <p className="mt-2 text-[11px] text-muted">Poruka i PDF <b className="text-ink">zajedno</b> idu sa strane ponude: „Napravi ponudu“ → „Larisi u Viber grupu (poruka + PDF)“. Ovo dugme šalje samo tekst u grupu „{LARISA_GRUPA}“.</p>
             </div>
 
             <div className="card p-4 text-xs leading-relaxed text-muted">
