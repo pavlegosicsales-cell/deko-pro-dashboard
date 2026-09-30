@@ -533,8 +533,7 @@ function LeadKartica({ l, procena, danas, onStatus, onBeleska, onDatum, onPriori
 
 /* Procena vrednosti projekta iz kalkulatora, sa linkom da se otvori u kalkulatoru sa istim merama. */
 function ProcenaOznaka({ p, l }: { p?: Procena; l: LeadRow }) {
-  // U „Dostaviti ponudu" dugme ima svaki lead, i bez mera: kalkulator izabere lead i popuni sve što ima.
-  if (!p && l.status !== "dostaviti_ponudu") return null;
+  // Dugme ima SVAKI lead, i bez mera (Pavle, 01.10.2026.: kod novog leada ga nije bilo): kalkulator izabere lead i popuni šta ima.
   const href = `/kalkulator?lead=${l.id}`;
   const u = p?.ulaz;
   const opis = u ? `${u.duzina} m · polje ${u.visinaPolja} · stub ${u.visinaStuba} · razmak ${u.razmak} · ${bojaNaziv(u.boja)}` : "bez mera, upisuju se ručno";

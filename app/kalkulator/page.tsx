@@ -1,4 +1,7 @@
 import { citajLeadove } from "@/lib/citajLeadove";
+import { citajPonude } from "@/lib/citajPonude";
+import { citajDosijee } from "@/lib/citajDosijee";
+import { tabelaDosijeaFali } from "@/lib/dosije";
 import { KalkulatorView, type LeadKratko } from "@/components/KalkulatorView";
 import { DEMO_LEADOVI } from "@/lib/demo";
 import { JE_DEMO } from "@/lib/env";
@@ -17,5 +20,8 @@ export default async function Kalkulator() {
       lokacija: l.lokacija ?? null, duzina_m: l.duzina_m ?? null, proizvod: l.proizvod ?? null,
       status: l.status, detalji: l.detalji ?? null, obuhvat: l.obuhvat ?? null,
     }));
-  return <KalkulatorView uRedu={uRedu} leadovi={zaIzbor} />;
+  if (JE_DEMO) return <KalkulatorView uRedu={uRedu} leadovi={zaIzbor} demo />;
+  // dosijei i ponude: podtab „Čeka prevoz" i veza kalkulatora sa dosijeom kupca
+  const [{ dosijei, error }, { ponude }] = await Promise.all([citajDosijee(), citajPonude()]);
+  return <KalkulatorView uRedu={uRedu} leadovi={zaIzbor} dosijei={dosijei} ponude={ponude} tabelaDosijeaFali={tabelaDosijeaFali(error)} />;
 }

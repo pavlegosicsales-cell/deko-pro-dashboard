@@ -39,4 +39,15 @@ export function izaberiPrevoznika(palete: number, kg: number, saIstovarom?: bool
 }
 
 export const porukaPrevozniku = (p: Prevoznik, telo: string) => `Dobar dan ${p.vokativ},\n${telo}`;
+export const dativ = (p: Prevoznik) => (p.kljuc === "milos" ? "Milošu" : p.kljuc === "marko" ? "Marku" : "Rocku");
+
+/** Telo poruke prevozniku, tačno kako je Pavle šalje: mesto, palete, kilaža, „Cena?". */
+export function porukaPrevozu(mesto: string, palete: number, kg: number): string {
+  const zadnja = palete % 10, dve = palete % 100;
+  const rec = zadnja >= 2 && zadnja <= 4 && !(dve >= 12 && dve <= 14) ? "palete" : "paleta";
+  const red: string[] = [];
+  if (mesto.trim()) red.push(mesto.trim());
+  red.push(`${palete} ${rec}`, `${kg}kg`, "Cena?");
+  return red.join("\n");
+}
 export const prevoznikLink = (p: Prevoznik, telo: string) => waLink(p.tel, porukaPrevozniku(p, telo));

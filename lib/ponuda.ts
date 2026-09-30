@@ -18,6 +18,7 @@ export type PonudaMeta = {
   sastavio: string;
   leadId?: string | null;        // lead iz koga je ponuda napravljena (tab Ponude)
   telefon?: string;              // telefon kupca, ide u poruku za Larisu
+  dosijeId?: string | null;      // dosije kupca; ponuda se u njega upiše čim se napravi PDF
 };
 
 export type PonudaRed = {
@@ -76,9 +77,9 @@ const mesto = (s: Stavka) => {
 export type SacuvanaPonuda = {
   id: string; broj: string; datum: string; kupac: string; mesto: string | null; rezim: string | null;
   ukupno_rsd: number; transport_eur: number | null; sa_istovarom: boolean; sastavio: string | null;
-  redovi: PonudaRed[]; adresa: string | null; lead_id: string | null; created_at: string;
+  redovi: PonudaRed[]; adresa: string | null; lead_id: string | null; dosije_id?: string | null; created_at: string;
 };
-export type NovaPonuda = Omit<SacuvanaPonuda, "id" | "created_at" | "lead_id"> & { lead_id?: string | null };
+export type NovaPonuda = Omit<SacuvanaPonuda, "id" | "created_at" | "lead_id" | "dosije_id"> & { lead_id?: string | null; dosije_id?: string | null };
 
 export const PRAZAN_RED: PonudaRed = { naziv: "", jedinica: "", cena: "", kolicina: "", ukupno: "0.00", prazan: true };
 
@@ -135,8 +136,21 @@ export function dekodirajRucne(s: string | null): RucnaStavka[] {
     }));
 }
 
+/** Ručne ispravke količina u adresi: „kapa:48,okapnica:270". */
+export const kodirajIspravke = (isp: Ulaz["ispravke"] | undefined) =>
+  Object.entries(isp ?? {}).filter(([, v]) => v != null).map(([k, v]) => `${k}:${v}`).join(",");
+export function dekodirajIspravke(s: string | null): Ulaz["ispravke"] {
+  const out: Ulaz["ispravke"] = {};
+  if (!s) return out;
+  for (const d of s.split(",")) {
+    const [k, v] = d.split(":");
+    if (VRSTE.some((x) => x.v === k) && v !== "" && !isNaN(Number(v))) out[k as VrstaStavke] = Number(v);
+  }
+  return out;
+}
+
 /** Delovi ponude u adresi (kad ih je više): sažet JSON, bez praznih spiskova. */
-const kompaktan = (d: Ulaz) => ({ ...d, rucne: d.rezim === "rucno" ? d.rucne : [], deonice: d.poDeonicama ? d.deonice : [] });
+const kompaktan = (d: Ulaz) => ({ ...d, rucne: d.rezim === "rucno" ? d.rucne : [], deonice: d.poDeonicama ? d.deonice : [], ispravke: Object.fromEntries(Object.entries(d.ispravke ?? {}).filter(([, v]) => v != null)) });
 export function dekodirajDelove(s: string | null): Ulaz[] {
   if (!s) return [];
   try {
@@ -154,6 +168,8 @@ export function uAdresu(prvi: Ulaz | Ulaz[], m: PonudaMeta): string {
     rezim: u.rezim, duzina: String(u.duzina), razmak: String(u.razmak),
     vp: String(u.visinaPolja), vs: String(u.visinaStuba), kapije: String(u.sirinaKapija), bk: String(u.brojKapija),
     deonice: u.poDeonicama ? kodirajDeonice(u.deonice) : "",
+    st: u.stubova ? String(u.stubova) : "",
+    isp: u.rezim === "rucno" ? "" : kodirajIspravke(u.ispravke),
     povrsina: String(u.povrsina), boja: u.boja, bz: u.bojaZavrsnih,
     rucno: u.rezim === "rucno" ? kodirajRucne(u.rucne) : "",
     zatvoren: u.zatvoren ? "1" : "", spojena: u.spojena ? "1" : "", okapnice: u.saOkapnicama ? "1" : "",
@@ -163,6 +179,7 @@ export function uAdresu(prvi: Ulaz | Ulaz[], m: PonudaMeta): string {
     istovar: m.saIstovarom ? "" : "0",
     lead: m.leadId ?? "",
     tel: m.telefon ?? "",
+    dosije: m.dosijeId ?? "",
   });
   for (const [k, v] of [...q.entries()]) if (v === "") q.delete(k);
   return "/ponuda?" + q.toString();

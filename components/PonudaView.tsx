@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { izracunaj, spojiRezultate, opisDela, CENOVNIK, POCETNI_ULAZ, type Ulaz, type Boja, type BojaZavrsnih, type Rezim } from "@/lib/kalkulator";
-import { ponudaRedovi, svegaFmt, datumPonude, dekodirajRucne, dekodirajDeonice, dekodirajDelove, transportLinija, type PonudaMeta, type SacuvanaPonuda } from "@/lib/ponuda";
+import { ponudaRedovi, svegaFmt, datumPonude, dekodirajRucne, dekodirajDeonice, dekodirajDelove, dekodirajIspravke, transportLinija, type PonudaMeta, type SacuvanaPonuda } from "@/lib/ponuda";
 import { sacuvajPonudu } from "@/app/ponude/actions";
 import { napraviPonudaPdf, imeFajla } from "@/lib/ponudaPdf";
 import { porukaZaLarisu, larisaViberLink, LARISA_GRUPA } from "@/lib/paja";
@@ -33,6 +33,8 @@ function izUrla(sp: URLSearchParams): { u: Ulaz; m: PonudaMeta; delovi: Ulaz[] }
     spojena: sp.get("spojena") === "1",
     saOkapnicama: sp.get("okapnice") !== null ? sp.get("okapnice") === "1" : true,
     stubniBlok: sp.get("sb") !== "0",
+    stubova: n("st", 0) || null,
+    ispravke: dekodirajIspravke(sp.get("isp")),
     boja: boja && CENOVNIK.some((c) => c.v === boja) ? boja : POCETNI_ULAZ.boja,
     bojaZavrsnih: (sp.get("bz") as BojaZavrsnih) ?? "siva",
     rucne: dekodirajRucne(sp.get("rucno")),
@@ -48,6 +50,7 @@ function izUrla(sp: URLSearchParams): { u: Ulaz; m: PonudaMeta; delovi: Ulaz[] }
     transportEur: t == null || t === "" ? null : Number(t),
     leadId: sp.get("lead") || null,
     telefon: sp.get("tel") || "",
+    dosijeId: sp.get("dosije") || null,
   };
   const delovi = dekodirajDelove(sp.get("delovi"));
   return { u: delovi[0] ?? u, m, delovi: delovi.length ? delovi : [u] };
@@ -141,13 +144,15 @@ export function PonudaView({ sacuvana, nijeNadjena }: { sacuvana?: SacuvanaPonud
   const [uPonudama, setUPonudama] = useState<"" | "radi" | "jeste" | "greska">(sacuvana ? "jeste" : "");
   const [porukaPonude, setPorukaPonude] = useState("");
 
+  /* Ponuda ide u tab „Ponude" SAMA, čim se napravi PDF (Pavle, 01.10.2026.); ista ponuda se prepisuje, ne dupla. */
   const staviUPonude = async () => {
+    if (sacuvana || uPonudama === "radi" || uPonudama === "jeste") return;
     setUPonudama("radi");
     const q = typeof window !== "undefined" ? window.location.search.replace(/^\?/, "") : "";
     const rez = await sacuvajPonudu({
       broj: m.broj, datum: m.datum, kupac: m.kupac, mesto: u.mesto.trim() || null, rezim: u.rezim,
       ukupno_rsd: ukupno, transport_eur: m.transportEur, sa_istovarom: m.saIstovarom, sastavio: m.sastavio,
-      redovi: redovi.filter((x) => !x.prazan), adresa: q, lead_id: m.leadId ?? null,
+      redovi: redovi.filter((x) => !x.prazan), adresa: q, lead_id: m.leadId ?? null, dosije_id: m.dosijeId ?? null,
     });
     setPorukaPonude(rez.msg ?? "");
     setUPonudama(rez.ok ? "jeste" : "greska");
@@ -161,6 +166,7 @@ export function PonudaView({ sacuvana, nijeNadjena }: { sacuvana?: SacuvanaPonud
   const [larisaStanje, setLarisaStanje] = useState<"" | "radi" | "gotovo" | "greska">("");
   const larisi = async () => {
     setLarisaStanje("radi");
+    void staviUPonude();
     const tekst = porukaZaLarisu(m.kupac, m.telefon ?? "");
     try { await navigator.clipboard.writeText(tekst); } catch { /* prazno */ }
     try {
@@ -187,6 +193,7 @@ export function PonudaView({ sacuvana, nijeNadjena }: { sacuvana?: SacuvanaPonud
 
   const sacuvaj = async () => {
     setStanje("radi");
+    void staviUPonude();
     try {
       const blob = await napraviPonudaPdf(redovi, ukupno, m);
       const a = document.createElement("a");
@@ -212,11 +219,11 @@ export function PonudaView({ sacuvana, nijeNadjena }: { sacuvana?: SacuvanaPonud
         <button type="button" onClick={sacuvaj} disabled={stanje === "radi" || fali.length > 0} className="dug">
           {stanje === "radi" ? "Pravim PDF…" : stanje === "gotovo" ? "Sačuvano ✓" : "Sačuvaj u PDF"}
         </button>
-        {sacuvana
+        {(sacuvana || uPonudama === "jeste")
           ? <Link href="/ponude" className="dug dug-tih">U Ponudama ✓</Link>
-          : <button type="button" onClick={staviUPonude} disabled={uPonudama === "radi" || uPonudama === "jeste" || fali.length > 0} className="dug dug-tih">
-              {uPonudama === "radi" ? "Stavljam…" : uPonudama === "jeste" ? "U Ponudama ✓" : "Stavi u Ponude"}
-            </button>}
+          : uPonudama === "greska"
+            ? <button type="button" onClick={staviUPonude} className="dug dug-tih">Upiši u Ponude ponovo</button>
+            : uPonudama === "radi" ? <span className="savet">Upisujem u Ponude…</span> : null}
         <button type="button" onClick={larisi} disabled={larisaStanje === "radi" || fali.length > 0} className="dug dug-tih" title={`Poruka + PDF u Viber grupu „${LARISA_GRUPA}“`}>
           {larisaStanje === "radi" ? "Pravim PDF…" : larisaStanje === "gotovo" ? "Poslato Larisi ✓" : larisaStanje === "greska" ? "Nije uspelo, probaj opet" : "Larisi u Viber grupu (poruka + PDF)"}
         </button>
@@ -227,7 +234,7 @@ export function PonudaView({ sacuvana, nijeNadjena }: { sacuvana?: SacuvanaPonud
           ? <span className="fali">Fali {fali.join(" i ")}. Vrati se u kalkulator i upiši.</span>
           : stanje === "greska"
             ? <span className="fali">PDF nije napravljen. Probaj ponovo.</span>
-            : <span className="savet">Ovo ispod je pregled. Dugme skida gotov PDF, bez štampača.</span>}
+            : <span className="savet">Ovo ispod je pregled. „Sačuvaj u PDF“ skida fajl i ponudu sam upisuje u Ponude{m.dosijeId ? " i u dosije kupca" : ""}.</span>}
       </div>
 
       <div className="omot" style={{ width: Math.round(794 * skala), height: Math.round(1123 * skala) }}>

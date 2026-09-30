@@ -84,6 +84,7 @@ export type Ulaz = {
   razmak: number;          // m, željeni svetli otvor između stubova (samo ograda)
   sirinaKapija: number;    // m, ukupna širina svih kapija
   brojKapija: number;      // svaka kapija ima stub sa obe strane, pa broj kapija menja broj stubova
+  stubova: number | null;  // kupac je rekao broj stubova umesto razmaka: polja se izvode iz njega, razmak ispada sam
   // deonice: kad visina polja ili zida nije ista na celoj ograди
   poDeonicama: boolean;
   deonice: Deonica[];
@@ -95,6 +96,8 @@ export type Ulaz = {
   povrsina: number;        // m²
   // ručni unos
   rucne: RucnaStavka[];
+  // ručne ispravke izračunatih količina (Pavle, 01.10.2026.): npr. kape 50 → 48; null = kako kalkulator kaže
+  ispravke: Partial<Record<VrstaStavke, number | null>>;
   // zajedničko
   boja: Boja;
   bojaZavrsnih: BojaZavrsnih;
@@ -103,7 +106,7 @@ export type Ulaz = {
 
 export const POCETNI_ULAZ: Ulaz = {
   rezim: "ograda", duzina: 20, visinaPolja: 0.8, visinaStuba: 1.6, razmak: 2,
-  sirinaKapija: 0, brojKapija: 0, zatvoren: false, spojena: false, saOkapnicama: true, stubniBlok: true,
+  sirinaKapija: 0, brojKapija: 0, stubova: null, ispravke: {}, zatvoren: false, spojena: false, saOkapnicama: true, stubniBlok: true,
   poDeonicama: false,
   deonice: [
     { duzina: 10, visinaPolja: 0.8, visinaStuba: 1.6, brojKapija: 0, sirinaKapija: 0 },
@@ -197,7 +200,7 @@ export function redoviZaVisinu(visina: number, modul = 0.20) {
 /** Obim placa iz površine u arima (kvadratni plac). 1 ar = 100 m². */
 export const obimPlaca = (ari: number) => r2(4 * Math.sqrt(Math.max(0, ari) * 100));
 
-export function izracunaj(u: Ulaz, p: Podesavanja = PODRAZUMEVANO): Rezultat {
+function izracunajOsnovno(u: Ulaz, p: Podesavanja = PODRAZUMEVANO): Rezultat {
   const rez = 1 + Math.max(0, p.rezervaPct) / 100;
   const c = CENOVNIK.find((x) => x.v === u.boja) ?? CENOVNIK[0];
   const cenaZidni = c.zidni - (p.partnerske ? 25 : 0);
@@ -252,8 +255,8 @@ export function izracunaj(u: Ulaz, p: Podesavanja = PODRAZUMEVANO): Rezultat {
   // Svaka deonica se računa kao svoja ograda (ili zid) sa svojom visinom i svojim kapijama,
   // a stub na spoju dve deonice je zajednički, pa svaka sledeća deonica ide kao „spojena".
   if ((u.rezim === "ograda" || u.rezim === "zid") && u.poDeonicama && u.deonice.length > 0) {
-    const delovi = u.deonice.filter((d) => d.duzina > 0).map((d, i) => izracunaj({
-      ...u, poDeonicama: false,
+    const delovi = u.deonice.filter((d) => d.duzina > 0).map((d, i) => izracunajOsnovno({
+      ...u, poDeonicama: false, stubova: null,
       duzina: d.duzina, visinaPolja: d.visinaPolja, visinaStuba: d.visinaStuba,
       brojKapija: d.brojKapija, sirinaKapija: d.sirinaKapija,
       zatvoren: i === 0 ? u.zatvoren : false,
@@ -359,15 +362,21 @@ export function izracunaj(u: Ulaz, p: Podesavanja = PODRAZUMEVANO): Rezultat {
   // Polja se broje kao za otvorenu liniju; zatvoren obim ili spoj sa drugom ogradom
   // oduzima TAČNO jedan stub (Lukino pravilo), a oslobođenih 0,4 m ide u zidani deo.
   const manjeStubova = u.zatvoren ? 1 : (u.spojena ? 1 : 0);
-  const polja = Math.max(brojKapija > 0 ? 0 : 1,
-    zaokruzi((L - kapije - (brojKapija + 1) * p.modulStub) / (R + p.modulStub)));
+  // Kupac ponekad kaže broj stubova umesto razmaka (Pavle, 01.10.2026.): onda se polja izvode iz
+  // stubova (polja = stubovi − kapije − 1, zatvoren obim ili spoj: + 1), a razmak ispada iz dužine.
+  const zadatiStubovi = u.stubova != null && u.stubova > 0 ? zaokruzi(u.stubova) : 0;
+  const polja = zadatiStubovi > 0
+    ? Math.max(brojKapija > 0 ? 0 : 1, zadatiStubovi - brojKapija - 1 + manjeStubova)
+    : Math.max(brojKapija > 0 ? 0 : 1, zaokruzi((L - kapije - (brojKapija + 1) * p.modulStub) / (R + p.modulStub)));
   const stubovi = Math.max(1, polja + brojKapija + 1 - manjeStubova);
+  if (zadatiStubovi > 0 && stubovi !== zadatiStubovi) napomene.push(`Zadato je ${zadatiStubovi} stubova, a sa ${brojKapija} kapija najmanje ih je ${stubovi}.`);
   if (u.spojena && !u.zatvoren) napomene.push("Ograda se nastavlja na drugu: stub na spoju je zajednički, pa je oduzet jedan stub i jedna kapa.");
   const Lz = Math.max(0, L - kapije - stubovi * p.modulStub);          // zidani deo, bez stubova i kapija
   const stvarniRazmak = polja > 0 ? Lz / polja : 0;
-  if (brojKapija > 0) racun.push(`Polja: zaokruži((${L} − ${kapije} m kapija − ${brojKapija + 1} × ${p.modulStub}) / (${R} + ${p.modulStub})) = ${polja}; kapija ${brojKapija}; stubova ${polja} + ${brojKapija} + 1${manjeStubova ? " − " + manjeStubova : ""} = ${stubovi}`);
+  if (zadatiStubovi > 0) racun.push(`Broj stubova je zadat: ${zadatiStubovi}; polja = ${zadatiStubovi} − ${brojKapija} kapija − 1${manjeStubova ? " + 1" : ""} = ${polja}; razmak ispada iz dužine: ${r2(stvarniRazmak)} m`);
+  else if (brojKapija > 0) racun.push(`Polja: zaokruži((${L} − ${kapije} m kapija − ${brojKapija + 1} × ${p.modulStub}) / (${R} + ${p.modulStub})) = ${polja}; kapija ${brojKapija}; stubova ${polja} + ${brojKapija} + 1${manjeStubova ? " − " + manjeStubova : ""} = ${stubovi}`);
   else racun.push(`Polja: zaokruži((${L} − ${p.modulStub}) / (${R} + ${p.modulStub})) = ${polja}; stubova ${stubovi}`);
-  if (polja > 0 && Math.abs(stvarniRazmak - R) > 0.02) napomene.push(`Sa ${polja} polja stvarni razmak je ${r2(stvarniRazmak)} m umesto ${R} m (polja se rasporede po celoj dužini).`);
+  if (polja > 0 && !zadatiStubovi && Math.abs(stvarniRazmak - R) > 0.02) napomene.push(`Sa ${polja} polja stvarni razmak je ${r2(stvarniRazmak)} m umesto ${R} m (polja se rasporede po celoj dužini).`);
   if (kapije > 0) racun.push(`Zidani deo: ${L} − ${kapije} m kapija − ${stubovi} × ${p.modulStub} = ${r2(Lz)} m`);
   else racun.push(`Zidani deo: ${L} − ${stubovi} × ${p.modulStub} = ${r2(Lz)} m`);
 
@@ -408,6 +417,37 @@ export function izracunaj(u: Ulaz, p: Podesavanja = PODRAZUMEVANO): Rezultat {
     tezinaKg: 0, palete: 0, napomene, racun,
   });
 }
+
+const vrstaStavke = (naziv: string): VrstaStavke | null =>
+  naziv.startsWith("Zidni blok") ? "zidni" : naziv.startsWith("Stubni blok") ? "stubni"
+  : naziv.startsWith("Kapa") ? "kapa" : naziv.startsWith("Okapnica") ? "okapnica"
+  : naziv.startsWith("Dekorativna obloga") ? "obloga" : null;
+
+/** Kalkulator + ručne ispravke količina (Pavle, 01.10.2026.): ono što kalkulator izračuna može da se
+    prepravi na klik (npr. kape 50 → 48); iznos i prevoz se preračunaju iz ispravljene količine.
+    Ručni režim nema ispravke, tamo se sve i onako upisuje. */
+export function izracunaj(u: Ulaz, p: Podesavanja = PODRAZUMEVANO): Rezultat {
+  const r = izracunajOsnovno(u, p);
+  const isp = u.ispravke ?? {};
+  if (u.rezim === "rucno" || !Object.values(isp).some((v) => v != null)) return r;
+  const stavke = r.stavke.map((s) => {
+    const v = vrstaStavke(s.naziv);
+    const nova = v ? isp[v] : null;
+    if (nova == null || nova === s.kom) return s;
+    const kom = Math.max(0, zaokruzi(nova));
+    if (s.jedinicaCene === "m²") {
+      const m2 = r2(kom / 12.5);
+      return { ...s, kom, dodatak: `${m2} m²`, ukupno: s.cena != null ? Math.round(m2 * s.cena) : null };
+    }
+    return { ...s, kom, ukupno: s.cena != null ? kom * s.cena : null };
+  });
+  const racun = [...r.racun, ...r.stavke.flatMap((s, i) => (stavke[i].kom !== s.kom ? [`Ispravljeno ručno: ${s.naziv} ${s.kom} → ${stavke[i].kom} kom`] : []))];
+  return saPrevozom({ ...r, stavke, ukupno: stavke.reduce((a, x) => a + (x.ukupno ?? 0), 0), racun });
+}
+
+/** Da li je količina neke stavke ručno ispravljena. */
+export const jeIspravljeno = (u: Ulaz, naziv: string) => { const v = vrstaStavke(naziv); return !!v && u.ispravke?.[v] != null; };
+export const vrstaIzNaziva = vrstaStavke;
 
 /** Kratak opis dela ponude: „Ograda 20 m", „Pun zid 10 m", „Obloga 8 m²", „Ručno". */
 export function opisDela(u: Ulaz): string {
@@ -454,7 +494,11 @@ export function spojiRezultate(rezultati: Rezultat[], opisi: string[] = []): Rez
 }
 
 /** Ponuda za DM kad ima više delova: naslov, red po delu, pa spojene stavke. */
-export function ponudaTekstDelovi(delovi: Ulaz[], r: Rezultat): string {
+export type TransportUTekstu = { eur: number | null; saIstovarom: boolean } | null | undefined;
+const transportRed = (t: TransportUTekstu) =>
+  t && t.eur != null && t.eur > 0 ? [`Transport ${t.saIstovarom ? "sa istovarom" : "bez istovara"}: ${t.eur}e`] : [];
+
+export function ponudaTekstDelovi(delovi: Ulaz[], r: Rezultat, transport?: TransportUTekstu): string {
   const prvi = delovi[0];
   const mesto = prvi.mesto.trim();
   const boje = [...new Set(delovi.map((d) => bojaNaziv(d.boja).toLowerCase()))].join(" i ");
@@ -472,11 +516,12 @@ export function ponudaTekstDelovi(delovi: Ulaz[], r: Rezultat): string {
     red.push(`${s.kom} ${s.jedinica}${s.dodatak ? ` (${s.dodatak})` : ""} = ${s.ukupno != null ? rsdFmt(s.ukupno) + "din" : "[___]"}`);
   }
   red.push("", `UKUPNO: ${rsdFmt(r.ukupno)}din${r.cenaNepotpuna ? " (bez stavki kojima cena nije potvrđena)" : ""}`);
+  red.push(...transportRed(transport));
   return red.join("\n");
 }
 
-/** Ponuda u formatu za DM / WhatsApp / Viber (pravila, deo 8). */
-export function ponudaTekst(u: Ulaz, r: Rezultat): string {
+/** Ponuda u formatu za DM / WhatsApp / Viber (pravila, deo 8). Transport ide na kraj kad je upisan. */
+export function ponudaTekst(u: Ulaz, r: Rezultat, transport?: TransportUTekstu): string {
   const boja = bojaNaziv(u.boja).toLowerCase();
   const mesto = u.mesto.trim();
   const red: string[] = [];
@@ -502,6 +547,7 @@ export function ponudaTekst(u: Ulaz, r: Rezultat): string {
     red.push(`${s.kom} ${s.jedinica}${s.dodatak ? ` (${s.dodatak})` : ""} = ${s.ukupno != null ? rsdFmt(s.ukupno) + "din" : "[___]"}`);
   }
   red.push("", `UKUPNO: ${rsdFmt(r.ukupno)}din${r.cenaNepotpuna ? " (bez stavki kojima cena nije potvrđena)" : ""}`);
+  red.push(...transportRed(transport));
   return red.join("\n");
 }
 
