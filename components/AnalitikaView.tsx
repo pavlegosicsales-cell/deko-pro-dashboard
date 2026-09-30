@@ -21,7 +21,9 @@ export function AnalitikaView({ leadovi }: { leadovi: LeadRow[] }) {
   const juce = pomeriDan(danas, -1);
 
   const serija = poDanu(leadovi, dana);
-  const uRedu = leadovi.filter((l) => OTVORENI.has(l.status)).length;
+  // isti broj kao na kartici „Pozvati" i u meniju drugih strana: novi + nije se javio + dospeli podsetnici
+  const danasIso = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Belgrade" });
+  const uRedu = leadovi.filter((l) => l.status === "nov" || l.status === "nije_se_javio" || (l.status === "zvati_kasnije" && !!l.podseti_kad && l.podseti_kad <= danasIso)).length;
 
   const ukNovi = serija.reduce((s, d) => s + d.novi, 0);
   const ukPozvani = serija.reduce((s, d) => s + d.pozvani, 0);
