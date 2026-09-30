@@ -7,7 +7,7 @@ import { Sidebar } from "@/components/Sidebar";
 import { MobilniMeni } from "@/components/MobilniMeni";
 import { Logo } from "@/components/ui";
 import { Sat } from "@/components/Sat";
-import { OTVORENI, SVI_IZVORI, TIPOVI_KUPCA, TEMPERATURE, RAZLOZI, label } from "@/lib/opcije";
+import { SVI_IZVORI, TIPOVI_KUPCA, TEMPERATURE, RAZLOZI, label } from "@/lib/opcije";
 import { poDanu, danasKljuc, pomeriDan, brojNaDan, pozvanoNaDan, danKratko, danIme, danKljuc, type DanStat } from "@/lib/analitika";
 import { rsd } from "@/lib/format";
 
