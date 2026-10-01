@@ -31,7 +31,8 @@ export type LeadZaDosije = { obuhvat?: string | null; status?: string | null };
 
 type Stanje = "ok" | "ceka" | "fali" | "nema";
 function Red({ naslov, stanje, tekst, akcija }: { naslov: string; stanje: Stanje; tekst: React.ReactNode; akcija?: React.ReactNode }) {
-  const boja = stanje === "ok" ? "tag-navy" : stanje === "ceka" ? "tag-gold" : stanje === "fali" ? "tag-warn" : "";
+  // boje po značenju (01.10.2026.): zeleno = gotovo, žuto = čeka drugu stranu, crveno = fali, sivo = nije potrebno
+  const boja = stanje === "ok" ? "tag-green" : stanje === "ceka" ? "tag-yellow" : stanje === "fali" ? "tag-red" : "tag-grey";
   const znak = stanje === "ok" ? "✓" : stanje === "ceka" ? "…" : stanje === "fali" ? "!" : "–";
   return (
     <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-t border-line py-2 text-[12.5px] first:border-0">

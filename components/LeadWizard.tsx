@@ -2,7 +2,6 @@
 
 import { useActionState, useEffect, useMemo, useState, useTransition } from "react";
 import type { LeadRow } from "@/components/LeadView";
-import { ArrowIco } from "@/components/ui";
 import { STATUSI, IZVORI, OBUHVATI, PROIZVODI, MODELI_OGRADE, MODELI, BOJE, DETALJI, DRUGO, staFali, TEMPERATURE, TIPOVI_KUPCA, ROKOVI, RAZLOZI, predloziTemperaturu } from "@/lib/opcije";
 import { dodajLead, izmeniLead, type LeadState } from "@/app/leadovi/actions";
 
@@ -91,20 +90,20 @@ export function LeadWizard({ lead, onClose, akcija, pocetniKorak = 0 }: { lead?:
     <div className="modal-bg fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4" onClick={onClose}>
       <div className="rise flex max-h-[94vh] w-full max-w-lg flex-col overflow-hidden rounded-t-[20px] bg-white shadow-2xl sm:max-h-[90vh] sm:rounded-[15px]" onClick={(e) => e.stopPropagation()}>
         {/* Navy zaglavlje + tačkice napretka (klik na tačkicu skače na korak) */}
-        <div className="blueprint bg-navy px-5 pb-4 pt-4 text-white">
+        <div className="border-b border-line bg-white px-5 pb-4 pt-4">
           <div className="flex items-center justify-between">
             <div>
               <div className="nav-sub">{lead ? "Izmena" : "Novi lead"} · korak {korak + 1} od {koraci.length}</div>
-              <h2 className="h-display mt-0.5 text-[20px] text-white">{koraci[korak]}</h2>
+              <h2 className="h2 mt-0.5 text-[20px]">{koraci[korak]}</h2>
             </div>
-            <button onClick={onClose} className="grid h-10 w-10 place-items-center rounded-full border border-white/10 text-white/80 hover:bg-white/10 hover:text-white" aria-label="Zatvori">
+            <button onClick={onClose} className="btn btn-sm btn-ghost btn-icon" aria-label="Zatvori">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 6 6 18M6 6l12 12" /></svg>
             </button>
           </div>
           <div className="mt-3 flex gap-1.5" role="tablist" aria-label="Koraci">
             {koraci.map((n, i) => (
               <button key={n} type="button" role="tab" aria-selected={i === korak} aria-label={n} onClick={() => setKorak(i)}
-                className={`h-1.5 flex-1 rounded-full transition-colors ${i < korak ? "bg-gold" : i === korak ? "bg-white" : "bg-white/25"}`} />
+                className={`h-1.5 flex-1 rounded-full transition-colors ${i < korak ? "bg-green" : i === korak ? "bg-ink" : "bg-line"}`} />
             ))}
           </div>
         </div>
@@ -283,8 +282,8 @@ export function LeadWizard({ lead, onClose, akcija, pocetniKorak = 0 }: { lead?:
             ? <button type="button" onClick={nazad} className="btn btn-sm btn-ghost btn-plain">Nazad</button>
             : <button type="button" onClick={onClose} className="btn btn-sm btn-ghost btn-plain">Otkaži</button>}
           {zadnji
-            ? <button type="button" onClick={sacuvaj} disabled={pending} className="btn btn-sm">{pending ? "Čuvam…" : lead ? "Sačuvaj" : "Dodaj lead"}<ArrowIco /></button>
-            : <button type="button" onClick={dalje} className="btn btn-sm">Dalje<ArrowIco /></button>}
+            ? <button type="button" onClick={sacuvaj} disabled={pending} className="btn btn-sm">{pending ? "Čuvam…" : lead ? "Sačuvaj" : "Dodaj lead"}</button>
+            : <button type="button" onClick={dalje} className="btn btn-sm">Dalje →</button>}
         </div>
       </div>
     </div>
@@ -295,7 +294,7 @@ export function LeadWizard({ lead, onClose, akcija, pocetniKorak = 0 }: { lead?:
 function Pitaj({ children }: { children: React.ReactNode }) {
   return (
     <p className="flex items-start gap-2 rounded-[10px] bg-wash px-3 py-2 text-[13px] leading-snug text-muted">
-      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0 text-gold-deep"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 shrink-0 text-blue"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" /></svg>
       <span><b className="font-semibold text-ink">Pitaj kupca:</b> {children}</span>
     </p>
   );
@@ -316,12 +315,12 @@ function StaGradi({ v, set }: { v: V; set: (k: keyof V, val: string) => void }) 
 function Kartica({ naslov, opis, on, onClick, mala }: { naslov: string; opis?: string; on: boolean; onClick: () => void; mala?: boolean }) {
   return (
     <button type="button" onClick={onClick} aria-pressed={on}
-      className={`flex w-full items-center justify-between gap-3 rounded-[10px] border text-left transition-colors ${mala ? "px-3 py-2.5" : "px-4 py-3.5"} ${on ? "border-navy bg-navy text-white" : "border-line bg-white text-ink hover:border-accent hover:bg-wash"}`}>
+      className={`flex w-full items-center justify-between gap-3 rounded-[10px] border text-left transition-colors ${mala ? "px-3 py-2.5" : "px-4 py-3.5"} ${on ? "border-ink bg-ink text-white" : "border-line-strong bg-white text-ink hover:border-ink"}`}>
       <span className="min-w-0">
         <span className={`block font-semibold ${mala ? "text-sm" : "text-[15px]"}`}>{naslov}</span>
         {opis && <span className={`block text-xs ${on ? "text-white/70" : "text-muted"}`}>{opis}</span>}
       </span>
-      <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border ${on ? "border-gold bg-gold text-navy" : "border-line text-transparent"}`}>
+      <span className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border ${on ? "border-green bg-green text-white" : "border-line text-transparent"}`}>
         <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
       </span>
     </button>
@@ -332,7 +331,7 @@ function Kartica({ naslov, opis, on, onClick, mala }: { naslov: string; opis?: s
 function Cip({ children, on, onClick, velik }: { children: React.ReactNode; on: boolean; onClick: () => void; velik?: boolean }) {
   return (
     <button type="button" onClick={onClick} aria-pressed={on}
-      className={`rounded-full border text-center font-medium transition-colors ${velik ? "px-3 py-2.5 text-sm" : "px-3 py-1.5 text-[13px]"} ${on ? "border-navy bg-navy text-white" : "border-line bg-white text-ink hover:border-accent"}`}>
+      className={`rounded-full border text-center font-medium transition-colors ${velik ? "px-3 py-2.5 text-sm" : "px-3 py-1.5 text-[13px]"} ${on ? "border-ink bg-ink text-white" : "border-line-strong bg-white text-ink hover:border-ink"}`}>
       {children}
     </button>
   );

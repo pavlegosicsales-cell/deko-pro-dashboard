@@ -13,3 +13,9 @@ export async function citajDosije(id: string): Promise<Dosije | null> {
   const { data } = await supabaseAdmin.from("dosijei").select(KOLONE).eq("id", id).maybeSingle();
   return (data as unknown as Dosije) ?? null;
 }
+
+/** Dosije kupca po leadu (jedan po leadu). */
+export async function citajDosijeZaLead(leadId: string): Promise<Dosije | null> {
+  const { data } = await supabaseAdmin.from("dosijei").select(KOLONE).eq("lead_id", leadId).maybeSingle();
+  return (data as unknown as Dosije) ?? null;
+}

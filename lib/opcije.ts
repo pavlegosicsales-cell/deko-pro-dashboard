@@ -2,15 +2,20 @@
 
 // Ishodi poziva (pipeline). Redosled = tok od novog leada do zatvaranja.
 // Ishodi kako ih je Luka (vlasnik) zadao 23.09.2026.; ključevi zatvoren/propao ostali zbog baze.
+// `ton` = klasa čipa (.tag-<ton>) i boja po značenju (redizajn 01.10.2026.):
+// plava = novo, narandžasta = zvati, ljubičasta = zakazano, cijan = ponuda u pripremi,
+// žuta = čeka kupca, zelena = kupio, siva = odustao.
 export const STATUSI = [
-  { v: "nov", l: "Novi", boja: "#2563eb" },
-  { v: "nije_se_javio", l: "Nije se javio", boja: "#d97706" },
-  { v: "zvati_kasnije", l: "Pozvati (datum)", boja: "#7c3aed" },
-  { v: "dostaviti_ponudu", l: "Dostaviti ponudu", boja: "#0891b2" },
-  { v: "ponuda", l: "Čeka odgovor na ponudu", boja: "#ca8a04" },
-  { v: "zatvoren", l: "Kupio", boja: "#15a34a" },
-  { v: "propao", l: "Odustao", boja: "#6b7280" },
+  { v: "nov", l: "Novi", boja: "#2563eb", ton: "blue" },
+  { v: "nije_se_javio", l: "Nije se javio", boja: "#d97706", ton: "amber" },
+  { v: "zvati_kasnije", l: "Pozvati (datum)", boja: "#7c3aed", ton: "violet" },
+  { v: "dostaviti_ponudu", l: "Dostaviti ponudu", boja: "#0891b2", ton: "cyan" },
+  { v: "ponuda", l: "Čeka odgovor na ponudu", boja: "#ca8a04", ton: "yellow" },
+  { v: "zatvoren", l: "Kupio", boja: "#16a34a", ton: "green" },
+  { v: "propao", l: "Odustao", boja: "#6b7280", ton: "grey" },
 ] as const;
+export const statusOd = (v: string | null | undefined) => STATUSI.find((s) => s.v === v) ?? null;
+export const statusTon = (v: string | null | undefined) => statusOd(v)?.ton ?? "grey";
 
 // Otvoreni statusi = lead je još „u igri" (za red za zvanje).
 export const OTVORENI = new Set(["nov", "nije_se_javio", "zvati_kasnije", "dostaviti_ponudu", "ponuda"]);
@@ -151,9 +156,9 @@ export const BIZNIS = {
 
 // Kvalitet leada = „dobar / loš / sranje", pristojno nazvano. Pavle daje prvu ocenu, Luka menja posle poziva.
 export const TEMPERATURE = [
-  { v: "vruc", l: "Vruć", boja: "#B3261E", opis: "Rok do mesec dana, ima mere, zna šta hoće" },
-  { v: "topao", l: "Topao", boja: "#A8823A", opis: "1–3 meseca, ozbiljan, skuplja podatke" },
-  { v: "hladan", l: "Hladan", boja: "#5A7096", opis: "Samo pita cenu, istražuje" },
+  { v: "vruc", l: "Vruć", boja: "#DC2626", ton: "red", opis: "Rok do mesec dana, ima mere, zna šta hoće" },
+  { v: "topao", l: "Topao", boja: "#EA580C", ton: "amber", opis: "1–3 meseca, ozbiljan, skuplja podatke" },
+  { v: "hladan", l: "Hladan", boja: "#2563EB", ton: "blue", opis: "Samo pita cenu, istražuje" },
 ] as const;
 export const temperatura = (v: string | null | undefined) => TEMPERATURE.find((t) => t.v === v) ?? null;
 

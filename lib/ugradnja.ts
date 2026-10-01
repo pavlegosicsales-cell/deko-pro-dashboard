@@ -20,6 +20,7 @@ export type Ugradnja = {
   trajanje: string;      // „21 dan"
   napomena: string;      // sitan tekst ispod dinamike plaćanja
   slika: string | null;  // URL slike ograde (Supabase storage)
+  bezSlike?: boolean;    // ponuda bez pojasa sa slikom (Pavle, 01.10.2026.: za Paju i Luku dok se slike ne usavrše)
   tekst: string;         // Pajin original, čuva se da se zna odakle su brojevi
   sastavio: string;
 };
@@ -37,7 +38,7 @@ export const PRAZNA_UGRADNJA: Ugradnja = {
   broj: "", datum: "", kupac: "", lokacija: "", cena: null, avans: null, rata1: null, rata2: null,
   uracunato: ["Zidanje ograde", "Formiranje stubova", "Postavljanje kapa i okapnica"],
   nijeUracunato: [...NIJE_URACUNATO_PODRAZUMEVANO],
-  pocetak: "po dogovoru", trajanje: "", napomena: NAPOMENA_PODRAZUMEVANA, slika: null, tekst: "", sastavio: "Gradi Lako",
+  pocetak: "po dogovoru", trajanje: "", napomena: NAPOMENA_PODRAZUMEVANA, slika: null, bezSlike: false, tekst: "", sastavio: "Gradi Lako",
 };
 
 /** „5900e", „5.900", „2,725" → 5900. Tačka između hiljada se briše, zapeta je decimala samo uz 1–2 cifre. */

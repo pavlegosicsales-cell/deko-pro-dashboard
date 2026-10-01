@@ -73,7 +73,7 @@ export async function napraviUgradnjaPdf(u: Ugradnja, slikaBajtovi: Uint8Array |
   const p1 = zaglavlje(s1, "01 / 02");
   p1("PONUDA IZVOĐAČA", LEVO, 105, semi, 8, LABELA);
   p1("Izvođenje ograde.", LEVO, 137, bold, 29);
-  p1("Pregled cene i vizuelni prikaz", LEVO, 168, reg, 10.5, SIVA);
+  p1(u.bezSlike ? "Pregled cene" : "Pregled cene i vizuelni prikaz", LEVO, 168, reg, 10.5, SIVA);
 
   const polje = (labela: string, vrednost: string, x: number, xDesno: number, odVrha: number) => {
     p1(labela, x, odVrha, semi, 7.2, LABELA);
@@ -85,33 +85,36 @@ export async function napraviUgradnjaPdf(u: Ugradnja, slikaBajtovi: Uint8Array |
   polje("BROJ PONUDE", u.broj, LEVO, KOL1_DESNO, 248);
   polje("DATUM PONUDE", u.datum, KOL2, KOL2_DESNO, 248);
 
-  // slika ograde: pojas preko cele širine, isečena „cover"
-  const POJAS_VRH = 300, POJAS_DNO = 633, POJAS_VIS = POJAS_DNO - POJAS_VRH;
-  if (slikaBajtovi && slikaBajtovi.length > 4) {
-    try {
-      const png = slikaBajtovi[0] === 0x89 && slikaBajtovi[1] === 0x50;
-      const slika = png ? await doc.embedPng(slikaBajtovi) : await doc.embedJpg(slikaBajtovi);
-      const skala = Math.max(SIR / slika.width, POJAS_VIS / slika.height);
-      const w = slika.width * skala, h = slika.height * skala;
-      s1.pushOperators(pushGraphicsState(), rectangle(0, y(POJAS_DNO), SIR, POJAS_VIS), clip(), endPath());
-      s1.drawImage(slika, { x: (SIR - w) / 2, y: y(POJAS_DNO) - (h - POJAS_VIS) / 2, width: w, height: h });
-      s1.pushOperators(popGraphicsState());
-    } catch (e) {
-      console.error("Slika nije ugrađena u PDF", e);
+  // bez slike (Pavle, 01.10.2026.): nema pojasa ni placeholdera, blok sa cenom ide odmah ispod polja
+  const CENA_VRH = u.bezSlike ? 320 : 669;
+  if (!u.bezSlike) {
+    // slika ograde: pojas preko cele širine, isečena „cover"
+    const POJAS_VRH = 300, POJAS_DNO = 633, POJAS_VIS = POJAS_DNO - POJAS_VRH;
+    if (slikaBajtovi && slikaBajtovi.length > 4) {
+      try {
+        const png = slikaBajtovi[0] === 0x89 && slikaBajtovi[1] === 0x50;
+        const slika = png ? await doc.embedPng(slikaBajtovi) : await doc.embedJpg(slikaBajtovi);
+        const skala = Math.max(SIR / slika.width, POJAS_VIS / slika.height);
+        const w = slika.width * skala, h = slika.height * skala;
+        s1.pushOperators(pushGraphicsState(), rectangle(0, y(POJAS_DNO), SIR, POJAS_VIS), clip(), endPath());
+        s1.drawImage(slika, { x: (SIR - w) / 2, y: y(POJAS_DNO) - (h - POJAS_VIS) / 2, width: w, height: h });
+        s1.pushOperators(popGraphicsState());
+      } catch (e) {
+        console.error("Slika nije ugrađena u PDF", e);
+        s1.drawRectangle({ x: 0, y: y(POJAS_DNO), width: SIR, height: POJAS_VIS, color: BEZ });
+      }
+    } else {
       s1.drawRectangle({ x: 0, y: y(POJAS_DNO), width: SIR, height: POJAS_VIS, color: BEZ });
+      const t = "Vizuelni prikaz ograde";
+      p1(t, (SIR - reg.widthOfTextAtSize(t, 10)) / 2, POJAS_VRH + POJAS_VIS / 2, reg, 10, SIVA);
     }
-  } else {
-    s1.drawRectangle({ x: 0, y: y(POJAS_DNO), width: SIR, height: POJAS_VIS, color: BEZ });
-    const t = "Vizuelni prikaz ograde";
-    p1(t, (SIR - reg.widthOfTextAtSize(t, 10)) / 2, POJAS_VRH + POJAS_VIS / 2, reg, 10, SIVA);
+    p1("Ilustrativni prikaz ograde. Obuhvat ponude naveden je na drugoj strani.", LEVO, 647, reg, 7.5, SIVA);
   }
-  p1("Ilustrativni prikaz ograde. Obuhvat ponude naveden je na drugoj strani.", LEVO, 647, reg, 7.5, SIVA);
-
   // tamni blok sa cenom
-  s1.drawRectangle({ x: LEVO, y: y(769), width: DESNO - LEVO, height: 100, color: TAMNA });
-  p1("UKUPNA CENA RADOVA", 59, 688, bold, 8.5, BELA);
-  p1(eurFmt(u.cena) || "—", 59, 743, bold, 42, BELA);
-  p1("EUR", 287, 743, bold, 16, BELA);
+  s1.drawRectangle({ x: LEVO, y: y(CENA_VRH + 100), width: DESNO - LEVO, height: 100, color: TAMNA });
+  p1("UKUPNA CENA RADOVA", 59, CENA_VRH + 19, bold, 8.5, BELA);
+  p1(eurFmt(u.cena) || "—", 59, CENA_VRH + 74, bold, 42, BELA);
+  p1("EUR", 287, CENA_VRH + 74, bold, 16, BELA);
 
   /* ================= STRANA 2 ================= */
   const s2 = nova();

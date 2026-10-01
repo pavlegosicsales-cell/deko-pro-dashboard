@@ -21,3 +21,11 @@ export async function citajPonudu(id: string): Promise<SacuvanaPonuda | null> {
   const { data } = await supabaseAdmin.from("ponude").select(KOLONE).eq("id", id).maybeSingle();
   return (data as unknown as SacuvanaPonuda) ?? null;
 }
+
+/** Ponude za materijal jednog kupca: po leadu ili po dosijeu. */
+export async function citajPonudeZaLead(leadId: string, dosijeId?: string | null): Promise<SacuvanaPonuda[]> {
+  const uslov = dosijeId ? `lead_id.eq.${leadId},dosije_id.eq.${dosijeId}` : `lead_id.eq.${leadId}`;
+  const prvi = await supabaseAdmin.from("ponude").select(KOLONE_7).or(uslov).order("created_at", { ascending: false });
+  const rez = prvi.error ? await supabaseAdmin.from("ponude").select(KOLONE).eq("lead_id", leadId).order("created_at", { ascending: false }) : prvi;
+  return ((rez.data ?? []) as unknown) as SacuvanaPonuda[];
+}

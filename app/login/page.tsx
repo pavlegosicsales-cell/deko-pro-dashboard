@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
-import { ArrowIco, Logo } from "@/components/ui";
+import { Logo } from "@/components/ui";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -14,7 +14,6 @@ export default function LoginPage() {
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
-    // sync poruke iz URL-a na mount (hydration-safe: SSR i prvi client render su prazni)
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (p.get("greska") === "nedozvoljen") setGreska("Taj nalog nema pristup ovom panelu.");
   }, []);
@@ -34,24 +33,19 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="page-head flex min-h-screen items-center justify-center px-4 py-10">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src="/hero-bg.jpg" alt="" aria-hidden />
-
+    <div className="flex min-h-screen items-center justify-center bg-wash px-4 py-10">
       <div className="rise w-full max-w-sm">
-        {/* Logo + wordmark kao u navu sajta */}
         <div className="mb-6 flex flex-col items-center gap-3">
-          <Logo size={72} />
+          <Logo size={56} />
           <div className="text-center">
-            <div className="nav-wordmark text-[26px]">Deko Pro</div>
-            <div className="nav-sub mt-1">Interni panel · Leadovi</div>
+            <div className="nav-wordmark text-[22px]">Deko Pro</div>
+            <div className="nav-sub mt-1">Interni panel</div>
           </div>
         </div>
 
-        <div className="card p-6 sm:p-7">
-          <span className="eyebrow">Prijava</span>
-          <h1 className="h-display mt-3 text-[26px]">Uđi u panel</h1>
-          <p className="mt-1 text-sm text-muted">Samo za tim Deko Pro.</p>
+        <div className="card p-6">
+          <h1 className="h2 text-[22px]">Prijava</h1>
+          <p className="lead-sub mt-1">Samo za tim Deko Pro.</p>
 
           <form onSubmit={posalji} className="mt-5 space-y-4">
             <label className="field">
@@ -63,16 +57,13 @@ export default function LoginPage() {
               <input type="password" required value={lozinka} onChange={(e) => setLozinka(e.target.value)} className="inp" placeholder="••••••••" />
             </label>
 
-            {greska && <p className="text-sm font-medium text-danger">{greska}</p>}
+            {greska && <p className="text-sm font-medium text-red">{greska}</p>}
 
-            <button type="submit" disabled={radi} className="btn btn-block">
-              {radi ? "Prijavljujem…" : "Uđi"}
-              <ArrowIco />
-            </button>
+            <button type="submit" disabled={radi} className="btn btn-block">{radi ? "Prijavljujem…" : "Uđi"}</button>
           </form>
         </div>
 
-        <p className="mt-5 text-center text-xs text-white/60">Deko Pro · dekorativni blok od 2015.</p>
+        <p className="mt-5 text-center text-xs text-muted">Deko Pro · dekorativni blok od 2015.</p>
       </div>
     </div>
   );

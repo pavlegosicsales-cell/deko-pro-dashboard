@@ -29,3 +29,10 @@ export async function citajLeadove(): Promise<{ leadovi: LeadRow[]; error: strin
   }
   return { leadovi: (data ?? []) as unknown as LeadRow[], error: error?.message ?? null, migracijaFali };
 }
+
+/** Jedan lead po id-ju (strana leada). Ako kolone kasnijih migracija fale, čita osnovne. */
+export async function citajLead(id: string): Promise<LeadRow | null> {
+  let { data, error } = await supabaseAdmin.from("leadovi").select(PUNO).eq("id", id).maybeSingle();
+  if (error) ({ data, error } = await supabaseAdmin.from("leadovi").select(OSNOVNO).eq("id", id).maybeSingle());
+  return (data as unknown as LeadRow) ?? null;
+}

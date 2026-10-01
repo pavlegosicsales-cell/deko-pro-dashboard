@@ -1,11 +1,8 @@
 "use client";
 
+import { Shell } from "@/components/Shell";
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import type { LeadRow } from "@/components/LeadView";
-import { Sidebar } from "@/components/Sidebar";
-import { MobilniMeni } from "@/components/MobilniMeni";
-import { Logo } from "@/components/ui";
 import { Sat } from "@/components/Sat";
 import { SVI_IZVORI, TIPOVI_KUPCA, TEMPERATURE, RAZLOZI, label } from "@/lib/opcije";
 import { poDanu, danasKljuc, pomeriDan, brojNaDan, pozvanoNaDan, danKratko, danIme, danKljuc, type DanStat } from "@/lib/analitika";
@@ -56,39 +53,7 @@ export function AnalitikaView({ leadovi }: { leadovi: LeadRow[] }) {
   const maxIzvor = Math.max(1, ...poIzvoru.map((i) => i.n));
 
   return (
-    <div className="min-h-screen bg-wash lg:pl-64">
-      <Sidebar uRedu={uRedu} />
-      <MobilniMeni uRedu={uRedu} />
-
-      {/* Mobilni header */}
-      <header className="pointer-events-none fixed inset-x-0 top-3 z-40 sm:top-5 lg:hidden">
-        <div className="pointer-events-auto mx-auto w-full max-w-3xl px-3 sm:px-4">
-          <div className="nav-bar">
-            <Link href="/" className="flex min-w-0 items-center gap-2.5">
-              <Logo size={40} />
-              <div className="flex min-w-0 flex-col leading-none">
-                <span className="nav-wordmark">Deko Pro</span>
-                <span className="nav-sub mt-1">Analitika</span>
-              </div>
-            </Link>
-            <Link href="/" className="btn btn-sm btn-light btn-plain">Leadovi</Link>
-          </div>
-        </div>
-      </header>
-
-      <section className="page-head">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/hero-bg.jpg" alt="" aria-hidden />
-        <div className="mx-auto w-full max-w-3xl px-4 pb-6 pt-[calc(var(--nav-h)+28px)] sm:pt-[calc(var(--nav-h)+40px)] lg:max-w-none lg:px-8 lg:pb-7 lg:pt-7">
-          <div className="on-dark rise flex flex-col items-start gap-3">
-            <span className="eyebrow"><span className="eyebrow-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M3 3v18h18M7 15l3-4 3 3 4-6" /></svg></span>Interni panel</span>
-            <h1 className="h2 lg:text-[34px]">Analitika</h1>
-            <Sat className="text-sm text-white/70" />
-          </div>
-        </div>
-      </section>
-
-      <main className="mx-auto w-full max-w-3xl px-4 pb-24 pt-5 sm:pt-7 lg:max-w-none lg:px-8 lg:py-6">
+    <Shell naslov="Analitika" podnaslov={<Sat />} uRedu={uRedu}>
         {/* Hero brojevi */}
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4 lg:gap-4">
           <Plocica label="Stiglo danas" value={brojNaDan(leadovi, danas)} sub={`juče ${brojNaDan(leadovi, juce)}`} />
@@ -181,8 +146,7 @@ export function AnalitikaView({ leadovi }: { leadovi: LeadRow[] }) {
             </div>
           </div>
         </div>
-      </main>
-    </div>
+    </Shell>
   );
 }
 

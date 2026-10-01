@@ -1,11 +1,9 @@
 "use client";
 
+import { Shell } from "@/components/Shell";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Sidebar } from "@/components/Sidebar";
-import { MobilniMeni } from "@/components/MobilniMeni";
-import { Logo } from "@/components/ui";
 import { izTekstaPaje, eurFmt, eurBroj, faliZaUgradnju, imeFajlaUgradnje, PRAZNA_UGRADNJA, type Ugradnja } from "@/lib/ugradnja";
 import { napraviUgradnjaPdf } from "@/lib/ugradnjaPdf";
 import { datumPonude } from "@/lib/ponuda";
@@ -22,10 +20,11 @@ import type { Dosije } from "@/lib/dosije";
 
 type Slika = { url: string; ime: string; grupa: "biblioteka" | "ugradnja" };
 
-export function UgradnjaView({ uRedu, dosije, demo }: { uRedu: number; dosije: Dosije | null; demo?: boolean }) {
+export function UgradnjaView({ uRedu, dosije, demo, bezSlikePocetno }: { uRedu: number; dosije: Dosije | null; demo?: boolean; bezSlikePocetno?: boolean }) {
   const router = useRouter();
   const pocetna = (): Ugradnja => ({
     ...PRAZNA_UGRADNJA, ...(dosije?.ugradnja ?? {}),
+    bezSlike: dosije?.ugradnja?.bezSlike ?? !!bezSlikePocetno,
     kupac: dosije?.ugradnja?.kupac || dosije?.kupac || "",
     lokacija: dosije?.ugradnja?.lokacija || dosije?.mesto || "",
     datum: dosije?.ugradnja?.datum || datumPonude(),
@@ -73,7 +72,7 @@ export function UgradnjaView({ uRedu, dosije, demo }: { uRedu: number; dosije: D
   };
 
   const bajtoviSlike = async (): Promise<Uint8Array | null> => {
-    if (!u.slika) return null;
+    if (!u.slika || u.bezSlike) return null;
     try {
       const r = await fetch(`/api/slika?src=${encodeURIComponent(u.slika)}`);
       if (!r.ok) return null;
@@ -108,30 +107,8 @@ export function UgradnjaView({ uRedu, dosije, demo }: { uRedu: number; dosije: D
   const telefon = dosije?.telefon ?? dosije?.stanje?.telefonKupca ?? "";
 
   return (
-    <div className="min-h-screen bg-wash lg:pl-64">
-      <Sidebar uRedu={uRedu} />
-      <MobilniMeni uRedu={uRedu} />
-      <header className="pointer-events-none fixed inset-x-0 top-3 z-40 sm:top-5 lg:hidden">
-        <div className="pointer-events-auto mx-auto w-full max-w-3xl px-3 sm:px-4">
-          <div className="nav-bar">
-            <Link href="/" className="flex min-w-0 items-center gap-2.5"><Logo size={40} /><div className="flex min-w-0 flex-col leading-none"><span className="nav-wordmark">Deko Pro</span><span className="nav-sub mt-1">Ugradnja</span></div></Link>
-            <Link href="/ponude" className="btn btn-sm btn-light btn-plain">Kupci</Link>
-          </div>
-        </div>
-      </header>
-      <section className="page-head">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/hero-bg.jpg" alt="" aria-hidden />
-        <div className="mx-auto w-full max-w-3xl px-4 pb-6 pt-[calc(var(--nav-h)+28px)] sm:pt-[calc(var(--nav-h)+40px)] lg:max-w-none lg:px-8 lg:pb-7 lg:pt-7">
-          <div className="on-dark rise flex flex-col items-start gap-3">
-            <span className="eyebrow"><span className="eyebrow-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6" /></svg></span>Interni panel</span>
-            <h1 className="h2 lg:text-[34px]">Ponuda za ugradnju{dosije ? `: ${dosije.kupac}` : ""}</h1>
-            <p className="text-sm text-white/70">Nalepi Pajin odgovor, proveri brojeve, izaberi sliku ograde. PDF je u dizajnu Gradi Lako i ide u dosije kupca.</p>
-          </div>
-        </div>
-      </section>
-
-      <main className="mx-auto w-full max-w-3xl px-4 pb-24 pt-5 sm:pt-7 lg:max-w-none lg:px-8 lg:py-6">
+    <Shell naslov={<>Ponuda za ugradnju{dosije ? `: ${dosije.kupac}` : ""}{u.bezSlike ? <span className="tag tag-grey ml-2 align-middle">bez slike</span> : null}</>} podnaslov="Nalepi Pajin odgovor, proveri brojeve, izaberi sliku ograde. PDF je u dizajnu Gradi Lako i ide u dosije kupca." uRedu={uRedu}
+      akcije={<Link href="/ponude" className="btn btn-sm btn-ghost">Kupci</Link>}>
         {demo && <div className="card mb-4 border-l-4 border-l-gold p-3 text-sm text-ink">Demo režim: baza nije povezana, ponuda se ne čuva.</div>}
         <div className="grid gap-4 lg:grid-cols-[440px_1fr]">
           {/* ---------- unos ---------- */}
@@ -151,6 +128,7 @@ export function UgradnjaView({ uRedu, dosije, demo }: { uRedu: number; dosije: D
                 <label className="field"><span>Broj ponude</span><input value={u.broj} onChange={(e) => set({ broj: e.target.value })} className="inp inp-sm" placeholder="npr. 215/26" /></label>
                 <label className="field"><span>Datum</span><input value={u.datum} onChange={(e) => set({ datum: e.target.value })} className="inp inp-sm" /></label>
                 <label className="field"><span>Sastavio</span><input value={u.sastavio} onChange={(e) => set({ sastavio: e.target.value })} className="inp inp-sm" /></label>
+                <label className="field"><span>Slika na prvoj strani</span><span className="inline-flex min-h-[36px] items-center gap-2 text-[13px] text-ink"><input type="checkbox" checked={!!u.bezSlike} onChange={(e) => set({ bezSlike: e.target.checked, ...(e.target.checked ? { slika: null } : {}) })} className="h-4 w-4 accent-[#131315]" />Bez slike (samo cena i obuhvat)</span></label>
                 <BrojEur label="Ukupna cena radova (€)" value={u.cena} onChange={(n) => set({ cena: n })} />
                 <BrojEur label="Avans za termin (€)" value={u.avans} onChange={(n) => set({ avans: n })} />
                 <BrojEur label="Na dan početka (€)" value={u.rata1} onChange={(n) => set({ rata1: n })} />
@@ -169,7 +147,7 @@ export function UgradnjaView({ uRedu, dosije, demo }: { uRedu: number; dosije: D
               )}
             </div>
 
-            <div className="card p-4 sm:p-5">
+            <div className={`card p-4 sm:p-5 ${u.bezSlike ? "hidden" : ""}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Slika ograde</div>
                 <button type="button" onClick={() => fajl.current?.click()} disabled={otprema === "radi"} className="text-[12px] font-semibold text-ink underline underline-offset-2">{otprema === "radi" ? "Otpremam…" : "Otpremi svoju sliku"}</button>
@@ -217,8 +195,7 @@ export function UgradnjaView({ uRedu, dosije, demo }: { uRedu: number; dosije: D
             </div>
           </div>
         </div>
-      </main>
-    </div>
+    </Shell>
   );
 }
 
@@ -275,17 +252,17 @@ function ListUgradnje({ u, strana }: { u: Ugradnja; strana: 1 | 2 }) {
       <ZaglavljeLista strana={1} />
       <div style={{ position: "absolute", left: L, top: 130, ...labela, fontSize: 10.5 }}>PONUDA IZVOĐAČA</div>
       <div style={{ position: "absolute", left: L, top: 150, fontSize: 39, fontWeight: 700, lineHeight: 1.1 }}>Izvođenje ograde.</div>
-      <div style={{ position: "absolute", left: L, top: 210, fontSize: 14, color: "#6b6b6b" }}>Pregled cene i vizuelni prikaz</div>
+      <div style={{ position: "absolute", left: L, top: 210, fontSize: 14, color: "#6b6b6b" }}>{u.bezSlike ? "Pregled cene" : "Pregled cene i vizuelni prikaz"}</div>
       <Polje l="KLIJENT / INVESTITOR" v={u.kupac} x={L} w={320} top={258} />
       <Polje l="LOKACIJA RADOVA" v={u.lokacija} x={412} w={328} top={258} />
       <Polje l="BROJ PONUDE" v={u.broj} x={L} w={320} top={322} />
       <Polje l="DATUM PONUDE" v={u.datum} x={412} w={328} top={322} />
-      <div style={{ position: "absolute", left: 0, right: 0, top: 400, height: 444, background: "#f3efe7", overflow: "hidden" }}>
+      {!u.bezSlike && <div style={{ position: "absolute", left: 0, right: 0, top: 400, height: 444, background: "#f3efe7", overflow: "hidden" }}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {u.slika ? <img src={u.slika} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} /> : <div style={{ display: "flex", height: "100%", alignItems: "center", justifyContent: "center", color: "#6b6b6b", fontSize: 13 }}>Vizuelni prikaz ograde</div>}
-      </div>
-      <div style={{ position: "absolute", left: L, top: 856, fontSize: 10, color: "#6b6b6b" }}>Ilustrativni prikaz ograde. Obuhvat ponude naveden je na drugoj strani.</div>
-      <div style={{ position: "absolute", left: L, right: 794 - D, top: 892, height: 133, background: "#2b2b2b", color: "#fff" }}>
+      </div>}
+      {!u.bezSlike && <div style={{ position: "absolute", left: L, top: 856, fontSize: 10, color: "#6b6b6b" }}>Ilustrativni prikaz ograde. Obuhvat ponude naveden je na drugoj strani.</div>}
+      <div style={{ position: "absolute", left: L, right: 794 - D, top: u.bezSlike ? 427 : 892, height: 133, background: "#2b2b2b", color: "#fff" }}>
         <div style={{ position: "absolute", left: 25, top: 22, fontSize: 11.5, fontWeight: 700 }}>UKUPNA CENA RADOVA</div>
         <div style={{ position: "absolute", left: 25, top: 48, fontSize: 56, fontWeight: 700, lineHeight: 1 }}>{eurFmt(u.cena) || "—"}</div>
         <div style={{ position: "absolute", left: 328, top: 78, fontSize: 21, fontWeight: 700 }}>EUR</div>

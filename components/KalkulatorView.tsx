@@ -1,11 +1,9 @@
 "use client";
 
+import { Shell } from "@/components/Shell";
 import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
-import { Sidebar } from "@/components/Sidebar";
-import { MobilniMeni } from "@/components/MobilniMeni";
-import { Logo } from "@/components/ui";
 import {
   izracunaj, ponudaTekst, ponudaTekstDelovi, internaBeleska, redoviZaVisinu, obimPlaca, izracunajPrevoz, spojiRezultate, opisDela,
   jeIspravljeno, vrstaIzNaziva, bojaNaziv,
@@ -304,38 +302,8 @@ export function KalkulatorView({ uRedu, leadovi = [], dosijei = [], ponude = [],
   const rp = redoviZaVisinu(u.visinaPolja), rs = redoviZaVisinu(u.visinaStuba);
 
   return (
-    <div className="min-h-screen bg-wash lg:pl-64">
-      <Sidebar uRedu={uRedu} />
-      <MobilniMeni uRedu={uRedu} />
-
-      <header className="pointer-events-none fixed inset-x-0 top-3 z-40 sm:top-5 lg:hidden">
-        <div className="pointer-events-auto mx-auto w-full max-w-3xl px-3 sm:px-4">
-          <div className="nav-bar">
-            <Link href="/" className="flex min-w-0 items-center gap-2.5">
-              <Logo size={40} />
-              <div className="flex min-w-0 flex-col leading-none">
-                <span className="nav-wordmark">Deko Pro</span>
-                <span className="nav-sub mt-1">Kalkulator</span>
-              </div>
-            </Link>
-            <Link href="/" className="btn btn-sm btn-light btn-plain">Leadovi</Link>
-          </div>
-        </div>
-      </header>
-
-      <section className="page-head">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/hero-bg.jpg" alt="" aria-hidden />
-        <div className="mx-auto w-full max-w-3xl px-4 pb-6 pt-[calc(var(--nav-h)+28px)] sm:pt-[calc(var(--nav-h)+40px)] lg:max-w-none lg:px-8 lg:pb-7 lg:pt-7">
-          <div className="on-dark rise flex flex-col items-start gap-3">
-            <span className="eyebrow"><span className="eyebrow-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16v16H4zM8 8h8M8 12h8M8 16h4" /></svg></span>Interni panel</span>
-            <h1 className="h2 lg:text-[34px]">Kalkulator</h1>
-            <p className="text-sm text-white/70">{rucno ? "Sam upisuješ količine i boju, bez rezerve. Ponuda i prevoz se računaju iz toga." : "Tačna dužina, +5 % na svaku stavku, visine u celim redovima od 20 cm."}</p>
-          </div>
-        </div>
-      </section>
-
-      <main className="mx-auto w-full max-w-3xl px-4 pb-24 pt-5 sm:pt-7 lg:max-w-none lg:px-8 lg:py-6">
+    <Shell naslov="Kalkulator" podnaslov={rucno ? "Sam upisuješ količine i boju, bez rezerve. Ponuda i prevoz se računaju iz toga." : "Tačna dužina, +5 % na svaku stavku, visine u celim redovima od 20 cm."} uRedu={uRedu}
+      akcije={<Link href="/ponude" className="btn btn-sm btn-ghost">Ponude i kupci</Link>}>
         {/* podtabovi: kalkulator / kupci koji čekaju cenu prevoza (Pavle, 01.10.2026.) */}
         <div className="mb-4 flex flex-wrap items-center gap-1.5">
           <button type="button" onClick={() => setTab("kalkulator")} className={`tag tag-filter ${tab === "kalkulator" ? "tag-accent" : ""}`}>Kalkulator</button>
@@ -908,8 +876,7 @@ export function KalkulatorView({ uRedu, leadovi = [], dosijei = [], ponude = [],
             </div>
           </div>
         </div>
-      </main>
-    </div>
+    </Shell>
   );
 }
 

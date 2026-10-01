@@ -5,89 +5,80 @@ import { usePathname, useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabaseBrowser";
 import { Logo } from "@/components/ui";
 
-// Desktop sidebar kao na Mojsilov dashboardu: fiksan levo, navy, sadržaj ide
-// preko cele preostale širine. Na telefonu ga nema (tamo je pill nav).
-type Item = { label: string; href: string; icon: React.ReactNode; uskoro?: boolean; badge?: number };
-
-const I = {
+/*
+  Levi meni (desktop), redizajn 01.10.2026. po Promo Bet ERP-u: beo, grupe sa naslovom,
+  aktivna stavka crna, crvena značka = koliko leadova čeka poziv. Na telefonu ga nema (donji meni).
+*/
+export const I = {
   leadovi: <><path d="M8 6h13M8 12h13M8 18h13" /><path d="M3 6h.01M3 12h.01M3 18h.01" /></>,
   analitika: <path d="M3 3v18h18M7 15l3-4 3 3 4-6" />,
-  forma: <path d="M4 4h16v16H4zM8 9h8M8 13h5" />,
   ponude: <><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" /><path d="M14 3v6h6M9 13h6M9 17h6" /></>,
-  kalkulator: <><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M8 6h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M16 15v3M8 19h6" /></>,
-  podesavanja: <><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></>,
+  kalkulator: <><rect x="4" y="2" width="16" height="20" rx="2" /><path d="M8 6h8M8 11h2M12 11h2M8 15h2M12 15h2M16 15v3M8 19h6" /></>,
+  ugradnja: <><path d="M3 21h18M5 21V7l7-4 7 4v14" /><path d="M9 21v-6h6v6" /></>,
+  kupci: <><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" /></>,
   odjava: <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9" />,
+  plus: <path d="M12 5v14M5 12h14" />,
+  trazi: <><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>,
 };
 
-function Ico({ d }: { d: React.ReactNode }) {
-  return <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{d}</svg>;
+export function Ico({ d, size = 18 }: { d: React.ReactNode; size?: number }) {
+  return <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{d}</svg>;
 }
+
+type Stavka = { label: string; href: string; icon: React.ReactNode; badge?: number; tacno?: boolean };
 
 export function Sidebar({ uRedu, onDodaj, login }: { uRedu: number; onDodaj?: () => void; login?: boolean }) {
   const router = useRouter();
   const pathname = usePathname();
   const odjava = async () => { await supabaseBrowser().auth.signOut(); router.replace("/login"); router.refresh(); };
 
-  const stavke: Item[] = [
-    { label: "Leadovi", href: "/", icon: I.leadovi, badge: uRedu },
-    { label: "Analitika", href: "/analitika", icon: I.analitika },
-    { label: "Kalkulator", href: "/kalkulator", icon: I.kalkulator },
-    { label: "Ponude", href: "/ponude", icon: I.ponude },
-    // „Forma sa sajta" se vraća u meni kad nov sajt bude gotov (Pavle, 30.09.2026.)
+  const grupe: { naslov: string; stavke: Stavka[] }[] = [
+    { naslov: "Danas", stavke: [
+      { label: "Leadovi", href: "/", icon: I.leadovi, badge: uRedu, tacno: true },
+      { label: "Analitika", href: "/analitika", icon: I.analitika },
+    ] },
+    { naslov: "Prodaja", stavke: [
+      { label: "Kalkulator", href: "/kalkulator", icon: I.kalkulator },
+      { label: "Ponude i kupci", href: "/ponude", icon: I.kupci },
+      { label: "Ponuda za ugradnju", href: "/ugradnja", icon: I.ugradnja },
+    ] },
   ];
+  const aktivna = (s: Stavka) => (s.tacno ? pathname === s.href : pathname.startsWith(s.href));
 
   return (
-    <aside className="blueprint fixed inset-y-0 left-0 z-20 hidden w-64 flex-col bg-navy text-white lg:flex">
-      <div className="flex items-center gap-3 px-5 pb-5 pt-6">
-        <Logo size={44} />
+    <aside className="side fixed inset-y-0 left-0 z-20 hidden w-[var(--side-w)] flex-col lg:flex">
+      <Link href="/" className="flex items-center gap-2.5 px-4 pb-3 pt-4">
+        <Logo size={36} />
         <div className="leading-none">
-          <div className="nav-wordmark text-[20px]">Deko Pro</div>
-          <div className="nav-sub mt-1">Leadovi</div>
+          <div className="nav-wordmark text-[16px]">Deko Pro</div>
+          <div className="nav-sub mt-1">Panel</div>
         </div>
+      </Link>
+
+      <div className="px-3 pb-1">
+        {onDodaj
+          ? <button onClick={onDodaj} className="btn btn-sm btn-block"><Ico d={I.plus} size={16} />Novi lead</button>
+          : <Link href="/#novi" className="btn btn-sm btn-block"><Ico d={I.plus} size={16} />Novi lead</Link>}
       </div>
 
-      <div className="px-4 pb-4">
-        {onDodaj ? (
-          <button onClick={onDodaj} className="btn btn-sm btn-gold btn-block">
-            Novi lead
-            <span className="btn-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M12 5v14M5 12h14" /></svg></span>
-          </button>
-        ) : (
-          <Link href="/" className="btn btn-sm btn-gold btn-block">
-            Nazad na leadove
-            <span className="btn-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14M13 6l6 6-6 6" /></svg></span>
-          </Link>
-        )}
-      </div>
-
-      <nav className="flex flex-col gap-1 px-3">
-        <div className="micro px-3 pb-1 pt-2 text-[11px] text-white/45">Rad</div>
-        {stavke.map((it) => {
-          const active = !it.uskoro && (it.href === "/" ? pathname === "/" : pathname.startsWith(it.href));
-          const cls = `flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-left text-[14px] font-medium transition-colors ${active ? "bg-white/10 text-white" : "text-white/70 hover:bg-white/5 hover:text-white"}`;
-          const inner = (
-            <>
-              <span className={active ? "text-gold" : ""}><Ico d={it.icon} /></span>
-              {it.label}
-              {it.badge != null && it.badge > 0 && (
-                <span className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gold px-1.5 text-[11px] font-bold text-navy">{it.badge}</span>
-              )}
-              {it.uskoro && <span className="ml-auto text-[10px] uppercase tracking-wider text-white/40">uskoro</span>}
-            </>
-          );
-          if (it.uskoro) return <span key={it.label} title="Uskoro" className={`${cls} cursor-default opacity-50 hover:bg-transparent hover:text-white/70`}>{inner}</span>;
-          return <Link key={it.label} href={it.href} className={cls}>{inner}</Link>;
-        })}
+      <nav className="flex flex-col">
+        {grupe.map((g) => (
+          <div key={g.naslov}>
+            <div className="side-group">{g.naslov}</div>
+            {g.stavke.map((s) => (
+              <Link key={s.href} href={s.href} aria-current={aktivna(s) ? "page" : undefined} className="side-link">
+                <Ico d={s.icon} />
+                {s.label}
+                {s.badge != null && s.badge > 0 && <span className="side-badge">{s.badge}</span>}
+              </Link>
+            ))}
+          </div>
+        ))}
       </nav>
 
-      <div className="mt-auto flex flex-col gap-1 border-t border-white/10 px-3 py-3">
-        <button disabled title="Uskoro" className="flex cursor-default items-center gap-3 rounded-[10px] px-3 py-2.5 text-[14px] font-medium text-white/50">
-          <Ico d={I.podesavanja} />Podešavanja
-        </button>
-        {login && <button onClick={odjava} className="flex items-center gap-3 rounded-[10px] px-3 py-2.5 text-[14px] font-medium text-white/70 transition-colors hover:bg-white/5 hover:text-white">
-          <Ico d={I.odjava} />Odjava
-        </button>}
-        <div className="px-3 pt-2 text-[11px] text-white/35">062 253 140 · od 2015.</div>
+      <div className="mt-auto border-t border-line px-3 py-3">
+        {login && <button onClick={odjava} className="side-link w-[calc(100%-16px)]"><Ico d={I.odjava} />Odjava</button>}
+        <div className="px-3 pt-2 text-[11px] text-muted">Deko Pro · 062 253 140</div>
       </div>
     </aside>
   );

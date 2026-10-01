@@ -1,11 +1,9 @@
 "use client";
 
+import { Shell } from "@/components/Shell";
 import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Sidebar } from "@/components/Sidebar";
-import { MobilniMeni } from "@/components/MobilniMeni";
-import { Logo } from "@/components/ui";
 import { DosijeKartica, type LeadZaDosije } from "@/components/DosijeKartica";
 import { obrisiPonudu } from "@/app/ponude/actions";
 import { obrisiDosije } from "@/app/dosijei/actions";
@@ -72,39 +70,12 @@ export function PonudeView({ uRedu, ponude, dosijei = [], leadovi = {}, demo, ta
   };
 
   return (
-    <div className="min-h-screen bg-wash lg:pl-64">
-      <Sidebar uRedu={uRedu} />
-      <MobilniMeni uRedu={uRedu} />
-
-      <header className="pointer-events-none fixed inset-x-0 top-3 z-40 sm:top-5 lg:hidden">
-        <div className="pointer-events-auto mx-auto w-full max-w-3xl px-3 sm:px-4">
-          <div className="nav-bar">
-            <Link href="/" className="flex min-w-0 items-center gap-2.5">
-              <Logo size={40} />
-              <div className="flex min-w-0 flex-col leading-none">
-                <span className="nav-wordmark">Deko Pro</span>
-                <span className="nav-sub mt-1">Ponude</span>
-              </div>
-            </Link>
-            <Link href="/kalkulator" className="btn btn-sm btn-light btn-plain">Kalkulator</Link>
-            <Link href="/ugradnja" className="btn btn-sm btn-gold btn-plain">Ponuda za ugradnju</Link>
-          </div>
-        </div>
-      </header>
-
-      <section className="page-head">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/hero-bg.jpg" alt="" aria-hidden />
-        <div className="mx-auto w-full max-w-3xl px-4 pb-6 pt-[calc(var(--nav-h)+28px)] sm:pt-[calc(var(--nav-h)+40px)] lg:max-w-none lg:px-8 lg:pb-7 lg:pt-7">
-          <div className="on-dark rise flex flex-col items-start gap-3">
-            <span className="eyebrow"><span className="eyebrow-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9zM14 3v6h6" /></svg></span>Interni panel</span>
-            <h1 className="h2 lg:text-[34px]">Ponude i kupci</h1>
-            <p className="text-sm text-white/70">Svaki kupac ima dosije: šta je urađeno, šta fali, šta se čeka. Ponude ulaze same čim se skine PDF.</p>
-          </div>
-        </div>
-      </section>
-
-      <main className="mx-auto w-full max-w-3xl px-4 pb-24 pt-5 sm:pt-7 lg:max-w-none lg:px-8 lg:py-6">
+    <Shell naslov="Ponude i kupci" podnaslov="Svaki kupac ima dosije: šta je urađeno, šta fali, šta se čeka. Ponude ulaze same čim se skine PDF." uRedu={uRedu}
+      akcije={<>
+        <Link href="/kalkulator" className="btn btn-sm btn-ghost">Kalkulator</Link>
+        <Link href="/ugradnja?bezslike=1" className="btn btn-sm btn-ghost">Ponuda za ugradnju bez slike</Link>
+        <Link href="/ugradnja" className="btn btn-sm btn-gold">Ponuda za ugradnju</Link>
+      </>}>
         {demo && <div className="card mb-4 border-l-4 border-l-gold p-3 text-sm text-ink">Demo režim: baza nije povezana, pa nema sačuvanih ponuda.</div>}
         {tabelaFali && <div className="card mb-4 border-l-4 border-l-gold p-3 text-sm text-ink">Tabela za ponude još ne postoji. Pokreni <b>supabase/migracija-6.sql</b> u Supabase SQL editoru, pa osveži stranu.</div>}
         {tabelaDosijeaFali && <div className="card mb-4 border-l-4 border-l-gold p-3 text-sm text-ink">Dosijei kupaca još ne postoje u bazi. Pokreni <b>supabase/migracija-7.sql</b> u Supabase SQL editoru, pa osveži stranu.</div>}
@@ -208,7 +179,6 @@ export function PonudeView({ uRedu, ponude, dosijei = [], leadovi = {}, demo, ta
             )}
           </>
         )}
-      </main>
-    </div>
+    </Shell>
   );
 }
