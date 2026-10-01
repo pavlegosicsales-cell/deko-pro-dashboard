@@ -261,18 +261,17 @@ export function StatusSelect({ l, onStatus, mali }: { l: LeadRow; onStatus: (id:
 /* ---------------- Tabela (desktop) ---------------- */
 function LeadTabela({ leadovi, procene, danas, onStatus, onBeleska, onDatum, onPrioritet, onZarada, onKval, onEdit, onDelete }: { leadovi: LeadRow[]; procene: Map<string, Procena>; danas: string; onEdit: (l: LeadRow) => void; onDelete: (id: string) => void } & Handleri) {
   return (
-    <Card className="overflow-hidden">
-      <table className="tbl">
+    <Card className="overflow-x-auto">
+      <table className="tbl min-w-[1040px]">
         <thead>
           <tr>
-            <th>Lead</th><th>Ishod</th><th>Šta kupuje</th><th>Za poziv</th><th>Izvor</th><th>Dodat</th><th className="text-right">Akcije</th>
+            <th className="w-[240px]">Lead</th><th className="w-[230px]">Ishod</th><th className="w-[170px]">Šta kupuje</th><th>Za poziv</th><th className="w-[250px] text-right">Akcije</th>
           </tr>
         </thead>
         <tbody>
           {leadovi.map((l) => {
             const dospeo = jeDospeo(l, danas);
             const ima = !!l.telefon;
-            const t = temperatura(l.temperatura);
             return (
               <tr key={l.id} className={dospeo ? "bg-amber-bg/40" : ""}>
                 <td className="min-w-[210px]">
@@ -285,8 +284,8 @@ function LeadTabela({ leadovi, procene, danas, onStatus, onBeleska, onDatum, onP
                     ? <a href={telLink(l.telefon)} className="mt-0.5 block text-[13px] font-medium text-blue hover:underline">{l.telefon}</a>
                     : <span className="text-xs text-muted">bez broja</span>}
                   {(l.tip_kupca || l.rok) && <div className="mt-0.5 text-[11px] text-muted">{[l.tip_kupca && label(TIPOVI_KUPCA, l.tip_kupca), l.rok && label(ROKOVI, l.rok)].filter(Boolean).join(" · ")}</div>}
+                  <div className="mt-0.5 text-[11px] text-muted">{[l.izvor ? label(SVI_IZVORI, l.izvor) : null, `dodat ${pre(l.created_at)}`, uIshodu(l) ? `u ishodu ${uIshodu(l)}` : null].filter(Boolean).join(" · ")}</div>
                   {l.podseti_kad && <div className="mt-1"><span className={`tag ${dospeo ? "tag-red" : "tag-violet"}`}>{dospeo ? "Dospelo" : "Zvati"} {datumKratko(l.podseti_kad)}</span></div>}
-                  {t && !l.podseti_kad ? null : null}
                 </td>
                 <td className="w-[230px]">
                   <StatusSelect l={l} onStatus={onStatus} mali />
@@ -302,15 +301,10 @@ function LeadTabela({ leadovi, procene, danas, onStatus, onBeleska, onDatum, onP
                   </div>
                   <ProcenaOznaka p={procene.get(l.id)} l={l} />
                 </td>
-                <td className="max-w-[340px]">
+                <td className="min-w-[260px]">
                   <ZaPoziv l={l} />
                   {fali(l).length > 0 && <div className="mt-1"><span className="tag tag-red max-w-full whitespace-normal text-left leading-snug">Nepotpun: {fali(l).join(", ")}</span></div>}
                   {l.info ? <p className="mt-1 whitespace-pre-wrap text-[12.5px] leading-snug text-text/85">{l.info}</p> : null}
-                </td>
-                <td className="whitespace-nowrap">{l.izvor ? <span className="tag tag-gold">{label(SVI_IZVORI, l.izvor)}</span> : <span className="text-muted">—</span>}</td>
-                <td className="whitespace-nowrap text-xs text-muted">
-                  <div>{pre(l.created_at)}</div>
-                  {uIshodu(l) && <div>u ishodu {uIshodu(l)}</div>}
                 </td>
                 <td className="whitespace-nowrap text-right">
                   <div className="flex items-center justify-end gap-1">
@@ -361,7 +355,6 @@ function LeadKartica({ l, procena, danas, onStatus, onBeleska, onDatum, onPriori
             : <span className="text-sm text-muted">bez broja</span>}
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          {st && <span className={`tag tag-${st.ton}`}>{st.l}</span>}
           <button onClick={() => { if (confirm(`Obrisati lead — ${punoIme(l)}?`)) onDelete(); }} className="grid h-8 w-8 place-items-center rounded-lg text-muted hover:bg-red-bg hover:text-red" aria-label="Obriši">
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m2 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /></svg>
           </button>
@@ -370,6 +363,7 @@ function LeadKartica({ l, procena, danas, onStatus, onBeleska, onDatum, onPriori
 
       <ZaPoziv l={l} />
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        {st && <span className={`tag tag-${st.ton}`}>{st.l}</span>}
         {l.tip_kupca && <span className="tag">{label(TIPOVI_KUPCA, l.tip_kupca)}</span>}
         {l.rok && <span className="tag">{label(ROKOVI, l.rok)}</span>}
         {l.status === "propao" && l.razlog_odustajanja && <span className="tag tag-grey">Razlog: {label(RAZLOZI, l.razlog_odustajanja)}</span>}
