@@ -59,6 +59,41 @@ export function UgradnjaView({ uRedu, dosije, demo, bezSlikePocetno }: { uRedu: 
   };
   const fali = faliZaUgradnju(u);
 
+  // fotka dvorišta + vizuelizacija na njoj (Pavle, 01.10.2026.)
+  const [dvOtprema, setDvOtprema] = useState<"" | "radi" | "greska">("");
+  const [gen, setGen] = useState<"" | "predaje" | "ceka" | "greska">("");
+  const [genPoruka, setGenPoruka] = useState("");
+  const [napomenaSlike, setNapomenaSlike] = useState("");
+  const fajlDv = useRef<HTMLInputElement>(null);
+  const otpremiDvoriste = async (f: File) => {
+    setDvOtprema("radi");
+    const fd = new FormData(); fd.append("slika", f); fd.append("ime", (u.kupac || "dvoriste") + "-dvoriste"); fd.append("grupa", "dvoriste");
+    try {
+      const r = await fetch("/api/slika", { method: "POST", body: fd });
+      const j = await r.json();
+      if (!r.ok || !j.url) throw new Error(j.error || "Otpremanje nije uspelo.");
+      set({ dvoriste: j.url }); setDvOtprema("");
+    } catch (e) { setDvOtprema("greska"); setGenPoruka((e as Error).message); }
+  };
+  const generisi = async () => {
+    if (!u.dvoriste) return;
+    setGen("predaje"); setGenPoruka("");
+    try {
+      const r = await fetch("/api/vizuelizacija", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dvoriste: u.dvoriste, dosijeId: dosije?.id ?? null, leadId: dosije?.lead_id ?? null, napomena: napomenaSlike }) });
+      const j = await r.json();
+      if (!r.ok || !j.jobId) throw new Error(j.error || "Nije predato.");
+      setGen("ceka"); setGenPoruka(`Crtam: ${j.opis} (${j.kredita} kr)…`);
+      for (let i = 0; i < 20; i++) {
+        const s = await fetch(`/api/vizuelizacija?job=${j.jobId}&ime=${encodeURIComponent(u.kupac || "kupac")}`);
+        const k = await s.json();
+        if (k.status === "done" && k.url) { setSlike((x) => [{ url: k.url, ime: "vizuelizacija", grupa: "ugradnja" }, ...x]); set({ slika: k.url, bezSlike: false }); setGen(""); setGenPoruka("Slika je gotova i izabrana za ponudu."); return; }
+        if (k.status === "failed" || k.error) throw new Error(k.error || "Higgsfield nije uspeo: " + (k.poruka ?? ""));
+        await new Promise((res) => setTimeout(res, 4000));
+      }
+      throw new Error("Predugo traje, probaj ponovo za minut.");
+    } catch (e) { setGen("greska"); setGenPoruka((e as Error).message); }
+  };
+
   const otpremi = async (f: File) => {
     setOtprema("radi");
     const fd = new FormData(); fd.append("slika", f); fd.append("ime", u.kupac || "ograda");
@@ -102,8 +137,6 @@ export function UgradnjaView({ uRedu, dosije, demo, bezSlikePocetno }: { uRedu: 
     } catch (e) { console.error(e); setPdfStanje("greska"); }
   };
 
-  const linije = (s: string[]) => s.join("\n");
-  const izLinija = (t: string) => t.split("\n").map((x) => x.trim()).filter(Boolean);
   const telefon = dosije?.telefon ?? dosije?.stanje?.telefonKupca ?? "";
 
   return (
@@ -145,6 +178,26 @@ export function UgradnjaView({ uRedu, dosije, demo, bezSlikePocetno }: { uRedu: 
               {u.cena != null && u.avans != null && u.rata1 != null && u.rata2 != null && Math.abs(u.avans + u.rata1 + u.rata2 - u.cena) > 0.5 && (
                 <p className="mt-2 text-[12px] text-warn">Avans + dve rate = {eurFmt(u.avans + u.rata1 + u.rata2)} €, a cena je {eurFmt(u.cena)} €. Proveri brojeve.</p>
               )}
+            </div>
+
+            <div className={`card p-4 sm:p-5 ${u.bezSlike ? "hidden" : ""}`}>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Fotka dvorišta kupca</div>
+                <button type="button" onClick={() => fajlDv.current?.click()} disabled={dvOtprema === "radi"} className="text-[12px] font-semibold text-ink underline underline-offset-2">{dvOtprema === "radi" ? "Otpremam…" : u.dvoriste ? "Zameni fotku" : "Otpremi fotku dvorišta"}</button>
+                <input ref={fajlDv} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void otpremiDvoriste(f); e.target.value = ""; }} />
+              </div>
+              <p className="mt-1 text-[11px] text-muted">Na ovoj fotki se crta ograda po merama iz leada (boja, visine, razmak, paneli). Jedna slika = 2 kredita.</p>
+              {u.dvoriste && (
+                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={u.dvoriste} alt="" className="h-28 w-full rounded-lg border border-line object-cover sm:w-44" />
+                  <div className="flex min-w-0 flex-1 flex-col gap-2">
+                    <input value={napomenaSlike} onChange={(e) => setNapomenaSlike(e.target.value)} className="inp inp-sm" placeholder="Napomena za sliku (nije obavezno), npr. ograda ide uz levu ivicu" />
+                    <button type="button" onClick={() => void generisi()} disabled={gen === "predaje" || gen === "ceka"} className="btn btn-sm btn-blue disabled:opacity-45">{gen === "predaje" ? "Predajem…" : gen === "ceka" ? "Crtam…" : "Generiši vizuelizaciju (2 kredita)"}</button>
+                  </div>
+                </div>
+              )}
+              {genPoruka && <p className={`mt-2 text-[12px] ${gen === "greska" ? "text-red" : "text-muted"}`}>{genPoruka}</p>}
             </div>
 
             <div className={`card p-4 sm:p-5 ${u.bezSlike ? "hidden" : ""}`}>

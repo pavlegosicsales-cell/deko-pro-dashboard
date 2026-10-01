@@ -42,7 +42,8 @@ export async function POST(req: Request) {
   if (f.size > 15 * 1024 * 1024) return NextResponse.json({ error: "Slika je veća od 15 MB." }, { status: 400 });
   const ext = f.type === "image/png" ? "png" : f.type === "image/webp" ? "webp" : "jpg";
   const ime = (forma.get("ime")?.toString() ?? "slika").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "slika";
-  const put = `ugradnja/${Date.now()}-${ime}.${ext}`;
+  const grupa = forma.get("grupa")?.toString() === "dvoriste" ? "dvoriste" : "ugradnja";
+  const put = `${grupa}/${Date.now()}-${ime}.${ext}`;
   const { error } = await supabaseAdmin.storage.from(BUCKET).upload(put, Buffer.from(await f.arrayBuffer()), { contentType: f.type, upsert: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ url: javniUrl(put) });
