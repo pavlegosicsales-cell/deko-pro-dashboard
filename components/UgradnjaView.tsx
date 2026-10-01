@@ -203,16 +203,13 @@ export function UgradnjaView({ uRedu, dosije, demo, bezSlikePocetno }: { uRedu: 
    (ranije se prazan red brisao istog trena, pa Paja nije mogao da doda četvrtu stavku, 01.10.2026.).
    Niz se osveži spolja samo kad ga promeni nešto drugo (npr. „Pročitaj brojeve iz teksta"). */
 function ListaStavki({ stavke, onChange, rows }: { stavke: string[]; onChange: (s: string[]) => void; rows: number }) {
-  const spolja = stavke.join("
-");
+  const spolja = stavke.join("\n");
   const [txt, setTxt] = useState(spolja);
   const zadnje = useRef(spolja);
   useEffect(() => { if (spolja !== zadnje.current) { zadnje.current = spolja; setTxt(spolja); } }, [spolja]);
   return (
     <textarea value={txt} rows={rows} className="inp inp-sm leading-snug"
-      onChange={(e) => { const v = e.target.value; setTxt(v); const s = v.split("
-").map((x) => x.trim()).filter(Boolean); zadnje.current = s.join("
-"); onChange(s); }} />
+      onChange={(e) => { const v = e.target.value; setTxt(v); const s = v.split("\n").map((x) => x.trim()).filter(Boolean); zadnje.current = s.join("\n"); onChange(s); }} />
   );
 }
 
