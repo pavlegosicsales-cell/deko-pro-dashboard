@@ -27,7 +27,7 @@ export type Ugradnja = {
 
 export const NIJE_URACUNATO_PODRAZUMEVANO = [
   "Dekorativni blok (materijal se plaća posebno, avansno).",
-  "Transport i istovar (plaća se vozaču na dan isporuke).",
+  "Transport i istovar (po dogovoru).",   // Luka 01.10.2026.: ne „plaća se vozaču" (prevoz se naplaćuje kroz nas)
   "Temelj i iskop.",
 ];
 

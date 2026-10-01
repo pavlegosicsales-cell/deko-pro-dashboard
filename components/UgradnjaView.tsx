@@ -135,10 +135,10 @@ export function UgradnjaView({ uRedu, dosije, demo, bezSlikePocetno }: { uRedu: 
                 <BrojEur label="Po završetku (€)" value={u.rata2} onChange={(n) => set({ rata2: n })} />
                 <label className="field"><span>Planiran početak</span><input value={u.pocetak} onChange={(e) => set({ pocetak: e.target.value })} className="inp inp-sm" placeholder="npr. oktobar" /></label>
                 <label className="field"><span>Trajanje radova</span><input value={u.trajanje} onChange={(e) => set({ trajanje: e.target.value })} className="inp inp-sm" placeholder="npr. 21 dan" /></label>
-                <label className="field col-span-2"><span>U cenu je uračunato <span className="font-normal text-muted">(jedan red = jedna stavka)</span></span>
-                  <textarea value={linije(u.uracunato)} onChange={(e) => set({ uracunato: izLinija(e.target.value) })} rows={4} className="inp inp-sm leading-snug" /></label>
-                <label className="field col-span-2"><span>Nije uračunato u cenu</span>
-                  <textarea value={linije(u.nijeUracunato)} onChange={(e) => set({ nijeUracunato: izLinija(e.target.value) })} rows={3} className="inp inp-sm leading-snug" /></label>
+                <label className="field col-span-2"><span>U cenu je uračunato <span className="font-normal text-muted">(jedan red = jedna stavka, Enter za novu)</span></span>
+                  <ListaStavki stavke={u.uracunato} onChange={(s) => set({ uracunato: s })} rows={5} /></label>
+                <label className="field col-span-2"><span>Nije uračunato u cenu <span className="font-normal text-muted">(Enter za novu stavku)</span></span>
+                  <ListaStavki stavke={u.nijeUracunato} onChange={(s) => set({ nijeUracunato: s })} rows={4} /></label>
                 <label className="field col-span-2"><span>Napomena ispod dinamike plaćanja</span>
                   <textarea value={u.napomena} onChange={(e) => set({ napomena: e.target.value })} rows={3} className="inp inp-sm leading-snug" /></label>
               </div>
@@ -196,6 +196,23 @@ export function UgradnjaView({ uRedu, dosije, demo, bezSlikePocetno }: { uRedu: 
           </div>
         </div>
     </Shell>
+  );
+}
+
+/* Lista stavki kao tekst, red po red. Čuva SVOJ tekst dok se kuca, pa Enter sme da napravi prazan novi red
+   (ranije se prazan red brisao istog trena, pa Paja nije mogao da doda četvrtu stavku, 01.10.2026.).
+   Niz se osveži spolja samo kad ga promeni nešto drugo (npr. „Pročitaj brojeve iz teksta"). */
+function ListaStavki({ stavke, onChange, rows }: { stavke: string[]; onChange: (s: string[]) => void; rows: number }) {
+  const spolja = stavke.join("
+");
+  const [txt, setTxt] = useState(spolja);
+  const zadnje = useRef(spolja);
+  useEffect(() => { if (spolja !== zadnje.current) { zadnje.current = spolja; setTxt(spolja); } }, [spolja]);
+  return (
+    <textarea value={txt} rows={rows} className="inp inp-sm leading-snug"
+      onChange={(e) => { const v = e.target.value; setTxt(v); const s = v.split("
+").map((x) => x.trim()).filter(Boolean); zadnje.current = s.join("
+"); onChange(s); }} />
   );
 }
 
