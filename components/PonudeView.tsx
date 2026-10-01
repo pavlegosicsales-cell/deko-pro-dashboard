@@ -87,6 +87,7 @@ export function PonudeView({ uRedu, ponude, dosijei = [], leadovi = {}, demo, ta
               </div>
             </Link>
             <Link href="/kalkulator" className="btn btn-sm btn-light btn-plain">Kalkulator</Link>
+            <Link href="/ugradnja" className="btn btn-sm btn-gold btn-plain">Ponuda za ugradnju</Link>
           </div>
         </div>
       </header>
@@ -142,7 +143,8 @@ export function PonudeView({ uRedu, ponude, dosijei = [], leadovi = {}, demo, ta
                 <b className="text-ink">{lista.length}</b> {lista.length === 1 ? "ponuda" : lista.length >= 2 && lista.length <= 4 ? "ponude" : "ponuda"}
                 {lista.length > 0 && <> · ukupno <b className="text-ink">{rsd(zbir)}</b></>}
               </span>
-              <Link href="/kalkulator" className="btn btn-sm btn-plain ml-auto">Nova ponuda</Link>
+              <Link href="/ugradnja" className="btn btn-sm btn-ghost btn-plain ml-auto">Ponuda za ugradnju</Link>
+              <Link href="/kalkulator" className="btn btn-sm btn-plain">Nova ponuda</Link>
             </div>
             {lista.length === 0 && !tabelaFali && !demo && (
               <div className="card p-6 text-center text-sm text-muted">Još nema ponuda. Napravi je u kalkulatoru; čim na strani ponude skineš PDF, ponuda se sama upiše ovde.</div>
