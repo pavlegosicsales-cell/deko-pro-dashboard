@@ -12,6 +12,9 @@ import { obrisiDosije } from "@/app/dosijei/actions";
 import { rsd } from "@/lib/format";
 import { cekaPrevoz, type Dosije } from "@/lib/dosije";
 import type { SacuvanaPonuda } from "@/lib/ponuda";
+import { napraviPonudaPdf, imeFajla } from "@/lib/ponudaPdf";
+import { porukaMaterijal, metaPonude, telIzAdrese } from "@/lib/slanje";
+import { PosaljiKlijentu } from "@/components/PosaljiKlijentu";
 
 /*
   Tab „Ponude" (Pavle, 01.10.2026.: „treba mi sve na jednom mestu"):
@@ -155,8 +158,11 @@ export function PonudeView({ uRedu, ponude, dosijei = [], leadovi = {}, demo, ta
                     <div className="text-right font-display text-[17px] font-bold tabular-nums text-navy">{rsd(Number(p.ukupno_rsd))}</div>
                   </div>
                   <div className="mt-2 text-xs text-muted">{REZIM[p.rezim ?? ""] ?? p.rezim} · {p.transport_eur != null ? `transport ${p.transport_eur} € ${p.sa_istovarom ? "sa istovarom" : "bez istovara"}` : "bez transporta"} · {p.sastavio}</div>
-                  <div className="mt-3 flex gap-2">
+                  <div className="mt-3 flex flex-wrap gap-2">
                     <Link href={`/ponuda?id=${p.id}`} className="btn btn-sm">Otvori</Link>
+                    <PosaljiKlijentu mali telefon={telIzAdrese(p.adresa)} imeFajla={imeFajla(metaPonude(p))}
+                      napraviPdf={() => napraviPonudaPdf(p.redovi, Number(p.ukupno_rsd), metaPonude(p))}
+                      tekst={(url) => porukaMaterijal(p.broj, Number(p.ukupno_rsd), url)} />
                     <button type="button" onClick={() => obrisi(p)} className="btn btn-sm btn-ghost btn-plain">Obriši</button>
                   </div>
                 </div>
@@ -184,8 +190,13 @@ export function PonudeView({ uRedu, ponude, dosijei = [], leadovi = {}, demo, ta
                         <td className="whitespace-nowrap px-2 py-2.5 text-right font-semibold tabular-nums text-navy">{rsd(Number(p.ukupno_rsd))}</td>
                         <td className="whitespace-nowrap px-2 py-2.5 text-muted">{p.sastavio}</td>
                         <td className="whitespace-nowrap px-4 py-2.5 text-right">
-                          <Link href={`/ponuda?id=${p.id}`} className="btn btn-sm">Otvori</Link>
-                          <button type="button" onClick={() => obrisi(p)} className="btn btn-sm btn-ghost btn-plain ml-2">Obriši</button>
+                          <span className="inline-flex flex-wrap items-center justify-end gap-2">
+                            <Link href={`/ponuda?id=${p.id}`} className="btn btn-sm">Otvori</Link>
+                            <PosaljiKlijentu mali telefon={telIzAdrese(p.adresa)} imeFajla={imeFajla(metaPonude(p))}
+                              napraviPdf={() => napraviPonudaPdf(p.redovi, Number(p.ukupno_rsd), metaPonude(p))}
+                              tekst={(url) => porukaMaterijal(p.broj, Number(p.ukupno_rsd), url)} />
+                            <button type="button" onClick={() => obrisi(p)} className="btn btn-sm btn-ghost btn-plain">Obriši</button>
+                          </span>
                         </td>
                       </tr>
                     ))}

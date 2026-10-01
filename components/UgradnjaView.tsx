@@ -10,7 +10,8 @@ import { izTekstaPaje, eurFmt, eurBroj, faliZaUgradnju, imeFajlaUgradnje, PRAZNA
 import { napraviUgradnjaPdf } from "@/lib/ugradnjaPdf";
 import { datumPonude } from "@/lib/ponuda";
 import { sacuvajUgradnju } from "@/app/dosijei/actions";
-import { waLink } from "@/lib/lead";
+import { porukaUgradnja } from "@/lib/slanje";
+import { PosaljiKlijentu } from "@/components/PosaljiKlijentu";
 import type { Dosije } from "@/lib/dosije";
 
 /*
@@ -198,9 +199,12 @@ export function UgradnjaView({ uRedu, dosije, demo }: { uRedu: number; dosije: D
               <button type="button" onClick={() => void sacuvajUDosije()} disabled={cuvanje === "radi" || !u.kupac.trim() || !!demo} className="btn btn-sm btn-ghost btn-plain disabled:opacity-45">
                 {cuvanje === "radi" ? "Čuvam…" : cuvanje === "gotovo" ? "U dosijeu ✓" : "Sačuvaj u dosije"}
               </button>
-              {telefon && <a href={waLink(telefon, `Poštovani, u prilogu je ponuda za ugradnju ograde br. ${u.broj}. Cena radova je ${eurFmt(u.cena)} EUR. Za sva pitanja tu smo, 062 253 140.`)} target="_blank" rel="noreferrer" className="btn btn-sm btn-ghost btn-plain">Kupcu na WhatsApp</a>}
+              <PosaljiKlijentu telefon={telefon} saPdf={false} disabled={fali.length > 0} imeFajla={imeFajlaUgradnje(u)}
+                napraviPdf={async () => napraviUgradnjaPdf(u, await bajtoviSlike())}
+                tekst={(url) => porukaUgradnja(u.broj, eurFmt(u.cena), url)}
+                onPosle={() => void sacuvajUDosije(true)} />
               <span className="w-full text-[11px] text-muted sm:w-auto sm:flex-1">
-                {fali.length ? <>Fali: <b className="text-ink">{fali.join(", ")}</b>.</> : cuvanje === "greska" ? <span className="text-warn">{poruka}</span> : pdfStanje === "greska" ? <span className="text-warn">PDF nije napravljen.</span> : "PDF se skida odmah i ponuda se sama upiše u dosije. WhatsApp nosi samo tekst, PDF prikači u razgovoru."}
+                {fali.length ? <>Fali: <b className="text-ink">{fali.join(", ")}</b>.</> : cuvanje === "greska" ? <span className="text-warn">{poruka}</span> : pdfStanje === "greska" ? <span className="text-warn">PDF nije napravljen.</span> : "PDF se skida odmah i ponuda se sama upiše u dosije. WhatsApp i Viber nose poruku sa linkom na PDF."}
               </span>
             </div>
 

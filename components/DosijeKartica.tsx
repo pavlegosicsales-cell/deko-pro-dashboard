@@ -6,7 +6,11 @@ import { izracunaj, spojiRezultate, opisDela, izracunajPrevoz, PODRAZUMEVANO, PO
 import { uAdresu, datumPonude, PONUDA_META, type SacuvanaPonuda } from "@/lib/ponuda";
 import { izaberiPrevoznika, prevoznikLink, porukaPrevozu, dativ } from "@/lib/prevoznici";
 import { rsd } from "@/lib/format";
-import { eurFmt } from "@/lib/ugradnja";
+import { eurFmt, imeFajlaUgradnje } from "@/lib/ugradnja";
+import { napraviUgradnjaPdf } from "@/lib/ugradnjaPdf";
+import { napraviPonudaPdf, imeFajla } from "@/lib/ponudaPdf";
+import { porukaMaterijal, porukaUgradnja, metaPonude, telIzAdrese, bajtoviSlike } from "@/lib/slanje";
+import { PosaljiKlijentu } from "@/components/PosaljiKlijentu";
 import { kadFmt, cekaPrevoz, type Dosije } from "@/lib/dosije";
 
 /*
@@ -60,6 +64,7 @@ export function DosijeKartica({ d, ponude, lead, onOtvori, onObrisi }: {
 
   const mesto = d.mesto ?? delovi[0]?.mesto ?? "";
   const kupac = d.kupac;
+  const telefon = d.telefon ?? s?.telefonKupca ?? (ponude.length ? telIzAdrese(ponude[0].adresa) : null);
   const trebaUgradnja = !lead || (lead.obuhvat !== "materijal" && lead.obuhvat !== "materijal_prevoz");
   const ceka = cekaPrevoz(d);
 
@@ -102,7 +107,10 @@ export function DosijeKartica({ d, ponude, lead, onOtvori, onObrisi }: {
         <Red naslov="Materijal" stanje={ponude.length ? "ok" : s ? "fali" : "nema"}
           tekst={ponude.length
             ? <span className="flex flex-wrap gap-x-3 gap-y-0.5">{ponude.map((x) => <Link key={x.id} href={`/ponuda?id=${x.id}`} className="font-semibold text-ink underline underline-offset-2">Ponuda {x.broj} · {rsd(Number(x.ukupno_rsd))}</Link>)}</span>
-            : s ? "ponuda za materijal nije napravljena" : "ništa nije računato u kalkulatoru"} />
+            : s ? "ponuda za materijal nije napravljena" : "ništa nije računato u kalkulatoru"}
+          akcija={ponude.length ? <PosaljiKlijentu mali telefon={telefon} imeFajla={imeFajla(metaPonude(ponude[0]))}
+            napraviPdf={() => napraviPonudaPdf(ponude[0].redovi, Number(ponude[0].ukupno_rsd), metaPonude(ponude[0]))}
+            tekst={(url) => porukaMaterijal(ponude[0].broj, Number(ponude[0].ukupno_rsd), url)} /> : undefined} />
         <Red naslov="Prevoz" stanje={s || d.prevoz_poslato_kad ? prevozStanje : "nema"} tekst={s || d.prevoz_poslato_kad ? prevozTekst() : "—"}
           akcija={prevoz && r ? (
             <a href={prevoznikLink(izaberiPrevoznika(prevoz.palete, prevoz.kg, bezTransporta ? undefined : saIstovarom).prevoznik, porukaPrevozu(mesto, prevoz.palete, prevoz.kg))}
@@ -114,7 +122,10 @@ export function DosijeKartica({ d, ponude, lead, onOtvori, onObrisi }: {
             : d.ugradnja ? <Link href={`/ugradnja?dosije=${d.id}`} className="font-semibold text-ink underline underline-offset-2">Ponuda za ugradnju {d.ugradnja.broj || ""} · {eurFmt(d.ugradnja.cena)} €</Link>
             : d.paja_poslato_kad ? <>specifikacija poslata Paji {kadFmt(d.paja_poslato_kad)}, čeka se njegov odgovor</>
             : "specifikacija Paji nije poslata"}
-          akcija={trebaUgradnja && !d.ugradnja ? <Link href={`/ugradnja?dosije=${d.id}`} className="text-[11px] font-semibold text-ink underline underline-offset-2">Upiši Pajin odgovor</Link> : undefined} />
+          akcija={trebaUgradnja && !d.ugradnja ? <Link href={`/ugradnja?dosije=${d.id}`} className="text-[11px] font-semibold text-ink underline underline-offset-2">Upiši Pajin odgovor</Link>
+            : d.ugradnja && d.ugradnja.cena != null ? <PosaljiKlijentu mali telefon={telefon} imeFajla={imeFajlaUgradnje(d.ugradnja)}
+                napraviPdf={async () => napraviUgradnjaPdf(d.ugradnja!, await bajtoviSlike(d.ugradnja!.slika))}
+                tekst={(url) => porukaUgradnja(d.ugradnja!.broj, eurFmt(d.ugradnja!.cena), url)} /> : undefined} />
       </div>
 
       {ceka && s && (

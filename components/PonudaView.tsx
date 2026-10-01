@@ -8,6 +8,8 @@ import { ponudaRedovi, svegaFmt, datumPonude, dekodirajRucne, dekodirajDeonice, 
 import { sacuvajPonudu } from "@/app/ponude/actions";
 import { napraviPonudaPdf, imeFajla } from "@/lib/ponudaPdf";
 import { porukaZaLarisu, larisaViberLink, LARISA_GRUPA } from "@/lib/paja";
+import { porukaMaterijal, telIzAdrese } from "@/lib/slanje";
+import { PosaljiKlijentu } from "@/components/PosaljiKlijentu";
 
 /*
   Ponuda za materijal, 1:1 po templateu „PONUDA BR. 184/26" (PromoBet, 20.08.2025.).
@@ -133,6 +135,7 @@ export function PonudaView({ sacuvana, nijeNadjena }: { sacuvana?: SacuvanaPonud
     : izracunato.m;
   const redovi = sacuvana ? sacuvana.redovi : ponudaRedovi(u, r);
   const ukupno = sacuvana ? Number(sacuvana.ukupno_rsd) : r.ukupno;
+  const telefonKupca = sacuvana ? telIzAdrese(sacuvana.adresa) : m.telefon || null;
   // Na telefonu je list (794 px) širi od ekrana, pa se skalira da stane; na kompu ostaje 1:1.
   const [skala, setSkala] = useState(1);
   useEffect(() => {
@@ -227,6 +230,12 @@ export function PonudaView({ sacuvana, nijeNadjena }: { sacuvana?: SacuvanaPonud
         <button type="button" onClick={larisi} disabled={larisaStanje === "radi" || fali.length > 0} className="dug dug-tih" title={`Poruka + PDF u Viber grupu „${LARISA_GRUPA}“`}>
           {larisaStanje === "radi" ? "Pravim PDF…" : larisaStanje === "gotovo" ? "Poslato Larisi ✓" : larisaStanje === "greska" ? "Nije uspelo, probaj opet" : "Larisi u Viber grupu (poruka + PDF)"}
         </button>
+        <span className="savet">Kupcu:</span>
+        <PosaljiKlijentu telefon={telefonKupca} saPdf={false} disabled={fali.length > 0} imeFajla={imeFajla(m)}
+          klase={{ glavno: "dug", tiho: "dug dug-tih" }}
+          napraviPdf={() => napraviPonudaPdf(redovi, ukupno, m)}
+          tekst={(url) => porukaMaterijal(m.broj, ukupno, url)}
+          onPosle={() => void staviUPonude()} />
         {nijeNadjena && <span className="fali">Ta ponuda ne postoji u Ponudama.</span>}
         {uPonudama === "greska" && <span className="fali">{porukaPonude}</span>}
         {uPonudama === "jeste" && porukaPonude && <span className="savet">{porukaPonude}</span>}
