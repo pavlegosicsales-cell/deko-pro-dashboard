@@ -4,8 +4,8 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
   Higgsfield sa servera (Pavle, 01.10.2026.: slika ograde na fotki kupčevog dvorišta, na jedno dugme).
   Isti MCP koji koristi Claude (https://mcp.higgsfield.ai/mcp), ali kroz običan HTTP JSON-RPC, sa
   Bearer tokenom iz env-a (HIGGSFIELD_TOKEN, važi 24 h). Kad istekne, osvežava se preko
-  HIGGSFIELD_REFRESH_TOKEN + HIGGSFIELD_CLIENT_ID (Clerk), a novi par se čuva u tabeli `tajne`
-  (supabase/migracija-8.sql) da preživi novi deploy; bez tabele važi dok traje proces.
+  HIGGSFIELD_REFRESH_TOKEN + HIGGSFIELD_CLIENT_ID (Clerk), a novi par se čuva u privatnom bucketu `tajne`
+  (objekat higgsfield.json) da preživi novi deploy. Env je samo početna vrednost.
   Pravila (Pavle): jedna slika = nano_banana_pro 2k, 2 kredita; cena se piše na dugmetu.
 */
 const MCP = "https://mcp.higgsfield.ai/mcp";
@@ -32,15 +32,22 @@ let token = process.env.HIGGSFIELD_TOKEN ?? "";
 let refresh = process.env.HIGGSFIELD_REFRESH_TOKEN ?? "";
 const clientId = process.env.HIGGSFIELD_CLIENT_ID ?? "";
 
+/* Osveženi token se čuva u privatnom bucketu `tajne` (objekat higgsfield.json), da preživi redeploy i
+   hladan start. Service-role ključ ga čita i piše; javno nije dostupan. */
+const BUCKET = "tajne", OBJEKAT = "higgsfield.json";
 async function ucitajIzBaze() {
   try {
-    const { data } = await supabaseAdmin.from("tajne").select("kljuc, vrednost").in("kljuc", ["higgsfield_token", "higgsfield_refresh"]);
-    for (const r of data ?? []) { if (r.kljuc === "higgsfield_token" && r.vrednost) token = r.vrednost; if (r.kljuc === "higgsfield_refresh" && r.vrednost) refresh = r.vrednost; }
-  } catch { /* tabela možda ne postoji */ }
+    const { data } = await supabaseAdmin.storage.from(BUCKET).download(OBJEKAT);
+    if (!data) return;
+    const j = JSON.parse(await data.text()) as { access_token?: string; refresh_token?: string };
+    if (j.access_token) token = j.access_token;
+    if (j.refresh_token) refresh = j.refresh_token;
+  } catch { /* nema još */ }
 }
 async function sacuvajUBazu() {
   try {
-    await supabaseAdmin.from("tajne").upsert([{ kljuc: "higgsfield_token", vrednost: token }, { kljuc: "higgsfield_refresh", vrednost: refresh }], { onConflict: "kljuc" });
+    const telo = Buffer.from(JSON.stringify({ access_token: token, refresh_token: refresh, kad: new Date().toISOString() }));
+    await supabaseAdmin.storage.from(BUCKET).upload(OBJEKAT, telo, { contentType: "application/json", upsert: true });
   } catch { /* prazno */ }
 }
 

@@ -37,7 +37,6 @@ export function UgradnjaView({ uRedu, dosije, demo, bezSlikePocetno }: { uRedu: 
   const [cuvanje, setCuvanje] = useState<"" | "radi" | "gotovo" | "greska">("");
   const [poruka, setPoruka] = useState("");
   const [skala, setSkala] = useState(1);
-  const fajl = useRef<HTMLInputElement>(null);
 
   const okvir = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -65,8 +64,21 @@ export function UgradnjaView({ uRedu, dosije, demo, bezSlikePocetno }: { uRedu: 
   const [genPoruka, setGenPoruka] = useState("");
   const [napomenaSlike, setNapomenaSlike] = useState("");
   const fajlDv = useRef<HTMLInputElement>(null);
-  const otpremiDvoriste = async (f: File) => {
-    setDvOtprema("radi");
+  /* Telefon šalje HEIC i ogromne fajlove: pretvori u JPG do 2000 px na klijentu (brže, i server prima samo JPG/PNG/WebP). */
+  const uJpg = async (f: File): Promise<File> => {
+    try {
+      const bmp = await createImageBitmap(f);
+      const k = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
+      const c = document.createElement("canvas"); c.width = Math.round(bmp.width * k); c.height = Math.round(bmp.height * k);
+      c.getContext("2d")!.drawImage(bmp, 0, 0, c.width, c.height);
+      const blob = await new Promise<Blob | null>((res) => c.toBlob(res, "image/jpeg", 0.9));
+      if (!blob) return f;
+      return new File([blob], f.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg" });
+    } catch { return f; }
+  };
+  const otpremiDvoriste = async (f0: File) => {
+    setDvOtprema("radi"); setGenPoruka("");
+    const f = await uJpg(f0);
     const fd = new FormData(); fd.append("slika", f); fd.append("ime", (u.kupac || "dvoriste") + "-dvoriste"); fd.append("grupa", "dvoriste");
     try {
       const r = await fetch("/api/slika", { method: "POST", body: fd });
@@ -92,18 +104,6 @@ export function UgradnjaView({ uRedu, dosije, demo, bezSlikePocetno }: { uRedu: 
       }
       throw new Error("Predugo traje, probaj ponovo za minut.");
     } catch (e) { setGen("greska"); setGenPoruka((e as Error).message); }
-  };
-
-  const otpremi = async (f: File) => {
-    setOtprema("radi");
-    const fd = new FormData(); fd.append("slika", f); fd.append("ime", u.kupac || "ograda");
-    try {
-      const r = await fetch("/api/slika", { method: "POST", body: fd });
-      const j = await r.json();
-      if (!r.ok || !j.url) throw new Error(j.error || "Otpremanje nije uspelo.");
-      setSlike((s) => [{ url: j.url, ime: f.name, grupa: "ugradnja" }, ...s]);
-      set({ slika: j.url }); setOtprema("");
-    } catch (e) { setOtprema("greska"); setPoruka((e as Error).message); }
   };
 
   const bajtoviSlike = async (): Promise<Uint8Array | null> => {
@@ -183,8 +183,10 @@ export function UgradnjaView({ uRedu, dosije, demo, bezSlikePocetno }: { uRedu: 
             <div className={`card p-4 sm:p-5 ${u.bezSlike ? "hidden" : ""}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Fotka dvorišta kupca</div>
-                <button type="button" onClick={() => fajlDv.current?.click()} disabled={dvOtprema === "radi"} className="text-[12px] font-semibold text-ink underline underline-offset-2">{dvOtprema === "radi" ? "Otpremam…" : u.dvoriste ? "Zameni fotku" : "Otpremi fotku dvorišta"}</button>
-                <input ref={fajlDv} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void otpremiDvoriste(f); e.target.value = ""; }} />
+                <label className={`btn btn-sm ${u.dvoriste ? "btn-ghost" : ""} cursor-pointer ${dvOtprema === "radi" ? "pointer-events-none opacity-50" : ""}`}>
+                  {dvOtprema === "radi" ? "Otpremam…" : u.dvoriste ? "Zameni fotku" : "Otpremi fotku dvorišta"}
+                  <input ref={fajlDv} type="file" accept="image/*" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) void otpremiDvoriste(f); e.target.value = ""; }} />
+                </label>
               </div>
               <p className="mt-1 text-[11px] text-muted">Na ovoj fotki se crta ograda po merama iz leada (boja, visine, razmak, paneli). Jedna slika = 2 kredita.</p>
               {u.dvoriste && (
@@ -203,11 +205,10 @@ export function UgradnjaView({ uRedu, dosije, demo, bezSlikePocetno }: { uRedu: 
             <div className={`card p-4 sm:p-5 ${u.bezSlike ? "hidden" : ""}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Slika ograde</div>
-                <button type="button" onClick={() => fajl.current?.click()} disabled={otprema === "radi"} className="text-[12px] font-semibold text-ink underline underline-offset-2">{otprema === "radi" ? "Otpremam…" : "Otpremi svoju sliku"}</button>
-                <input ref={fajl} type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void otpremi(f); e.target.value = ""; }} />
+
               </div>
               {otprema === "greska" && <p className="mt-1 text-[12px] text-warn">{poruka}</p>}
-              <p className="mt-1 text-[11px] text-muted">Biblioteka su fotografije iz zvaničnog kataloga. Slika ide preko cele širine prve strane, u boji koju je kupac izabrao.</p>
+              <p className="mt-1 text-[11px] text-muted">Vizuelizacije i fotografije iz kataloga. Slika ide preko cele širine prve strane.</p>
               <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-4">
                 <button type="button" onClick={() => set({ slika: null })} className={`aspect-[16/10] rounded-[8px] border text-[11px] text-muted ${!u.slika ? "border-navy ring-2 ring-navy/30" : "border-line"}`}>bez slike</button>
                 {slike.map((s) => (
