@@ -5,6 +5,8 @@
   po potrebi dotera, i ide u PDF u dizajnu Gradi Lako (znanje/ponude/ponuda-214-26).
 */
 
+import type { SpecSlike } from "@/lib/nacrt";
+
 export type Ugradnja = {
   broj: string;          // „215/26"
   datum: string;         // „01.10.2026."
@@ -22,6 +24,7 @@ export type Ugradnja = {
   slika: string | null;  // URL slike ograde (Supabase storage)
   bezSlike?: boolean;    // ponuda bez pojasa sa slikom (Pavle, 01.10.2026.: za Paju i Luku dok se slike ne usavrše)
   dvoriste?: string | null; // fotka kupčevog dvorišta (Supabase storage); na njoj se crta vizuelizacija
+  spec?: SpecSlike | null;  // mere i boja ograde za sliku (sa strane ponude; popune se iz leada)
   tekst: string;         // Pajin original, čuva se da se zna odakle su brojevi
   sastavio: string;
 };

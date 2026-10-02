@@ -1,4 +1,4 @@
-import { citajLeadove } from "@/lib/citajLeadove";
+import { citajLeadove, citajLead } from "@/lib/citajLeadove";
 import { citajDosije } from "@/lib/citajDosijee";
 import { UgradnjaView } from "@/components/UgradnjaView";
 import { DEMO_LEADOVI } from "@/lib/demo";
@@ -17,5 +17,6 @@ export default async function Ugradnja({ searchParams }: { searchParams: Promise
   const danas = new Date().toLocaleDateString("sv-SE", { timeZone: "Europe/Belgrade" });
   const uRedu = leadovi.filter((l) => l.status === "nov" || l.status === "nije_se_javio" || (l.status === "zvati_kasnije" && !!l.podseti_kad && l.podseti_kad <= danas)).length;
   const dosije = id && !JE_DEMO ? await citajDosije(id) : null;
-  return <UgradnjaView uRedu={uRedu} dosije={dosije} demo={JE_DEMO} bezSlikePocetno={bezSlike} />;
+  const lead = dosije?.lead_id ? await citajLead(dosije.lead_id) : null;
+  return <UgradnjaView uRedu={uRedu} dosije={dosije} lead={lead} demo={JE_DEMO} bezSlikePocetno={bezSlike} />;
 }

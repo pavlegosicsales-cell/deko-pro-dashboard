@@ -10,6 +10,10 @@ import { datumPonude } from "@/lib/ponuda";
 import { sacuvajUgradnju } from "@/app/dosijei/actions";
 import { porukaUgradnja } from "@/lib/slanje";
 import { PosaljiKlijentu } from "@/components/PosaljiKlijentu";
+import { nacrtajOgradu, PODRAZUMEVANA_SPEC, type SpecSlike } from "@/lib/nacrt";
+import { CENOVNIK, ZAVRSNE_BOJE } from "@/lib/kalkulator";
+import { ulazIzLeada } from "@/lib/procena";
+import type { LeadRow } from "@/components/LeadView";
 import type { Dosije } from "@/lib/dosije";
 
 /*
@@ -20,7 +24,7 @@ import type { Dosije } from "@/lib/dosije";
 
 type Slika = { url: string; ime: string; grupa: "biblioteka" | "ugradnja" };
 
-export function UgradnjaView({ uRedu, dosije, demo, bezSlikePocetno }: { uRedu: number; dosije: Dosije | null; demo?: boolean; bezSlikePocetno?: boolean }) {
+export function UgradnjaView({ uRedu, dosije, lead, demo, bezSlikePocetno }: { uRedu: number; dosije: Dosije | null; lead?: LeadRow | null; demo?: boolean; bezSlikePocetno?: boolean }) {
   const router = useRouter();
   const pocetna = (): Ugradnja => ({
     ...PRAZNA_UGRADNJA, ...(dosije?.ugradnja ?? {}),
@@ -32,7 +36,7 @@ export function UgradnjaView({ uRedu, dosije, demo, bezSlikePocetno }: { uRedu: 
   const [u, setU] = useState<Ugradnja>(pocetna);
   const [tekst, setTekst] = useState(dosije?.ugradnja?.tekst ?? "");
   const [slike, setSlike] = useState<Slika[]>([]);
-  const [otprema, setOtprema] = useState<"" | "radi" | "greska">("");
+  const [otprema] = useState<"" | "radi" | "greska">("");
   const [pdfStanje, setPdfStanje] = useState<"" | "radi" | "gotovo" | "greska">("");
   const [cuvanje, setCuvanje] = useState<"" | "radi" | "gotovo" | "greska">("");
   const [poruka, setPoruka] = useState("");
@@ -63,6 +67,14 @@ export function UgradnjaView({ uRedu, dosije, demo, bezSlikePocetno }: { uRedu: 
   const [gen, setGen] = useState<"" | "predaje" | "ceka" | "greska">("");
   const [genPoruka, setGenPoruka] = useState("");
   const [napomenaSlike, setNapomenaSlike] = useState("");
+  // mere i boja ograde za sliku: iz sačuvane ponude, iz kalkulatora (dosije), iz leada, ili podrazumevano
+  const [spec, setSpec] = useState<SpecSlike>(() => {
+    if (dosije?.ugradnja?.spec) return { ...PODRAZUMEVANA_SPEC, ...dosije.ugradnja.spec };
+    const ul = dosije?.stanje?.delovi?.[0] ?? (lead ? ulazIzLeada(lead)?.ulaz : null);
+    if (!ul) return PODRAZUMEVANA_SPEC;
+    return { ...PODRAZUMEVANA_SPEC, boja: ul.boja, visinaPolja: ul.visinaPolja, visinaStuba: ul.visinaStuba, razmak: ul.razmak, stubniBlok: ul.stubniBlok, bojaZavrsnih: ul.bojaZavrsnih, brojKapija: ul.brojKapija, sirinaKapija: ul.sirinaKapija, paneli: true };
+  });
+  const setS = (x: Partial<SpecSlike>) => setSpec((s) => ({ ...s, ...x }));
   const fajlDv = useRef<HTMLInputElement>(null);
   /* Telefon šalje HEIC i ogromne fajlove: pretvori u JPG do 2000 px na klijentu (brže, i server prima samo JPG/PNG/WebP). */
   const uJpg = async (f: File): Promise<File> => {
@@ -88,17 +100,21 @@ export function UgradnjaView({ uRedu, dosije, demo, bezSlikePocetno }: { uRedu: 
     } catch (e) { setDvOtprema("greska"); setGenPoruka((e as Error).message); }
   };
   const generisi = async () => {
-    if (!u.dvoriste) return;
-    setGen("predaje"); setGenPoruka("");
+    setGen("predaje"); setGenPoruka("Crtam nacrt…");
     try {
-      const r = await fetch("/api/vizuelizacija", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ dvoriste: u.dvoriste, dosijeId: dosije?.id ?? null, leadId: dosije?.lead_id ?? null, napomena: napomenaSlike }) });
+      const png = await nacrtajOgradu(spec);
+      const fd = new FormData(); fd.append("slika", new File([png], "nacrt.png", { type: "image/png" })); fd.append("ime", (u.kupac || "ograda") + "-nacrt"); fd.append("grupa", "nacrt");
+      const up = await fetch("/api/slika", { method: "POST", body: fd }); const uj = await up.json();
+      if (!up.ok || !uj.url) throw new Error(uj.error || "Nacrt nije otpremljen.");
+      set({ spec });
+      const r = await fetch("/api/vizuelizacija", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ spec, nacrt: uj.url, dvoriste: u.dvoriste ?? null, dosijeId: dosije?.id ?? null, leadId: dosije?.lead_id ?? null, napomena: napomenaSlike }) });
       const j = await r.json();
       if (!r.ok || !j.jobId) throw new Error(j.error || "Nije predato.");
       setGen("ceka"); setGenPoruka(`Crtam: ${j.opis} (${j.kredita} kr)…`);
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 24; i++) {
         const s = await fetch(`/api/vizuelizacija?job=${j.jobId}&ime=${encodeURIComponent(u.kupac || "kupac")}`);
         const k = await s.json();
-        if (k.status === "done" && k.url) { setSlike((x) => [{ url: k.url, ime: "vizuelizacija", grupa: "ugradnja" }, ...x]); set({ slika: k.url, bezSlike: false }); setGen(""); setGenPoruka("Slika je gotova i izabrana za ponudu."); return; }
+        if (k.status === "done" && k.url) { setSlike((x) => [{ url: k.url, ime: "vizuelizacija", grupa: "ugradnja" }, ...x]); set({ slika: k.url, bezSlike: false, spec }); setGen(""); setGenPoruka("Slika je gotova i izabrana za ponudu."); return; }
         if (k.status === "failed" || k.error) throw new Error(k.error || "Higgsfield nije uspeo: " + (k.poruka ?? ""));
         await new Promise((res) => setTimeout(res, 4000));
       }
@@ -181,24 +197,34 @@ export function UgradnjaView({ uRedu, dosije, demo, bezSlikePocetno }: { uRedu: 
             </div>
 
             <div className={`card p-4 sm:p-5 ${u.bezSlike ? "hidden" : ""}`}>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Fotka dvorišta kupca</div>
-                <label className={`btn btn-sm ${u.dvoriste ? "btn-ghost" : ""} cursor-pointer ${dvOtprema === "radi" ? "pointer-events-none opacity-50" : ""}`}>
-                  {dvOtprema === "radi" ? "Otpremam…" : u.dvoriste ? "Zameni fotku" : "Otpremi fotku dvorišta"}
+              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Slika ograde za ponudu</div>
+              <p className="mt-1 text-[11px] text-muted">{lead ? "Mere i boja su povučene iz leada, proveri ih." : dosije ? "Mere su iz dosijea, proveri ih." : "Lead nije u dashboardu: upiši mere i boju ovde."} Jedna slika = 2 kredita.</p>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <label className="field col-span-2"><span>Boja bloka</span>
+                  <select value={spec.boja} onChange={(e) => setS({ boja: e.target.value })} className="inp inp-sm">{CENOVNIK.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}</select></label>
+                <label className="field"><span>Visina polja (m)</span><BrojM value={spec.visinaPolja} onChange={(n) => setS({ visinaPolja: n })} /></label>
+                <label className="field"><span>Visina stuba (m)</span><BrojM value={spec.visinaStuba} onChange={(n) => setS({ visinaStuba: n })} /></label>
+                <label className="field"><span>Razmak stubova (m)</span><BrojM value={spec.razmak} onChange={(n) => setS({ razmak: n })} /></label>
+                <label className="field"><span>Kape i okapnice</span>
+                  <select value={spec.bojaZavrsnih} onChange={(e) => setS({ bojaZavrsnih: e.target.value as SpecSlike["bojaZavrsnih"] })} className="inp inp-sm">{ZAVRSNE_BOJE.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}</select></label>
+                <label className="field"><span>Broj kapija</span><BrojM value={spec.brojKapija} onChange={(n) => setS({ brojKapija: Math.round(n) })} /></label>
+                <label className="field"><span>Kapije, ukupno (m)</span><BrojM value={spec.sirinaKapija} onChange={(n) => setS({ sirinaKapija: n })} /></label>
+                <label className="col-span-2 flex items-center gap-2 text-[13px] text-ink"><input type="checkbox" checked={spec.stubniBlok} onChange={(e) => setS({ stubniBlok: e.target.checked })} className="h-4 w-4 accent-[#131315]" />Koristi stubni blok (stub širi od zida)</label>
+                <label className="col-span-2 flex items-center gap-2 text-[13px] text-ink"><input type="checkbox" checked={spec.paneli} onChange={(e) => setS({ paneli: e.target.checked })} className="h-4 w-4 accent-[#131315]" />Paneli između stubova</label>
+              </div>
+              <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-line pt-3">
+                <label className={`btn btn-sm btn-ghost cursor-pointer ${dvOtprema === "radi" ? "pointer-events-none opacity-50" : ""}`}>
+                  {dvOtprema === "radi" ? "Otpremam…" : u.dvoriste ? "Zameni fotku dvorišta" : "Fotka dvorišta (nije obavezno)"}
                   <input ref={fajlDv} type="file" accept="image/*" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) void otpremiDvoriste(f); e.target.value = ""; }} />
                 </label>
-              </div>
-              <p className="mt-1 text-[11px] text-muted">Na ovoj fotki se crta ograda po merama iz leada (boja, visine, razmak, paneli). Jedna slika = 2 kredita.</p>
-              {u.dvoriste && (
-                <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start">
+                {u.dvoriste && <>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={u.dvoriste} alt="" className="h-28 w-full rounded-lg border border-line object-cover sm:w-44" />
-                  <div className="flex min-w-0 flex-1 flex-col gap-2">
-                    <input value={napomenaSlike} onChange={(e) => setNapomenaSlike(e.target.value)} className="inp inp-sm" placeholder="Napomena za sliku (nije obavezno), npr. ograda ide uz levu ivicu" />
-                    <button type="button" onClick={() => void generisi()} disabled={gen === "predaje" || gen === "ceka"} className="btn btn-sm btn-blue disabled:opacity-45">{gen === "predaje" ? "Predajem…" : gen === "ceka" ? "Crtam…" : "Generiši vizuelizaciju (2 kredita)"}</button>
-                  </div>
-                </div>
-              )}
+                  <img src={u.dvoriste} alt="" className="h-9 w-14 rounded border border-line object-cover" />
+                  <button type="button" onClick={() => set({ dvoriste: null })} className="text-[12px] text-muted underline">ukloni</button>
+                </>}
+              </div>
+              <input value={napomenaSlike} onChange={(e) => setNapomenaSlike(e.target.value)} className="inp inp-sm mt-2" placeholder="Napomena za sliku (nije obavezno), npr. ograda ide uz levu ivicu" />
+              <button type="button" onClick={() => void generisi()} disabled={gen === "predaje" || gen === "ceka"} className="btn btn-sm btn-blue mt-2 w-full justify-center disabled:opacity-45">{gen === "predaje" ? "Predajem…" : gen === "ceka" ? "Crtam…" : u.dvoriste ? "Generiši sliku na fotki dvorišta (2 kredita)" : "Generiši sliku ograde (2 kredita)"}</button>
               {genPoruka && <p className={`mt-2 text-[12px] ${gen === "greska" ? "text-red" : "text-muted"}`}>{genPoruka}</p>}
             </div>
 
@@ -265,6 +291,16 @@ function ListaStavki({ stavke, onChange, rows }: { stavke: string[]; onChange: (
     <textarea value={txt} rows={rows} className="inp inp-sm leading-snug"
       onChange={(e) => { const v = e.target.value; setTxt(v); const s = v.split("\n").map((x) => x.trim()).filter(Boolean); zadnje.current = s.join("\n"); onChange(s); }} />
   );
+}
+
+/* Brojno polje u metrima/komadima koje pamti tekst (zapeta ne nestaje). */
+function BrojM({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const kao = (v: number) => String(v).replace(".", ",");
+  const [txt, setTxt] = useState(kao(value));
+  const zadnji = useRef(value);
+  useEffect(() => { if (value !== zadnji.current) { zadnji.current = value; setTxt(kao(value)); } }, [value]);
+  return <input value={txt} inputMode="decimal" className="inp inp-sm"
+    onChange={(e) => { const v = e.target.value; if (!/^[0-9]*[.,]?[0-9]*$/.test(v)) return; setTxt(v); const n = parseFloat(v.replace(",", ".")); if (!isNaN(n)) { zadnji.current = n; onChange(n); } }} />;
 }
 
 /* Brojno polje u evrima koje pamti tekst koji se kuca (zapeta ne sme da nestane); kad vrednost promeni
