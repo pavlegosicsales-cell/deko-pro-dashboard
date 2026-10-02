@@ -21,6 +21,10 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+// Model: posle poređenja 02.10.2026. (seedream 5 pro / 4.5, flux 3, gpt image 2.5, nano banana 2 / pro) FLUX 3 najvernije
+// prati nacrt: broj redova, stubni blok širi od zida, 5 blokova u polju. 2 kredita. Zameni ovde ako treba.
+const MODEL = "flux_3_image";
+
 const m = (n: number) => String(n).replace(".", ",");
 const BOJA_EN: Record<string, string> = {
   natur_siva: "natural concrete grey", zuta: "ochre yellow", braon: "dark brown", oranz: "terracotta orange", crvena: "brick red",
@@ -92,9 +96,9 @@ export async function POST(req: Request) {
     if (!sp.stubniBlok && !saFotkom) medias.push({ value: REF_RAVAN_ZID, role: "image_references" });
     if (medias.length === 0) return NextResponse.json({ error: "Nema ni nacrta ni fotke." }, { status: 400 });
 
-    const cena = await hfAlat("generate_image", { params: { model: "nano_banana_pro", prompt, aspect_ratio: "16:9", resolution: "2k", count: 1, medias, get_cost: true } });
+    const cena = await hfAlat("generate_image", { params: { model: MODEL, prompt, aspect_ratio: "16:9", count: 1, medias, get_cost: true } });
     const kredita = Number(cena.match(/([\d.]+)\s*credit/)?.[1] ?? 2);
-    const rez = await hfAlat("generate_image", { params: { model: "nano_banana_pro", prompt, aspect_ratio: "16:9", resolution: "2k", count: 1, use_unlim: false, medias } });
+    const rez = await hfAlat("generate_image", { params: { model: MODEL, prompt, aspect_ratio: "16:9", count: 1, use_unlim: false, medias } });
     const jobId = uuidIz(rez);
     if (!jobId) return NextResponse.json({ error: "Higgsfield nije vratio posao: " + rez.slice(0, 200) }, { status: 502 });
     const opis = `${bojaIme} · polje ${m(sp.visinaPolja)} m (${redovaPolje} reda) · stub ${m(sp.visinaStuba)} m (${redovaStub} redova) · razmak ${m(sp.razmak)} m · ${sp.stubniBlok ? "stubni blok" : "stub u ravni zida"} · kape ${sp.bojaZavrsnih}${sp.paneli ? " · paneli" : ""}${sp.brojKapija ? ` · ${sp.brojKapija} kapija` : ""}${saFotkom ? " · na fotki dvorišta" : ""}`;

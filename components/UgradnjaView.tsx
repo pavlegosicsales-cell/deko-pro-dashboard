@@ -177,7 +177,6 @@ export function UgradnjaView({ uRedu, dosije, lead, demo, bezSlikePocetno }: { u
                 <label className="field"><span>Broj ponude</span><input value={u.broj} onChange={(e) => set({ broj: e.target.value })} className="inp inp-sm" placeholder="npr. 215/26" /></label>
                 <label className="field"><span>Datum</span><input value={u.datum} onChange={(e) => set({ datum: e.target.value })} className="inp inp-sm" /></label>
                 <label className="field"><span>Sastavio</span><input value={u.sastavio} onChange={(e) => set({ sastavio: e.target.value })} className="inp inp-sm" /></label>
-                <label className="field"><span>Slika na prvoj strani</span><span className="inline-flex min-h-[36px] items-center gap-2 text-[13px] text-ink"><input type="checkbox" checked={!!u.bezSlike} onChange={(e) => set({ bezSlike: e.target.checked, ...(e.target.checked ? { slika: null } : {}) })} className="h-4 w-4 accent-[#131315]" />Bez slike (samo cena i obuhvat)</span></label>
                 <BrojEur label="Ukupna cena radova (€)" value={u.cena} onChange={(n) => set({ cena: n })} />
                 <BrojEur label="Avans za termin (€)" value={u.avans} onChange={(n) => set({ avans: n })} />
                 <BrojEur label="Na dan početka (€)" value={u.rata1} onChange={(n) => set({ rata1: n })} />
@@ -196,8 +195,15 @@ export function UgradnjaView({ uRedu, dosije, lead, demo, bezSlikePocetno }: { u
               )}
             </div>
 
-            <div className={`card p-4 sm:p-5 ${u.bezSlike ? "hidden" : ""}`}>
-              <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Slika ograde za ponudu</div>
+            <div className="card p-4 sm:p-5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Slika ograde za ponudu</div>
+                <label className={`inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-[13px] font-semibold ${u.bezSlike ? "border-ink bg-ink text-white" : "border-line-strong text-ink"}`}>
+                  <input type="checkbox" checked={!!u.bezSlike} onChange={(e) => set({ bezSlike: e.target.checked, ...(e.target.checked ? { slika: null } : {}) })} className="h-4 w-4 accent-[#ffffff]" />Ponuda bez slike
+                </label>
+              </div>
+              {u.bezSlike && <p className="mt-2 text-[12px] text-muted">Prva strana ide bez pojasa sa slikom, samo cena i obuhvat. Otkači kad hoćeš sliku.</p>}
+              <div className={u.bezSlike ? "hidden" : ""}>
               <p className="mt-1 text-[11px] text-muted">{lead ? "Mere i boja su povučene iz leada, proveri ih." : dosije ? "Mere su iz dosijea, proveri ih." : "Lead nije u dashboardu: upiši mere i boju ovde."} Jedna slika = 2 kredita.</p>
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <label className="field col-span-2"><span>Boja bloka</span>
@@ -226,6 +232,7 @@ export function UgradnjaView({ uRedu, dosije, lead, demo, bezSlikePocetno }: { u
               <input value={napomenaSlike} onChange={(e) => setNapomenaSlike(e.target.value)} className="inp inp-sm mt-2" placeholder="Napomena za sliku (nije obavezno), npr. ograda ide uz levu ivicu" />
               <button type="button" onClick={() => void generisi()} disabled={gen === "predaje" || gen === "ceka"} className="btn btn-sm btn-blue mt-2 w-full justify-center disabled:opacity-45">{gen === "predaje" ? "Predajem…" : gen === "ceka" ? "Crtam…" : u.dvoriste ? "Generiši sliku na fotki dvorišta (2 kredita)" : "Generiši sliku ograde (2 kredita)"}</button>
               {genPoruka && <p className={`mt-2 text-[12px] ${gen === "greska" ? "text-red" : "text-muted"}`}>{genPoruka}</p>}
+              </div>
             </div>
 
             <div className={`card p-4 sm:p-5 ${u.bezSlike ? "hidden" : ""}`}>
