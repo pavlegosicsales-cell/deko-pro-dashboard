@@ -25,6 +25,18 @@ export const ISECCI_BOJA: Record<string, string> = {
   "multikolor_rok": "e801bcd3-1122-4368-aa3b-5f17e6c788a9",
   "multikolor_rast": "e801bcd3-1122-4368-aa3b-5f17e6c788a9"
 };
+/** Prave fotke Deko ograda po boji (Pavle 02.10.2026.: model mora da dobije inspo sliku i da mu se kaže „to je ta boja").
+    Boje bez fotke u punom kadru (žuta, zelena, crna) dobijaju samo isečak sa palete. */
+export const FOTKE_BOJA: Record<string, string> = {
+  "natur_siva": "a18bf1ab-e265-497b-9064-02e160fc38b4",
+  "crvena": "ef8b8974-67a8-494e-94cf-9d42de833285",
+  "multikolor": "39e97a27-02cb-49ee-a49e-c7ff70ab76dc",
+  "oranz": "92496cc4-99fc-4105-9636-15190cfa51e1",
+  "braon": "0267974f-68dc-4a36-8c1d-f806aba11dd9",
+  "kapucino": "f9ed8b9e-100b-4bcb-bb32-edaf4f40d13e",
+  "multikolor_rok": "39e97a27-02cb-49ee-a49e-c7ff70ab76dc",
+  "multikolor_rast": "39e97a27-02cb-49ee-a49e-c7ff70ab76dc"
+};
 /** Fotka prave ograde sa stubovima od zidnog bloka u ravni zida (IMG_1084), za „bez stubnog bloka". */
 export const REF_RAVAN_ZID = "881ba390-365b-4290-8f76-6b9f2781e54e";
 

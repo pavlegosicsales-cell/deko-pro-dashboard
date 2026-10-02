@@ -204,7 +204,7 @@ export function UgradnjaView({ uRedu, dosije, lead, demo, bezSlikePocetno }: { u
               </div>
               {u.bezSlike && <p className="mt-2 text-[12px] text-muted">Prva strana ide bez pojasa sa slikom, samo cena i obuhvat. Otkači kad hoćeš sliku.</p>}
               <div className={u.bezSlike ? "hidden" : ""}>
-              <p className="mt-1 text-[11px] text-muted">{lead ? "Mere i boja su povučene iz leada, proveri ih." : dosije ? "Mere su iz dosijea, proveri ih." : "Lead nije u dashboardu: upiši mere i boju ovde."} Jedna slika = 2 kredita.</p>
+              <p className="mt-1 text-[11px] text-muted">{lead ? "Mere i boja su povučene iz leada, proveri ih." : dosije ? "Mere su iz dosijea, proveri ih." : "Lead nije u dashboardu: upiši mere i boju ovde."} Jedna slika = 1 kredit (GPT Image 2.5 Sunburst).</p>
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <label className="field col-span-2"><span>Boja bloka</span>
                   <select value={spec.boja} onChange={(e) => setS({ boja: e.target.value })} className="inp inp-sm">{CENOVNIK.map((c) => <option key={c.v} value={c.v}>{c.l}</option>)}</select></label>
@@ -230,7 +230,7 @@ export function UgradnjaView({ uRedu, dosije, lead, demo, bezSlikePocetno }: { u
                 </>}
               </div>
               <input value={napomenaSlike} onChange={(e) => setNapomenaSlike(e.target.value)} className="inp inp-sm mt-2" placeholder="Napomena za sliku (nije obavezno), npr. ograda ide uz levu ivicu" />
-              <button type="button" onClick={() => void generisi()} disabled={gen === "predaje" || gen === "ceka"} className="btn btn-sm btn-blue mt-2 w-full justify-center disabled:opacity-45">{gen === "predaje" ? "Predajem…" : gen === "ceka" ? "Crtam…" : u.dvoriste ? "Generiši sliku na fotki dvorišta (2 kredita)" : "Generiši sliku ograde (2 kredita)"}</button>
+              <button type="button" onClick={() => void generisi()} disabled={gen === "predaje" || gen === "ceka"} className="btn btn-sm btn-blue mt-2 w-full justify-center disabled:opacity-45">{gen === "predaje" ? "Predajem…" : gen === "ceka" ? "Crtam…" : u.dvoriste ? "Generiši sliku na fotki dvorišta (1 kredit)" : "Generiši sliku ograde (1 kredit)"}</button>
               {genPoruka && <p className={`mt-2 text-[12px] ${gen === "greska" ? "text-red" : "text-muted"}`}>{genPoruka}</p>}
               </div>
             </div>

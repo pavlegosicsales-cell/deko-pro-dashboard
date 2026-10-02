@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { JE_DEMO } from "@/lib/env";
-import { hfAlat, uuidIz, urlSlikeIz, ISECCI_BOJA, REF_RAVAN_ZID } from "@/lib/higgsfield";
+import { hfAlat, uuidIz, urlSlikeIz, ISECCI_BOJA, FOTKE_BOJA, REF_RAVAN_ZID } from "@/lib/higgsfield";
 import { citajLead } from "@/lib/citajLeadove";
 import { citajDosije } from "@/lib/citajDosijee";
 import { bojaNaziv, type Boja } from "@/lib/kalkulator";
@@ -21,9 +21,11 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-// Model: posle poređenja 02.10.2026. (seedream 5 pro / 4.5, flux 3, gpt image 2.5, nano banana 2 / pro) FLUX 3 najvernije
-// prati nacrt: broj redova, stubni blok širi od zida, 5 blokova u polju. 2 kredita. Zameni ovde ako treba.
-const MODEL = "flux_3_image";
+// Model (Pavle, 02.10.2026.): GPT Image 2.5, varijanta Sunburst. Dobija: nacrt, PRAVU fotku ograde u toj boji
+// („to je ta boja"), isečak sa palete, (fotku dvorišta), i objašnjenje kako se blokovi broje. Promeni ovde ako treba.
+const MODEL = "gpt_image_2_5";
+// quality: medium = 1 kredit, high = 2,75, xhigh = 4,5 (Pavlovo pravilo: do 2 kredita po slici)
+const MODEL_PARAMI = { variant: "sunburst", quality: "medium", resolution: "2k" };
 
 const m = (n: number) => String(n).replace(".", ",");
 const BOJA_EN: Record<string, string> = {
@@ -61,15 +63,18 @@ export async function POST(req: Request) {
   const zav = ZAV_EN[sp.bojaZavrsnih] ?? "light grey";
   const saFotkom = jeUrl(b.dvoriste), saNacrtom = jeUrl(b.nacrt);
 
+  const imaFotkuBoje = !!FOTKE_BOJA[boja];
   const konstrukcija = [
-    `Only ONE kind of block: a whole split-face decorative concrete block 39 x 19 x 19 cm, all blocks identical, NO half blocks, NO cut blocks, stacked exactly one on top of another with all vertical joints aligned, thin light mortar joints.`,
+    `HOW THIS FENCE IS BUILT (read carefully, the numbers matter): it is made of ONE kind of block only, a split-face decorative concrete block 39 cm long, 19 cm high, 19 cm deep. With the 1 cm mortar joint each block takes 40 cm of length and 20 cm of height, so EVERY 20 cm of height is exactly ONE course of blocks and every 40 cm of length is exactly ONE block. Count the courses: a ${m(sp.visinaPolja)} m wall is ${redovaPolje} courses, a ${m(sp.visinaStuba)} m pillar is ${redovaStub} courses, a ${m(sp.razmak)} m field holds ${blokovaUPolju} whole blocks. All blocks are whole and identical, NO half blocks, NO cut pieces, NO blocks of different sizes, stacked one on top of another with the vertical joints aligned, thin light mortar joints. Caps and copings are flat concrete plates, not blocks.`,
     `Low wall ${m(sp.visinaPolja)} m high = EXACTLY ${redovaPolje} courses, topped with a flat ${zav} concrete coping. Taller parts ${m(sp.visinaStuba)} m high = EXACTLY ${redovaStub} courses, each topped with a flat ${zav} concrete cap, spaced ${m(sp.razmak)} m apart (${blokovaUPolju} whole blocks between them), every field identical.`,
     sp.stubniBlok
       ? `The taller parts are pillars built from square 39 x 39 cm pillar blocks: slightly wider than the wall, protruding a little on both faces, with the cap slightly wider than the pillar.`
       : `There are NO pillars, NO piers, NO columns: the wall is ONE perfectly flat plane of constant thickness (19 cm); every ${m(sp.razmak)} m a one-block-wide strip of the same flat wall simply rises higher, in the same plane, same thickness, no side faces, no shadow line, nothing steps forward or back (the plan view in the drawing is a straight band).`,
     sp.paneli ? `Between the taller parts, above the low wall, dark anthracite vertical metal slat panels fill the space up to the cap height.` : `Between the taller parts, above the low wall, there is nothing, just open air.`,
     sp.brojKapija > 0 && sp.sirinaKapija > 0 ? `${sp.brojKapija === 1 ? "One gate" : `${sp.brojKapija} gates`} (total width about ${m(sp.sirinaKapija)} m) made of the same anthracite slats, reaching down to the ground.` : "",
-    `Block colour "${bojaIme}": ${BOJA_EN[boja] ?? bojaIme}; take the exact colour and the rough split rock texture from the attached close-up strip of the block.`,
+    imaFotkuBoje
+      ? `BLOCK COLOUR: one of the attached images is a real photo of a finished Deko fence in the colour "${bojaIme}". THAT is the colour and the surface of the blocks: match it exactly (same hue, same brightness, same rough split rock texture, same light speckles); the attached close-up strip shows the same block even closer. Do not invent another shade. Only the construction (heights, counts, pillar type, panels, gates) comes from the drawing, not from that photo.`
+      : `Block colour "${bojaIme}": ${BOJA_EN[boja] ?? bojaIme}; take the exact colour and the rough split rock texture from the attached close-up strip of the block, do not invent another shade.`,
   ].filter(Boolean).join("\n");
 
   const prompt = saFotkom
@@ -92,13 +97,14 @@ export async function POST(req: Request) {
     const medias: { value: string; role: string }[] = [];
     if (saNacrtom) { const t = await hfAlat("media_import_url", { url: b.nacrt, type: "image" }); const id = uuidIz(t); if (id) medias.push({ value: id, role: "image_references" }); }
     if (saFotkom) { const t = await hfAlat("media_import_url", { url: b.dvoriste, type: "image" }); const id = uuidIz(t); if (!id) return NextResponse.json({ error: "Higgsfield nije prihvatio fotku dvorišta." }, { status: 502 }); medias.push({ value: id, role: "image_references" }); }
+    if (FOTKE_BOJA[boja]) medias.push({ value: FOTKE_BOJA[boja], role: "image_references" });
     if (ISECCI_BOJA[boja]) medias.push({ value: ISECCI_BOJA[boja], role: "image_references" });
     if (!sp.stubniBlok && !saFotkom) medias.push({ value: REF_RAVAN_ZID, role: "image_references" });
     if (medias.length === 0) return NextResponse.json({ error: "Nema ni nacrta ni fotke." }, { status: 400 });
 
-    const cena = await hfAlat("generate_image", { params: { model: MODEL, prompt, aspect_ratio: "16:9", count: 1, medias, get_cost: true } });
+    const cena = await hfAlat("generate_image", { params: { model: MODEL, ...MODEL_PARAMI, prompt, aspect_ratio: "16:9", count: 1, medias, get_cost: true } });
     const kredita = Number(cena.match(/([\d.]+)\s*credit/)?.[1] ?? 2);
-    const rez = await hfAlat("generate_image", { params: { model: MODEL, prompt, aspect_ratio: "16:9", count: 1, use_unlim: false, medias } });
+    const rez = await hfAlat("generate_image", { params: { model: MODEL, ...MODEL_PARAMI, prompt, aspect_ratio: "16:9", count: 1, use_unlim: false, medias } });
     const jobId = uuidIz(rez);
     if (!jobId) return NextResponse.json({ error: "Higgsfield nije vratio posao: " + rez.slice(0, 200) }, { status: 502 });
     const opis = `${bojaIme} · polje ${m(sp.visinaPolja)} m (${redovaPolje} reda) · stub ${m(sp.visinaStuba)} m (${redovaStub} redova) · razmak ${m(sp.razmak)} m · ${sp.stubniBlok ? "stubni blok" : "stub u ravni zida"} · kape ${sp.bojaZavrsnih}${sp.paneli ? " · paneli" : ""}${sp.brojKapija ? ` · ${sp.brojKapija} kapija` : ""}${saFotkom ? " · na fotki dvorišta" : ""}`;
