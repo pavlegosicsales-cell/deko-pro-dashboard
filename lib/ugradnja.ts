@@ -79,8 +79,9 @@ export function izTekstaPaje(tekst: string, osnova: Partial<Ugradnja> = {}): Ugr
 
   // „Zidanje ograde 36m visine polja 0.8m i visine stubova 1.6m"
   const duz = nadji(/zidanje\s+(?:ograde|zida)\s*([\d.,]+)\s*m/i);
-  const vp = nadji(/visine?\s+polja\s*([\d.,]+)/i);
-  const vs = nadji(/visine?\s+stub(?:ova|a)\s*([\d.,]+)/i);
+  // „visine polja 0.8" ili „duzine polja 0.6m visine" (Paja piše oba reda)
+  const vp = nadji(/(?:visine?\s+polja|polja)\s*([\d.,]+)/i);
+  const vs = nadji(/(?:visine?\s+stub(?:ova|a)|stub(?:ova|a))\s*([\d.,]+)/i);
 
   // stavke između „U cenu ulazi" i „Avans"
   const blok = t.match(/u\s+cenu\s+ulazi\s*:?\s*\n([\s\S]*?)(?:\n\s*avans|$)/i);
