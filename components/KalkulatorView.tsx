@@ -244,7 +244,7 @@ export function KalkulatorView({ uRedu, leadovi = [], dosijei = [], ponude = [],
       setKopirano(sta); setTimeout(() => setKopirano(""), 1600);
     } catch { /* prazno */ }
     // kopiranje poruke za prevoznika ili Paju znači da je poslata: beleži se u dosije
-    if (sta === "prevoz" || sta === "paja") void sacuvajUDosije({ oznaci: sta, tiho: true });
+    if (sta === "prevoz" || sta === "paja") void sacuvajUDosije({ oznaci: sta, tiho: false });
   };
 
   /* ---- dosije kupca ---- */

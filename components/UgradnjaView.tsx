@@ -27,14 +27,17 @@ type Slika = { url: string; ime: string; grupa: "biblioteka" | "ugradnja" };
 export function UgradnjaView({ uRedu, dosije, lead, demo, bezSlikePocetno }: { uRedu: number; dosije: Dosije | null; lead?: LeadRow | null; demo?: boolean; bezSlikePocetno?: boolean }) {
   const router = useRouter();
   const pocetna = (): Ugradnja => ({
-    ...PRAZNA_UGRADNJA, ...(dosije?.ugradnja ?? {}),
+    ...PRAZNA_UGRADNJA,
+    // Pajin tekst iz taba Paja: odmah pročitan u polja (bez klika), ako ponuda još nije pravljena
+    ...(!dosije?.ugradnja && dosije?.paja?.odgovor ? izTekstaPaje(dosije.paja.odgovor, {}) : {}),
+    ...(dosije?.ugradnja ?? {}),
     bezSlike: dosije?.ugradnja?.bezSlike ?? !!bezSlikePocetno,
     kupac: dosije?.ugradnja?.kupac || dosije?.kupac || "",
     lokacija: dosije?.ugradnja?.lokacija || dosije?.mesto || "",
     datum: dosije?.ugradnja?.datum || datumPonude(),
   });
   const [u, setU] = useState<Ugradnja>(pocetna);
-  const [tekst, setTekst] = useState(dosije?.ugradnja?.tekst ?? "");
+  const [tekst, setTekst] = useState(dosije?.ugradnja?.tekst || dosije?.paja?.odgovor || "");
   const [slike, setSlike] = useState<Slika[]>([]);
   const [otprema] = useState<"" | "radi" | "greska">("");
   const [pdfStanje, setPdfStanje] = useState<"" | "radi" | "gotovo" | "greska">("");

@@ -13,6 +13,9 @@ import type { SacuvanaPonuda } from "@/lib/ponuda";
 import { napraviPonudaPdf, imeFajla } from "@/lib/ponudaPdf";
 import { porukaMaterijal, metaPonude, telIzAdrese } from "@/lib/slanje";
 import { PosaljiKlijentu } from "@/components/PosaljiKlijentu";
+import { PajaTab } from "@/components/PajaTab";
+import { cekaPaju } from "@/lib/dosije";
+import type { LeadRow } from "@/components/LeadView";
 
 /*
   Tab „Ponude" (Pavle, 01.10.2026.: „treba mi sve na jednom mestu"):
@@ -23,12 +26,13 @@ import { PosaljiKlijentu } from "@/components/PosaljiKlijentu";
 const REZIM: Record<string, string> = { ograda: "Ograda", zid: "Pun zid", obloga: "Obloga", rucno: "Ručno" };
 type Filter = "svi" | "fali" | "ceka";
 
-export function PonudeView({ uRedu, ponude, dosijei = [], leadovi = {}, demo, tabelaFali, tabelaDosijeaFali, greska, pocetniTab }: {
-  uRedu: number; ponude: SacuvanaPonuda[]; dosijei?: Dosije[]; leadovi?: Record<string, LeadZaDosije>;
-  demo?: boolean; tabelaFali?: boolean; tabelaDosijeaFali?: boolean; greska?: string | null; pocetniTab?: "kupci" | "sve";
+export function PonudeView({ uRedu, ponude, dosijei = [], leadovi = {}, leadoviPuni = [], migracija8Fali, demo, tabelaFali, tabelaDosijeaFali, greska, pocetniTab }: {
+  uRedu: number; ponude: SacuvanaPonuda[]; dosijei?: Dosije[]; leadovi?: Record<string, LeadZaDosije>; leadoviPuni?: LeadRow[]; migracija8Fali?: boolean;
+  demo?: boolean; tabelaFali?: boolean; tabelaDosijeaFali?: boolean; greska?: string | null; pocetniTab?: "kupci" | "sve" | "paja";
 }) {
   const router = useRouter();
-  const [tab, setTab] = useState<"kupci" | "sve">(pocetniTab ?? "kupci");
+  const [tab, setTab] = useState<"kupci" | "sve" | "paja">(pocetniTab ?? "kupci");
+  const nCekaPaju = dosijei.filter(cekaPaju).length;
   const [filter, setFilter] = useState<Filter>("svi");
   const [q, setQ] = useState("");
   const [obrisane, setObrisane] = useState<Set<string>>(new Set());
@@ -85,11 +89,13 @@ export function PonudeView({ uRedu, ponude, dosijei = [], leadovi = {}, demo, ta
         <div className="mb-4 flex flex-wrap items-center gap-1.5">
           <button type="button" onClick={() => setTab("kupci")} className={`tag tag-filter ${tab === "kupci" ? "tag-accent" : ""}`}>Kupci{dosijei.length > 0 && <span className="opacity-70"> · {dosijei.length}</span>}</button>
           <button type="button" onClick={() => setTab("sve")} className={`tag tag-filter ${tab === "sve" ? "tag-accent" : ""}`}>Sve ponude{ponude.length > 0 && <span className="opacity-70"> · {ponude.length}</span>}</button>
+          <button type="button" onClick={() => setTab("paja")} className={`tag tag-filter ${tab === "paja" ? "tag-accent" : nCekaPaju ? "tag-yellow" : ""}`}>Paja{nCekaPaju > 0 && <span className="ml-1 inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-yellow px-1 text-[10px] font-bold text-white">{nCekaPaju}</span>}</button>
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Traži kupca, broj, mesto…" className="inp inp-sm ml-auto w-full sm:w-64" />
         </div>
 
         {tab === "kupci" && (
           <>
+            <p className="mb-3 text-[12.5px] text-muted"><span className="tag tag-green mr-1">✓</span>gotovo <span className="tag tag-yellow mx-1">…</span>čeka se druga strana <span className="tag tag-red mx-1">!</span>fali naš korak. Ponuda za ugradnju znači da su materijal i prevoz već spremni; Pajin tekst znači da je ugradnja rešena, PDF je po želji.</p>
             <div className="mb-3 flex flex-wrap items-center gap-1.5 text-[12px]">
               {([["svi", "Svi"], ["fali", `Nešto fali · ${nFali}`], ["ceka", `Čeka cenu prevoza · ${nCeka}`]] as [Filter, string][]).map(([v, l]) => (
                 <button key={v} type="button" onClick={() => setFilter(v)} className={`tag tag-filter ${filter === v ? (v === "fali" ? "tag-warn" : v === "ceka" ? "tag-gold" : "tag-navy") : ""}`}>{l}</button>
@@ -106,6 +112,8 @@ export function PonudeView({ uRedu, ponude, dosijei = [], leadovi = {}, demo, ta
             </div>
           </>
         )}
+
+        {tab === "paja" && <PajaTab dosijei={dosijei.filter((x) => !obrisane.has(x.id))} leadovi={leadoviPuni} migracija8Fali={migracija8Fali} />}
 
         {tab === "sve" && (
           <>

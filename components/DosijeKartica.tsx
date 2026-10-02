@@ -12,6 +12,7 @@ import { napraviPonudaPdf, imeFajla } from "@/lib/ponudaPdf";
 import { porukaMaterijal, porukaUgradnja, metaPonude, telIzAdrese, bajtoviSlike } from "@/lib/slanje";
 import { PosaljiKlijentu } from "@/components/PosaljiKlijentu";
 import { kadFmt, cekaPrevoz, type Dosije } from "@/lib/dosije";
+import { oznaciPoslato } from "@/app/dosijei/actions";
 
 /*
   Kartica dosijea (Pavle, 01.10.2026.: „treba mi sve na jednom mestu, šta fali za kog klijenta").
@@ -86,8 +87,14 @@ export function DosijeKartica({ d, ponude, lead, onOtvori, onObrisi }: {
     if (d.prevoz_poslato_kad) return <>poslato {d.prevoznik ? `${d.prevoznik} ` : ""}{kadFmt(d.prevoz_poslato_kad)}, čeka se cena</>;
     return <>poruka prevozniku nije poslata</>;
   };
-  const prevozStanje: Stanje = d.transport_eur != null || ponude.some((x) => x.transport_eur != null) ? "ok" : d.prevoz_poslato_kad ? "ceka" : "fali";
-  const ugradnjaStanje: Stanje = !trebaUgradnja ? "nema" : d.ugradnja ? "ok" : d.paja_poslato_kad ? "ceka" : "fali";
+  // Pavlova pravila (02.10.2026.): ponuda za ugradnju znači da su materijal i prevoz već spremni;
+  // Pajin tekst znači da je ugradnja rešena (PDF je po želji).
+  const imaUgradnju = !!d.ugradnja || !!d.paja?.odgovor;
+  const prevozStanje: Stanje = imaUgradnju || d.transport_eur != null || ponude.some((x) => x.transport_eur != null) ? "ok" : d.prevoz_poslato_kad ? "ceka" : "fali";
+  const ugradnjaStanje: Stanje = !trebaUgradnja ? "nema" : imaUgradnju ? "ok" : d.paja_poslato_kad || d.paja?.poruka ? "ceka" : "fali";
+  const [poslatoPrevoz, setPoslatoPrevoz] = useState(false);
+  const oznaciPrevoz = (ime: string) => { setPoslatoPrevoz(true); void oznaciPoslato(d.id, "prevoz", ime); };
+  const kopirajPrevoz = async (tekst: string, ime: string) => { try { await navigator.clipboard.writeText(tekst); } catch { /* prazno */ } oznaciPrevoz(ime); };
 
   return (
     <div className="card p-4">
@@ -105,25 +112,30 @@ export function DosijeKartica({ d, ponude, lead, onOtvori, onObrisi }: {
       </div>
 
       <div className="mt-3">
-        <Red naslov="Materijal" stanje={ponude.length ? "ok" : s ? "fali" : "nema"}
+        <Red naslov="Materijal" stanje={ponude.length || imaUgradnju ? "ok" : s ? "fali" : "nema"}
           tekst={ponude.length
             ? <span className="flex flex-wrap gap-x-3 gap-y-0.5">{ponude.map((x) => <Link key={x.id} href={`/ponuda?id=${x.id}`} className="font-semibold text-ink underline underline-offset-2">Ponuda {x.broj} · {rsd(Number(x.ukupno_rsd))}</Link>)}</span>
             : s ? "ponuda za materijal nije napravljena" : "ništa nije računato u kalkulatoru"}
           akcija={ponude.length ? <PosaljiKlijentu mali telefon={telefon} imeFajla={imeFajla(metaPonude(ponude[0]))}
             napraviPdf={() => napraviPonudaPdf(ponude[0].redovi, Number(ponude[0].ukupno_rsd), metaPonude(ponude[0]))}
             tekst={(url) => porukaMaterijal(ponude[0].broj, Number(ponude[0].ukupno_rsd), url)} /> : undefined} />
-        <Red naslov="Prevoz" stanje={s || d.prevoz_poslato_kad ? prevozStanje : "nema"} tekst={s || d.prevoz_poslato_kad ? prevozTekst() : "—"}
-          akcija={prevoz && r ? (
-            <a href={prevoznikLink(izaberiPrevoznika(prevoz.palete, prevoz.kg, bezTransporta ? undefined : saIstovarom).prevoznik, porukaPrevozu(mesto, prevoz.palete, prevoz.kg))}
-              target="_blank" rel="noreferrer" className="text-[11px] font-semibold text-ink underline underline-offset-2">
-              {d.prevoz_poslato_kad ? "Pošalji ponovo" : `Pošalji ${dativ(izaberiPrevoznika(prevoz.palete, prevoz.kg).prevoznik)}`}
-            </a>) : undefined} />
+        <Red naslov="Prevoz" stanje={imaUgradnju ? "ok" : s || d.prevoz_poslato_kad || poslatoPrevoz ? (poslatoPrevoz && prevozStanje === "fali" ? "ceka" : prevozStanje) : "nema"}
+          tekst={imaUgradnju && d.transport_eur == null && !ponude.some((x) => x.transport_eur != null) ? "rešeno uz ponudu za ugradnju" : poslatoPrevoz && !d.prevoz_poslato_kad ? "poruka prevozniku poslata, čeka se cena" : s || d.prevoz_poslato_kad ? prevozTekst() : "—"}
+          akcija={prevoz && r && !imaUgradnju ? (() => { const iz = izaberiPrevoznika(prevoz.palete, prevoz.kg, bezTransporta ? undefined : saIstovarom).prevoznik; const tekst = porukaPrevozu(mesto, prevoz.palete, prevoz.kg); return (
+            <span className="flex items-center gap-2">
+              <a href={prevoznikLink(iz, tekst)} target="_blank" rel="noreferrer" onClick={() => oznaciPrevoz(iz.ime)} className="text-[11px] font-semibold text-ink underline underline-offset-2">
+                {d.prevoz_poslato_kad || poslatoPrevoz ? "Pošalji ponovo" : `Pošalji ${dativ(iz)}`}
+              </a>
+              <button type="button" onClick={() => void kopirajPrevoz(tekst, iz.ime)} className="text-[11px] font-semibold text-muted underline underline-offset-2">Kopiraj</button>
+            </span>); })() : undefined} />
         <Red naslov="Ugradnja" stanje={ugradnjaStanje}
           tekst={!trebaUgradnja ? "samo materijal, ugradnja nije potrebna"
             : d.ugradnja ? <Link href={`/ugradnja?dosije=${d.id}`} className="font-semibold text-ink underline underline-offset-2">Ponuda za ugradnju {d.ugradnja.broj || ""} · {eurFmt(d.ugradnja.cena)} €</Link>
+            : d.paja?.odgovor ? <>Paja poslao ponudu {kadFmt(d.paja.odgovor_kad)} · <Link href={`/ugradnja?dosije=${d.id}`} className="font-semibold text-ink underline underline-offset-2">napravi PDF</Link></>
+            : d.paja?.poruka ? <>poruka Paji {kadFmt(d.paja.poruka_kad)}, čeka se njegov odgovor · <Link href="/ponude?tab=paja" className="underline underline-offset-2">tab Paja</Link></>
             : d.paja_poslato_kad ? <>specifikacija poslata Paji {kadFmt(d.paja_poslato_kad)}, čeka se njegov odgovor</>
-            : "specifikacija Paji nije poslata"}
-          akcija={trebaUgradnja && !d.ugradnja ? <Link href={`/ugradnja?dosije=${d.id}`} className="text-[11px] font-semibold text-ink underline underline-offset-2">Upiši Pajin odgovor</Link>
+            : <>specifikacija Paji nije poslata · <Link href="/ponude?tab=paja" className="underline underline-offset-2">dodaj u tabu Paja</Link></>}
+          akcija={trebaUgradnja && !d.ugradnja && !d.paja?.odgovor ? <Link href={`/ugradnja?dosije=${d.id}`} className="text-[11px] font-semibold text-ink underline underline-offset-2">Upiši Pajin odgovor</Link>
             : d.ugradnja && d.ugradnja.cena != null ? <PosaljiKlijentu mali telefon={telefon} imeFajla={imeFajlaUgradnje(d.ugradnja)}
                 napraviPdf={async () => napraviUgradnjaPdf(d.ugradnja!, await bajtoviSlike(d.ugradnja!.slika))}
                 tekst={(url) => porukaUgradnja(d.ugradnja!.broj, eurFmt(d.ugradnja!.cena), url)} /> : undefined} />

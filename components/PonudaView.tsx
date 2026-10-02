@@ -90,6 +90,7 @@ html, body { background: #6b7280; margin: 0; }
 .a1 { top: 100.2pt; } .a2 { top: 118.2pt; } .a3 { top: 139.9pt; }
 .a4 { top: 159.9pt; } .a5 { top: 175.9pt; } .a6 { top: 194.2pt; }
 .k1 { top: 42.4pt; }
+.k2 { top: 58pt; font-size: 9.5pt; }
 
 /* ---------- tabela i uslovi ---------- */
 .donji { position: absolute; left: 79.2pt; top: 407.6pt; width: 447.5pt; }
@@ -131,7 +132,7 @@ export function PonudaView({ sacuvana, nijeNadjena }: { sacuvana?: SacuvanaPonud
   // Sačuvana ponuda se prikazuje TAČNO kako je poslata (redovi iz baze), a nova se računa iz adrese.
   const u = izracunato.u;
   const m: PonudaMeta = sacuvana
-    ? { broj: sacuvana.broj, datum: sacuvana.datum, kupac: sacuvana.kupac, transportEur: sacuvana.transport_eur, saIstovarom: sacuvana.sa_istovarom, sastavio: sacuvana.sastavio || "Luka Jovanović" }
+    ? { broj: sacuvana.broj, datum: sacuvana.datum, kupac: sacuvana.kupac, transportEur: sacuvana.transport_eur, saIstovarom: sacuvana.sa_istovarom, sastavio: sacuvana.sastavio || "Luka Jovanović", telefon: telIzAdrese(sacuvana.adresa) ?? "" }
     : izracunato.m;
   const redovi = sacuvana ? sacuvana.redovi : ponudaRedovi(u, r);
   const ukupno = sacuvana ? Number(sacuvana.ukupno_rsd) : r.ukupno;
@@ -266,7 +267,7 @@ export function PonudaView({ sacuvana, nijeNadjena }: { sacuvana?: SacuvanaPonud
           <div className="levo a6 sitno">E-mail: komercijalapromobet@gmail.com</div>
         </div>
 
-        <div className="okvir kupac"><div className="sred k1">{m.kupac}</div></div>
+        <div className="okvir kupac"><div className="sred k1">{m.kupac}</div>{m.telefon?.trim() && <div className="sred k2">{m.telefon.trim()}</div>}</div>
 
         <div className="donji">
           <table className="tab">

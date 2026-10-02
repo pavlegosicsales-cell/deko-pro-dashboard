@@ -99,6 +99,7 @@ export async function napraviPonudaPdf(redovi: PonudaRed[], ukupno: number, m: P
   pisi("E-mail: komercijalapromobet@gmail.com", 81.2, 386.52, obican, 9.2);
 
   usred(m.kupac, (X.c2 + X.c3) / 2, 236.28, obican);
+  if (m.telefon?.trim()) usred(m.telefon.trim(), (X.c2 + X.c3) / 2, 252.5, obican, 9.5);   // Pavle 02.10.2026.: broj kupca ispod imena
 
   /* ---------- zaglavlje tabele ---------- */
   usred("NAZIV PROIZVODA", SREDINA.naziv, 441.48, bold);

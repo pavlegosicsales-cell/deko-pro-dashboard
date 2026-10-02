@@ -9,6 +9,15 @@ import type { PonudaMeta } from "@/lib/ponuda";
 import type { PajaPolja } from "@/lib/paja";
 import type { Ugradnja } from "@/lib/ugradnja";
 
+/** Razmena sa Pajom po kupcu (tab „Paja", 02.10.2026.): Pavle upiše šablon poruku, Paja odgovori tekstualnom ponudom. */
+export type PajaRazmena = {
+  poruka: string;            // specifikacija posla (šablon), kako je poslata Paji
+  poruka_kad: string;        // ISO
+  odgovor?: string | null;   // Pajin tekst ponude za ugradnju
+  odgovor_kad?: string | null;
+};
+export const cekaPaju = (d: { paja?: PajaRazmena | null; ugradnja?: Ugradnja | null }) => !!d.paja?.poruka && !d.paja.odgovor && !d.ugradnja;
+
 export type KalkulatorStanje = {
   delovi: Ulaz[];
   aktivni: number;
@@ -38,6 +47,7 @@ export type Dosije = {
   paja_poslato_kad: string | null;
   ugradnja: Ugradnja | null;
   ugradnja_kad: string | null;
+  paja?: PajaRazmena | null;   // šablon poruka za Paju i njegov tekstualni odgovor (migracija-8)
   created_at: string;
   updated_at: string;
 };
