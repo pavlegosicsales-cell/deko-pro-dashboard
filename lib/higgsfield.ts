@@ -71,7 +71,12 @@ async function post(body: unknown, sid?: string): Promise<Response> {
   const h: Record<string, string> = { Authorization: `Bearer ${token}`, "Content-Type": "application/json", Accept: "application/json, text/event-stream", "User-Agent": UA };
   if (sid) h["Mcp-Session-Id"] = sid;
   let r = await fetch(MCP, { method: "POST", headers: h, body: JSON.stringify(body) });
-  if (r.status === 401 && await osvezi()) { h.Authorization = `Bearer ${token}`; r = await fetch(MCP, { method: "POST", headers: h, body: JSON.stringify(body) }); }
+  if (r.status === 401) {
+    // druga instanca (ili Claude) je možda već osvežila token: prvo pročitaj bucket, pa tek onda osvežavaj
+    const pre = token; await ucitajIzBaze();
+    if (token !== pre || await osvezi()) { h.Authorization = `Bearer ${token}`; r = await fetch(MCP, { method: "POST", headers: h, body: JSON.stringify(body) }); }
+    if (r.status === 401 && token !== pre && await osvezi()) { h.Authorization = `Bearer ${token}`; r = await fetch(MCP, { method: "POST", headers: h, body: JSON.stringify(body) }); }
+  }
   return r;
 }
 
