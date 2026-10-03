@@ -2,7 +2,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import type { Dosije } from "@/lib/dosije";
 
 const KOLONE = "id, lead_id, kupac, telefon, mesto, opis, ukupno_rsd, palete, kg, stanje, prevoznik, prevoz_poslato_kad, transport_eur, sa_istovarom, paja_poslato_kad, ugradnja, ugradnja_kad, created_at, updated_at";
-const KOLONE_8 = KOLONE + ", paja";   // paja dolazi sa migracijom 8
+const KOLONE_8 = KOLONE;   // Pajina razmena je u ugradnja jsonb, nema posebne kolone
 const bezPaje = (msg?: string | null) => !!msg && /paja/i.test(msg);
 
 /** Svi dosijei, najskorije menjani prvi. Tabela dolazi sa migracija-7.sql. */

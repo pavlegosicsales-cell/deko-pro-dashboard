@@ -25,7 +25,11 @@ export type Ugradnja = {
   bezSlike?: boolean;    // ponuda bez pojasa sa slikom (Pavle, 01.10.2026.: za Paju i Luku dok se slike ne usavrše)
   dvoriste?: string | null; // fotka kupčevog dvorišta (Supabase storage); na njoj se crta vizuelizacija
   spec?: SpecSlike | null;  // mere i boja ograde za sliku (sa strane ponude; popune se iz leada)
-  tekst: string;         // Pajin original, čuva se da se zna odakle su brojevi
+  // razmena sa Pajom (tab Paja, 03.10.2026.): šablon poruka i kad je poslata; Pajin odgovor je `tekst` + kad
+  pajaPoruka?: string | null;
+  pajaPorukaKad?: string | null;
+  pajaOdgovorKad?: string | null;
+  tekst: string;         // Pajin original (= njegov odgovor iz taba Paja), čuva se čim se upiše
   sastavio: string;
 };
 

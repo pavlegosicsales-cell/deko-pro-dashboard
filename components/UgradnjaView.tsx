@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { izTekstaPaje, eurFmt, eurBroj, faliZaUgradnju, imeFajlaUgradnje, PRAZNA_UGRADNJA, type Ugradnja } from "@/lib/ugradnja";
 import { napraviUgradnjaPdf } from "@/lib/ugradnjaPdf";
 import { datumPonude } from "@/lib/ponuda";
-import { sacuvajUgradnju } from "@/app/dosijei/actions";
+import { sacuvajUgradnju, sacuvajPajaOdgovor } from "@/app/dosijei/actions";
 import { porukaUgradnja } from "@/lib/slanje";
 import { PosaljiKlijentu } from "@/components/PosaljiKlijentu";
 import { nacrtajOgradu, PODRAZUMEVANA_SPEC, type SpecSlike } from "@/lib/nacrt";
@@ -28,8 +28,8 @@ export function UgradnjaView({ uRedu, dosije, lead, demo, bezSlikePocetno }: { u
   const router = useRouter();
   const pocetna = (): Ugradnja => ({
     ...PRAZNA_UGRADNJA,
-    // Pajin tekst iz taba Paja: odmah pročitan u polja (bez klika), ako ponuda još nije pravljena
-    ...(!dosije?.ugradnja && dosije?.paja?.odgovor ? izTekstaPaje(dosije.paja.odgovor, {}) : {}),
+    // Pajin tekst (iz taba Paja ili ranije upisan): odmah pročitan u polja, ako ponuda još nema cenu
+    ...(dosije?.ugradnja?.tekst && dosije.ugradnja.cena == null ? izTekstaPaje(dosije.ugradnja.tekst, {}) : {}),
     ...(dosije?.ugradnja ?? {}),
     bezSlike: dosije?.ugradnja?.bezSlike ?? !!bezSlikePocetno,
     kupac: dosije?.ugradnja?.kupac || dosije?.kupac || "",
@@ -37,9 +37,10 @@ export function UgradnjaView({ uRedu, dosije, lead, demo, bezSlikePocetno }: { u
     datum: dosije?.ugradnja?.datum || datumPonude(),
   });
   const [u, setU] = useState<Ugradnja>(pocetna);
-  const [tekst, setTekst] = useState(dosije?.ugradnja?.tekst || dosije?.paja?.odgovor || "");
+  const [tekst, setTekst] = useState(dosije?.ugradnja?.tekst || "");
+  const [tekstStanje, setTekstStanje] = useState<"" | "radi" | "gotovo" | "greska">("");
   const [slike, setSlike] = useState<Slika[]>([]);
-  const [otprema] = useState<"" | "radi" | "greska">("");
+  const [otprema, setOtprema] = useState<"" | "radi" | "greska">("");
   const [pdfStanje, setPdfStanje] = useState<"" | "radi" | "gotovo" | "greska">("");
   const [cuvanje, setCuvanje] = useState<"" | "radi" | "gotovo" | "greska">("");
   const [poruka, setPoruka] = useState("");
@@ -59,6 +60,16 @@ export function UgradnjaView({ uRedu, dosije, lead, demo, bezSlikePocetno }: { u
   }, []);
 
   const set = (izm: Partial<Ugradnja>) => setU((s) => ({ ...s, ...izm }));
+  // Pajin odgovor se čuva čim se upiše (na izlazak iz polja), da ne nestane do pravljenja PDF-a (Pavle, 03.10.2026.)
+  const sacuvajTekst = async () => {
+    if (!dosije || demo) return;
+    if (tekst.trim() === (dosije.ugradnja?.tekst ?? "").trim()) return;
+    setTekstStanje("radi");
+    const r = await sacuvajPajaOdgovor(dosije.id, tekst);
+    setTekstStanje(r.ok ? "gotovo" : "greska"); if (!r.ok) setPoruka(r.msg ?? "Nije sačuvano.");
+    setTimeout(() => setTekstStanje(""), 2500);
+    router.refresh();
+  };
   const procitaj = () => {
     if (!tekst.trim()) return;
     setU((s) => izTekstaPaje(tekst, { ...s, kupac: s.kupac, lokacija: s.lokacija, broj: s.broj, datum: s.datum, slika: s.slika }));
@@ -125,6 +136,19 @@ export function UgradnjaView({ uRedu, dosije, lead, demo, bezSlikePocetno }: { u
     } catch (e) { setGen("greska"); setGenPoruka((e as Error).message); }
   };
 
+  const otpremi = async (f0: File) => {
+    setOtprema("radi");
+    const f = await uJpg(f0);
+    const fd = new FormData(); fd.append("slika", f); fd.append("ime", u.kupac || "ograda");
+    try {
+      const r = await fetch("/api/slika", { method: "POST", body: fd });
+      const j = await r.json();
+      if (!r.ok || !j.url) throw new Error(j.error || "Otpremanje nije uspelo.");
+      setSlike((s) => [{ url: j.url, ime: f.name, grupa: "ugradnja" }, ...s]);
+      set({ slika: j.url, bezSlike: false }); setOtprema("");
+    } catch (e) { setOtprema("greska"); setPoruka((e as Error).message); }
+  };
+
   const bajtoviSlike = async (): Promise<Uint8Array | null> => {
     if (!u.slika || u.bezSlike) return null;
     try {
@@ -167,7 +191,8 @@ export function UgradnjaView({ uRedu, dosije, lead, demo, bezSlikePocetno }: { u
           <div className="flex flex-col gap-4">
             <div className="card p-4 sm:p-5">
               <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Pajin odgovor</div>
-              <textarea value={tekst} onChange={(e) => setTekst(e.target.value)} rows={7} className="inp mt-2 text-[13px] leading-snug" placeholder={"Sto se tice ugradnje...\nCena ugradnje je 5900e\nU cenu ulazi\n..."} />
+              <textarea value={tekst} onChange={(e) => setTekst(e.target.value)} onBlur={() => void sacuvajTekst()} rows={7} className="inp mt-2 text-[13px] leading-snug" placeholder={"Sto se tice ugradnje...\nCena ugradnje je 5900e\nU cenu ulazi\n..."} />
+              {dosije && <p className="mt-1 text-[11px] text-muted">{tekstStanje === "radi" ? "Čuvam…" : tekstStanje === "gotovo" ? "Sačuvano u dosije ✓" : tekstStanje === "greska" ? <span className="text-red">Nije sačuvano.</span> : "Čuva se čim izađeš iz polja."}</p>}
               <button type="button" onClick={procitaj} disabled={!tekst.trim()} className="btn btn-sm btn-plain mt-2 w-full justify-center disabled:opacity-45">Pročitaj brojeve iz teksta</button>
               <p className="mt-1.5 text-[11px] text-muted">Čita cenu, avans, obe rate i šta ulazi u cenu. Sve ispod posle možeš da doteraš.</p>
             </div>
@@ -241,6 +266,10 @@ export function UgradnjaView({ uRedu, dosije, lead, demo, bezSlikePocetno }: { u
             <div className={`card p-4 sm:p-5 ${u.bezSlike ? "hidden" : ""}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">Slika ograde</div>
+                <label className={`text-[12px] font-semibold text-ink underline underline-offset-2 cursor-pointer ${otprema === "radi" ? "pointer-events-none opacity-50" : ""}`}>
+                  {otprema === "radi" ? "Otpremam…" : "Otpremi svoju sliku"}
+                  <input type="file" accept="image/*" className="sr-only" onChange={(e) => { const f = e.target.files?.[0]; if (f) void otpremi(f); e.target.value = ""; }} />
+                </label>
 
               </div>
               {otprema === "greska" && <p className="mt-1 text-[12px] text-warn">{poruka}</p>}

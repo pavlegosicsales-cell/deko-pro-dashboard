@@ -26,8 +26,8 @@ import type { LeadRow } from "@/components/LeadView";
 const REZIM: Record<string, string> = { ograda: "Ograda", zid: "Pun zid", obloga: "Obloga", rucno: "Ručno" };
 type Filter = "svi" | "fali" | "ceka";
 
-export function PonudeView({ uRedu, ponude, dosijei = [], leadovi = {}, leadoviPuni = [], migracija8Fali, demo, tabelaFali, tabelaDosijeaFali, greska, pocetniTab }: {
-  uRedu: number; ponude: SacuvanaPonuda[]; dosijei?: Dosije[]; leadovi?: Record<string, LeadZaDosije>; leadoviPuni?: LeadRow[]; migracija8Fali?: boolean;
+export function PonudeView({ uRedu, ponude, dosijei = [], leadovi = {}, leadoviPuni = [], demo, tabelaFali, tabelaDosijeaFali, greska, pocetniTab }: {
+  uRedu: number; ponude: SacuvanaPonuda[]; dosijei?: Dosije[]; leadovi?: Record<string, LeadZaDosije>; leadoviPuni?: LeadRow[];
   demo?: boolean; tabelaFali?: boolean; tabelaDosijeaFali?: boolean; greska?: string | null; pocetniTab?: "kupci" | "sve" | "paja";
 }) {
   const router = useRouter();
@@ -113,7 +113,7 @@ export function PonudeView({ uRedu, ponude, dosijei = [], leadovi = {}, leadoviP
           </>
         )}
 
-        {tab === "paja" && <PajaTab dosijei={dosijei.filter((x) => !obrisane.has(x.id))} leadovi={leadoviPuni} migracija8Fali={migracija8Fali} />}
+        {tab === "paja" && <PajaTab dosijei={dosijei.filter((x) => !obrisane.has(x.id))} leadovi={leadoviPuni} />}
 
         {tab === "sve" && (
           <>

@@ -19,9 +19,9 @@ export default async function Ponude({ searchParams }: { searchParams: Promise<R
   const leadMapa: Record<string, LeadZaDosije> = Object.fromEntries(leadovi.map((l) => [l.id, { obuhvat: l.obuhvat ?? null, status: l.status }]));
 
   if (JE_DEMO) return <PonudeView uRedu={uRedu} ponude={[]} demo pocetniTab={pocetniTab} />;
-  const [{ ponude, error }, { dosijei, error: greskaDosijea, migracija8Fali }] = await Promise.all([citajPonude(), citajDosijee()]);
+  const [{ ponude, error }, { dosijei, error: greskaDosijea }] = await Promise.all([citajPonude(), citajDosijee()]);
   return (
-    <PonudeView uRedu={uRedu} ponude={ponude} dosijei={dosijei} leadovi={leadMapa} leadoviPuni={leadovi} migracija8Fali={!!migracija8Fali} pocetniTab={pocetniTab}
+    <PonudeView uRedu={uRedu} ponude={ponude} dosijei={dosijei} leadovi={leadMapa} leadoviPuni={leadovi} pocetniTab={pocetniTab}
       tabelaFali={tabelaPonudaFali(error)} tabelaDosijeaFali={tabelaDosijeaFali(greskaDosijea)}
       greska={[error && !tabelaPonudaFali(error) ? error : null, greskaDosijea && !tabelaDosijeaFali(greskaDosijea) ? greskaDosijea : null].filter(Boolean).join(" · ") || null} />
   );

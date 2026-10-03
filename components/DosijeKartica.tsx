@@ -11,7 +11,7 @@ import { napraviUgradnjaPdf } from "@/lib/ugradnjaPdf";
 import { napraviPonudaPdf, imeFajla } from "@/lib/ponudaPdf";
 import { porukaMaterijal, porukaUgradnja, metaPonude, telIzAdrese, bajtoviSlike } from "@/lib/slanje";
 import { PosaljiKlijentu } from "@/components/PosaljiKlijentu";
-import { kadFmt, cekaPrevoz, type Dosije } from "@/lib/dosije";
+import { kadFmt, cekaPrevoz, pajaIz, pdfUgradnjeSpreman, type Dosije } from "@/lib/dosije";
 import { oznaciPoslato } from "@/app/dosijei/actions";
 
 /*
@@ -89,9 +89,10 @@ export function DosijeKartica({ d, ponude, lead, onOtvori, onObrisi }: {
   };
   // Pavlova pravila (02.10.2026.): ponuda za ugradnju znači da su materijal i prevoz već spremni;
   // Pajin tekst znači da je ugradnja rešena (PDF je po želji).
-  const imaUgradnju = !!d.ugradnja || !!d.paja?.odgovor;
+  const pj = pajaIz(d);
+  const imaUgradnju = pdfUgradnjeSpreman(d.ugradnja) || !!pj?.odgovor;
   const prevozStanje: Stanje = imaUgradnju || d.transport_eur != null || ponude.some((x) => x.transport_eur != null) ? "ok" : d.prevoz_poslato_kad ? "ceka" : "fali";
-  const ugradnjaStanje: Stanje = !trebaUgradnja ? "nema" : imaUgradnju ? "ok" : d.paja_poslato_kad || d.paja?.poruka ? "ceka" : "fali";
+  const ugradnjaStanje: Stanje = !trebaUgradnja ? "nema" : imaUgradnju ? "ok" : d.paja_poslato_kad || pj?.poruka ? "ceka" : "fali";
   const [poslatoPrevoz, setPoslatoPrevoz] = useState(false);
   const oznaciPrevoz = (ime: string) => { setPoslatoPrevoz(true); void oznaciPoslato(d.id, "prevoz", ime); };
   const kopirajPrevoz = async (tekst: string, ime: string) => { try { await navigator.clipboard.writeText(tekst); } catch { /* prazno */ } oznaciPrevoz(ime); };
@@ -130,12 +131,12 @@ export function DosijeKartica({ d, ponude, lead, onOtvori, onObrisi }: {
             </span>); })() : undefined} />
         <Red naslov="Ugradnja" stanje={ugradnjaStanje}
           tekst={!trebaUgradnja ? "samo materijal, ugradnja nije potrebna"
-            : d.ugradnja ? <Link href={`/ugradnja?dosije=${d.id}`} className="font-semibold text-ink underline underline-offset-2">Ponuda za ugradnju {d.ugradnja.broj || ""} · {eurFmt(d.ugradnja.cena)} €</Link>
-            : d.paja?.odgovor ? <>Paja poslao ponudu {kadFmt(d.paja.odgovor_kad)} · <Link href={`/ugradnja?dosije=${d.id}`} className="font-semibold text-ink underline underline-offset-2">napravi PDF</Link></>
-            : d.paja?.poruka ? <>poruka Paji {kadFmt(d.paja.poruka_kad)}, čeka se njegov odgovor · <Link href="/ponude?tab=paja" className="underline underline-offset-2">tab Paja</Link></>
+            : pdfUgradnjeSpreman(d.ugradnja) ? <Link href={`/ugradnja?dosije=${d.id}`} className="font-semibold text-ink underline underline-offset-2">Ponuda za ugradnju {d.ugradnja!.broj || ""} · {eurFmt(d.ugradnja!.cena)} €</Link>
+            : pj?.odgovor ? <>Paja poslao ponudu {kadFmt(pj.odgovor_kad)} · <Link href={`/ugradnja?dosije=${d.id}`} className="font-semibold text-ink underline underline-offset-2">napravi PDF</Link></>
+            : pj?.poruka ? <>poruka Paji {kadFmt(pj.poruka_kad)}, čeka se njegov odgovor · <Link href="/ponude?tab=paja" className="underline underline-offset-2">tab Paja</Link></>
             : d.paja_poslato_kad ? <>specifikacija poslata Paji {kadFmt(d.paja_poslato_kad)}, čeka se njegov odgovor</>
             : <>specifikacija Paji nije poslata · <Link href="/ponude?tab=paja" className="underline underline-offset-2">dodaj u tabu Paja</Link></>}
-          akcija={trebaUgradnja && !d.ugradnja && !d.paja?.odgovor ? <Link href={`/ugradnja?dosije=${d.id}`} className="text-[11px] font-semibold text-ink underline underline-offset-2">Upiši Pajin odgovor</Link>
+          akcija={trebaUgradnja && !pdfUgradnjeSpreman(d.ugradnja) && !pj?.odgovor ? <Link href={`/ugradnja?dosije=${d.id}`} className="text-[11px] font-semibold text-ink underline underline-offset-2">Upiši Pajin odgovor</Link>
             : d.ugradnja && d.ugradnja.cena != null ? <PosaljiKlijentu mali telefon={telefon} imeFajla={imeFajlaUgradnje(d.ugradnja)}
                 napraviPdf={async () => napraviUgradnjaPdf(d.ugradnja!, await bajtoviSlike(d.ugradnja!.slika))}
                 tekst={(url) => porukaUgradnja(d.ugradnja!.broj, eurFmt(d.ugradnja!.cena), url)} /> : undefined} />

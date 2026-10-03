@@ -9,14 +9,21 @@ import type { PonudaMeta } from "@/lib/ponuda";
 import type { PajaPolja } from "@/lib/paja";
 import type { Ugradnja } from "@/lib/ugradnja";
 
-/** Razmena sa Pajom po kupcu (tab „Paja", 02.10.2026.): Pavle upiše šablon poruku, Paja odgovori tekstualnom ponudom. */
+/** Razmena sa Pajom po kupcu (tab „Paja"): živi u `ugradnja` jsonb (pajaPoruka / tekst), bez nove kolone. */
 export type PajaRazmena = {
   poruka: string;            // specifikacija posla (šablon), kako je poslata Paji
   poruka_kad: string;        // ISO
-  odgovor?: string | null;   // Pajin tekst ponude za ugradnju
+  odgovor?: string | null;   // Pajin tekst ponude za ugradnju (= ugradnja.tekst)
   odgovor_kad?: string | null;
 };
-export const cekaPaju = (d: { paja?: PajaRazmena | null; ugradnja?: Ugradnja | null }) => !!d.paja?.poruka && !d.paja.odgovor && !d.ugradnja;
+export const pajaIz = (d: { ugradnja?: Ugradnja | null; paja_poslato_kad?: string | null }): PajaRazmena | null => {
+  const u = d.ugradnja;
+  if (!u?.pajaPoruka && !u?.tekst) return null;
+  return { poruka: u.pajaPoruka ?? "", poruka_kad: u.pajaPorukaKad ?? d.paja_poslato_kad ?? "", odgovor: u.tekst?.trim() || null, odgovor_kad: u.pajaOdgovorKad ?? null };
+};
+/** Ponuda za ugradnju je napravljena (PDF spreman) tek kad ima cenu. Sam Pajin tekst = ugradnja rešena, PDF po želji. */
+export const pdfUgradnjeSpreman = (u: Ugradnja | null | undefined) => !!u && u.cena != null;
+export const cekaPaju = (d: { ugradnja?: Ugradnja | null; paja_poslato_kad?: string | null }) => { const p = pajaIz(d); return !!p?.poruka && !p.odgovor && !pdfUgradnjeSpreman(d.ugradnja); };
 
 export type KalkulatorStanje = {
   delovi: Ulaz[];
@@ -47,7 +54,6 @@ export type Dosije = {
   paja_poslato_kad: string | null;
   ugradnja: Ugradnja | null;
   ugradnja_kad: string | null;
-  paja?: PajaRazmena | null;   // šablon poruka za Paju i njegov tekstualni odgovor (migracija-8)
   created_at: string;
   updated_at: string;
 };

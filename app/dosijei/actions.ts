@@ -5,7 +5,6 @@ import { revalidatePath } from "next/cache";
 import { JE_DEMO } from "@/lib/env";
 import { tabelaDosijeaFali, PORUKA_MIGRACIJA_7, type DosijeUnos } from "@/lib/dosije";
 import type { Ugradnja } from "@/lib/ugradnja";
-import type { PajaRazmena } from "@/lib/dosije";
 import { obavesti } from "@/lib/push";
 
 export type DosijeOdgovor = { ok: boolean; msg?: string; id?: string };
@@ -92,8 +91,7 @@ export async function obrisiDosije(id: string): Promise<DosijeOdgovor> {
   return { ok: true };
 }
 
-const PORUKA_MIGRACIJA_8 = "Kolona „paja“ još ne postoji. Pokreni supabase/migracija-8.sql u Supabase SQL editoru.";
-const faliPaja = (msg?: string | null) => !!msg && /paja/i.test(msg) && /column|schema cache/i.test(msg);
+const PRAZNA: Ugradnja = { broj: "", datum: "", kupac: "", lokacija: "", cena: null, avans: null, rata1: null, rata2: null, uracunato: ["Zidanje ograde", "Formiranje stubova", "Postavljanje kapa i okapnica"], nijeUracunato: ["Dekorativni blok (materijal se plaća posebno, avansno).", "Transport i istovar (po dogovoru).", "Temelj i iskop."], pocetak: "po dogovoru", trajanje: "", napomena: "Avans je deo ukupne cene i ne naplaćuje se dodatno. Materijal (deko blok) se uplaćuje avansno i spreman je za oko 10 dana od uplate, nakon čega čeka termin ugradnje.", slika: null, bezSlike: false, dvoriste: null, tekst: "", sastavio: "Gradi Lako" };
 
 /** Pavle upiše šablon poruku za Paju (tab Paja). Bez id-ja otvara nov dosije (kupac ne mora da bude lead). Paja dobija obaveštenje. */
 export async function sacuvajPajaPoruku(x: { id?: string | null; lead_id?: string | null; kupac: string; telefon?: string | null; mesto?: string | null; poruka: string }): Promise<DosijeOdgovor> {
@@ -103,33 +101,34 @@ export async function sacuvajPajaPoruku(x: { id?: string | null; lead_id?: strin
   const sad = new Date().toISOString();
   try {
     const postojeci = await nadji(x.id, x.lead_id);
-    const stari = postojeci ? ((await supabaseAdmin.from("dosijei").select("paja").eq("id", postojeci).maybeSingle()).data?.paja as PajaRazmena | null) : null;
-    const paja: PajaRazmena = { ...(stari ?? {}), poruka: x.poruka.trim(), poruka_kad: sad, odgovor: null, odgovor_kad: null };
-    const red = { paja, paja_poslato_kad: sad, updated_at: sad, ...(postojeci ? {} : { kupac: x.kupac.trim(), telefon: x.telefon ?? null, mesto: x.mesto ?? null, lead_id: x.lead_id ?? null }) };
+    const stara = postojeci ? ((await supabaseAdmin.from("dosijei").select("ugradnja, kupac, mesto").eq("id", postojeci).maybeSingle()).data as { ugradnja: Ugradnja | null; kupac: string; mesto: string | null } | null) : null;
+    const u: Ugradnja = { ...PRAZNA, kupac: x.kupac.trim(), lokacija: x.mesto ?? "", ...(stara?.ugradnja ?? {}), pajaPoruka: x.poruka.trim(), pajaPorukaKad: sad };
+    const red = { ugradnja: u, paja_poslato_kad: sad, updated_at: sad, ...(postojeci ? {} : { kupac: x.kupac.trim(), telefon: x.telefon ?? null, mesto: x.mesto ?? null, lead_id: x.lead_id ?? null }) };
     const upit = postojeci
       ? supabaseAdmin.from("dosijei").update(red).eq("id", postojeci).select("id").single()
       : supabaseAdmin.from("dosijei").insert(red).select("id").single();
     const { data, error } = await upit;
-    if (error) return { ok: false, msg: faliPaja(error.message) ? PORUKA_MIGRACIJA_8 : error.message };
+    if (error) return greska(error.message);
     void obavesti("paja", "Nova specifikacija za ugradnju", `${x.kupac.trim()}${x.mesto ? ", " + x.mesto : ""}: Pavle čeka tvoju ponudu.`);
     osvezi();
     return { ok: true, id: data.id, msg: "Poruka je u dosijeu; Paja je obavešten." };
-  } catch (e) { return { ok: false, msg: (e as Error).message }; }
+  } catch (e) { return greska((e as Error).message); }
 }
 
-/** Paja upiše tekstualnu ponudu za ugradnju. Pavle dobija obaveštenje. */
+/** Paja upiše tekstualnu ponudu za ugradnju (tab Paja ili polje „Pajin odgovor" na strani ugradnje). Čuva se odmah. Pavle dobija obaveštenje. */
 export async function sacuvajPajaOdgovor(id: string, odgovor: string): Promise<DosijeOdgovor> {
   if (JE_DEMO) return { ok: false, msg: "Demo režim: baza nije povezana." };
   const sad = new Date().toISOString();
-  const { data: d, error: e0 } = await supabaseAdmin.from("dosijei").select("kupac, paja").eq("id", id).maybeSingle();
-  if (e0) return { ok: false, msg: faliPaja(e0.message) ? PORUKA_MIGRACIJA_8 : e0.message };
-  const stari = (d?.paja ?? { poruka: "", poruka_kad: sad }) as PajaRazmena;
-  const paja: PajaRazmena = { ...stari, odgovor: odgovor.trim() || null, odgovor_kad: odgovor.trim() ? sad : null };
-  const { error } = await supabaseAdmin.from("dosijei").update({ paja, updated_at: sad }).eq("id", id);
-  if (error) return { ok: false, msg: error.message };
-  if (odgovor.trim()) void obavesti("pavle", "Paja poslao ponudu za ugradnju", `${d?.kupac ?? "Kupac"}: ponuda je u tabu Paja.`);
+  const { data: d, error: e0 } = await supabaseAdmin.from("dosijei").select("kupac, mesto, ugradnja").eq("id", id).maybeSingle();
+  if (e0) return greska(e0.message);
+  const stara = (d?.ugradnja ?? null) as Ugradnja | null;
+  const nov = !!odgovor.trim() && odgovor.trim() !== (stara?.tekst ?? "").trim();
+  const u: Ugradnja = { ...PRAZNA, kupac: d?.kupac ?? "", lokacija: d?.mesto ?? "", ...(stara ?? {}), tekst: odgovor.trim(), pajaOdgovorKad: odgovor.trim() ? (nov ? sad : stara?.pajaOdgovorKad ?? sad) : null };
+  const { error } = await supabaseAdmin.from("dosijei").update({ ugradnja: u, updated_at: sad }).eq("id", id);
+  if (error) return greska(error.message);
+  if (nov) void obavesti("pavle", "Paja poslao ponudu za ugradnju", `${d?.kupac ?? "Kupac"}: ponuda je u tabu Paja.`);
   osvezi();
-  return { ok: true, msg: odgovor.trim() ? "Ponuda je upisana; Pavle je obavešten." : "Odgovor je obrisan." };
+  return { ok: true, msg: odgovor.trim() ? "Pajin odgovor je sačuvan." : "Odgovor je obrisan." };
 }
 
 /** Beleži da je poruka poslata (prevozniku ili Paji) i sa kartice kupca, ne samo iz kalkulatora. */

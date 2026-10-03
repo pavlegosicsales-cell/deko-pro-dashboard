@@ -4,7 +4,7 @@ import { useMemo, useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { Dosije } from "@/lib/dosije";
-import { cekaPaju, kadFmt } from "@/lib/dosije";
+import { cekaPaju, kadFmt, pajaIz, pdfUgradnjeSpreman } from "@/lib/dosije";
 import type { LeadRow } from "@/components/LeadView";
 import { ulazIzLeada } from "@/lib/procena";
 import { izracunaj } from "@/lib/kalkulator";
@@ -21,19 +21,18 @@ import { Obavestenja } from "@/components/Obavestenja";
 */
 const punoIme = (l: LeadRow) => [l.ime, l.prezime].filter(Boolean).join(" ") || "Bez imena";
 
-export function PajaTab({ dosijei, leadovi, migracija8Fali }: { dosijei: Dosije[]; leadovi: LeadRow[]; migracija8Fali?: boolean }) {
+export function PajaTab({ dosijei, leadovi }: { dosijei: Dosije[]; leadovi: LeadRow[] }) {
   const router = useRouter();
   const [, start] = useTransition();
   const [poruka, setPoruka] = useState<string | null>(null);
   const [nova, setNova] = useState(false);
 
-  const saPorukom = dosijei.filter((d) => d.paja?.poruka);
-  const cekaju = saPorukom.filter(cekaPaju).sort((a, b) => (a.paja!.poruka_kad < b.paja!.poruka_kad ? -1 : 1));
-  const gotovi = saPorukom.filter((d) => !cekaPaju(d)).sort((a, b) => ((b.paja?.odgovor_kad ?? b.updated_at) > (a.paja?.odgovor_kad ?? a.updated_at) ? 1 : -1));
+  const saPorukom = dosijei.filter((d) => pajaIz(d)?.poruka);
+  const cekaju = saPorukom.filter(cekaPaju).sort((a, b) => (pajaIz(a)!.poruka_kad < pajaIz(b)!.poruka_kad ? -1 : 1));
+  const gotovi = saPorukom.filter((d) => !cekaPaju(d)).sort((a, b) => ((pajaIz(b)?.odgovor_kad ?? b.updated_at) > (pajaIz(a)?.odgovor_kad ?? a.updated_at) ? 1 : -1));
 
   return (
     <div className="flex flex-col gap-4">
-      {migracija8Fali && <div className="card border-l-4 border-l-red bg-red-bg p-3.5 text-[13px]"><b>Tab Paja još nije uključen u bazi.</b> Pokreni <code className="rounded bg-white px-1">supabase/migracija-8.sql</code> u Supabase SQL editoru (kolona paja + tabela pretplate), pa osveži.</div>}
 
       {/* kako radi, u tri reda */}
       <div className="card p-3.5 text-[13px] text-text">
@@ -79,11 +78,11 @@ export function PajaTab({ dosijei, leadovi, migracija8Fali }: { dosijei: Dosije[
 function PajaKartica({ d, ceka, onPoruka }: { d: Dosije; ceka?: boolean; onPoruka: (m: string) => void }) {
   const router = useRouter();
   const [, start] = useTransition();
-  const [odgovor, setOdgovor] = useState(d.paja?.odgovor ?? "");
+  const p = pajaIz(d)!;
+  const [odgovor, setOdgovor] = useState(p.odgovor ?? "");
   const [otvorena, setOtvorena] = useState(!!ceka);
   const [radi, setRadi] = useState(false);
   const [kopirano, setKopirano] = useState(false);
-  const p = d.paja!;
   const sacuvaj = () => {
     setRadi(true);
     start(async () => { const r = await sacuvajPajaOdgovor(d.id, odgovor); setRadi(false); onPoruka(r.msg ?? (r.ok ? "Sačuvano." : "Nije sačuvano.")); if (r.ok) router.refresh(); });
@@ -117,8 +116,8 @@ function PajaKartica({ d, ceka, onPoruka }: { d: Dosije; ceka?: boolean; onPoruk
         <label className="field"><span>{ceka ? "Pajin odgovor (nalepi ponudu za ugradnju)" : "Pajin odgovor"}</span>
           <textarea value={odgovor} onChange={(e) => setOdgovor(e.target.value)} rows={ceka ? 5 : 3} className="inp inp-sm leading-snug" placeholder={"Sto se tice ugradnje...\nCena ugradnje je 5900\nU cenu ulazi\n..."} /></label>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <button type="button" onClick={sacuvaj} disabled={radi || odgovor.trim() === (d.paja?.odgovor ?? "")} className={`btn btn-sm ${ceka ? "btn-green" : "btn-ghost"} disabled:opacity-45`}>{radi ? "Čuvam…" : ceka ? "Sačuvaj ponudu (obavesti Pavla)" : "Sačuvaj izmenu"}</button>
-          {p.odgovor && <Link href={`/ugradnja?dosije=${d.id}`} className="btn btn-sm">{d.ugradnja ? "Otvori ponudu za ugradnju" : "Napravi PDF ponude"}</Link>}
+          <button type="button" onClick={sacuvaj} disabled={radi || odgovor.trim() === (p.odgovor ?? "")} className={`btn btn-sm ${ceka ? "btn-green" : "btn-ghost"} disabled:opacity-45`}>{radi ? "Čuvam…" : ceka ? "Sačuvaj ponudu (obavesti Pavla)" : "Sačuvaj izmenu"}</button>
+          {p.odgovor && <Link href={`/ugradnja?dosije=${d.id}`} className="btn btn-sm">{pdfUgradnjeSpreman(d.ugradnja) ? "Otvori ponudu za ugradnju" : "Napravi PDF ponude"}</Link>}
         </div>
       </div>
     </div>
@@ -133,7 +132,7 @@ function NovaPoruka({ leadovi, dosijei, onGotovo, onOtkazi }: { leadovi: LeadRow
   const [radi, setRadi] = useState(false); const [greska, setGreska] = useState("");
   // leadovi koji traže ugradnju, oni bez poruke prvi
   const kandidati = useMemo(() => {
-    const imaPoruku = new Set(dosijei.filter((d) => d.paja?.poruka).map((d) => d.lead_id).filter(Boolean));
+    const imaPoruku = new Set(dosijei.filter((d) => pajaIz(d)?.poruka).map((d) => d.lead_id).filter(Boolean));
     return leadovi
       .filter((l) => l.obuhvat === "kljuc_u_ruke" || !l.obuhvat || l.obuhvat === "nepoznato")
       .filter((l) => l.status !== "propao")
