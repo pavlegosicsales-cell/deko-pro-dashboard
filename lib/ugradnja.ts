@@ -29,6 +29,8 @@ export type Ugradnja = {
   pajaPoruka?: string | null;
   pajaPorukaKad?: string | null;
   pajaOdgovorKad?: string | null;
+  // ručno označeno kao gotovo (Pavle, 03.10.2026.: kad je posao urađen van panela, npr. „Miloš ima sve")
+  rucno?: { materijal?: boolean; prevoz?: boolean; ugradnja?: boolean } | null;
   tekst: string;         // Pajin original (= njegov odgovor iz taba Paja), čuva se čim se upiše
   sastavio: string;
 };

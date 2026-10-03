@@ -141,3 +141,17 @@ export async function oznaciPoslato(id: string, sta: "prevoz" | "paja", prevozni
   osvezi();
   return { ok: true };
 }
+
+/** Ručno označi korak kao gotov (ili poništi): kad je urađen van panela. */
+export async function oznaciRucno(id: string, korak: "materijal" | "prevoz" | "ugradnja", gotovo: boolean): Promise<DosijeOdgovor> {
+  if (JE_DEMO) return { ok: false, msg: "Demo režim." };
+  const sad = new Date().toISOString();
+  const { data: d, error: e0 } = await supabaseAdmin.from("dosijei").select("kupac, mesto, ugradnja").eq("id", id).maybeSingle();
+  if (e0) return greska(e0.message);
+  const stara = (d?.ugradnja ?? null) as Ugradnja | null;
+  const u: Ugradnja = { ...PRAZNA, kupac: d?.kupac ?? "", lokacija: d?.mesto ?? "", ...(stara ?? {}), rucno: { ...(stara?.rucno ?? {}), [korak]: gotovo } };
+  const { error } = await supabaseAdmin.from("dosijei").update({ ugradnja: u, updated_at: sad }).eq("id", id);
+  if (error) return greska(error.message);
+  osvezi();
+  return { ok: true };
+}

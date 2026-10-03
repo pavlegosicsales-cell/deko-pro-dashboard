@@ -12,7 +12,7 @@ import { napraviPonudaPdf, imeFajla } from "@/lib/ponudaPdf";
 import { porukaMaterijal, porukaUgradnja, metaPonude, telIzAdrese, bajtoviSlike } from "@/lib/slanje";
 import { PosaljiKlijentu } from "@/components/PosaljiKlijentu";
 import { kadFmt, cekaPrevoz, pajaIz, pdfUgradnjeSpreman, type Dosije } from "@/lib/dosije";
-import { oznaciPoslato } from "@/app/dosijei/actions";
+import { oznaciPoslato, oznaciRucno } from "@/app/dosijei/actions";
 
 /*
   Kartica dosijea (Pavle, 01.10.2026.: „treba mi sve na jednom mestu, šta fali za kog klijenta").
@@ -90,7 +90,14 @@ export function DosijeKartica({ d, ponude, lead, onOtvori, onObrisi }: {
   // Pavlova pravila (02.10.2026.): ponuda za ugradnju znači da su materijal i prevoz već spremni;
   // Pajin tekst znači da je ugradnja rešena (PDF je po želji).
   const pj = pajaIz(d);
-  const imaUgradnju = pdfUgradnjeSpreman(d.ugradnja) || !!pj?.odgovor;
+  const rucno = d.ugradnja?.rucno ?? {};
+  const [rucnoLok, setRucnoLok] = useState<Record<string, boolean>>({});
+  const r_ = (k: "materijal" | "prevoz" | "ugradnja") => rucnoLok[k] ?? !!rucno[k];
+  const oznaci = (k: "materijal" | "prevoz" | "ugradnja", v: boolean) => { setRucnoLok((x) => ({ ...x, [k]: v })); void oznaciRucno(d.id, k, v); };
+  const rucnoDugme = (k: "materijal" | "prevoz" | "ugradnja") => r_(k)
+    ? <button type="button" onClick={() => oznaci(k, false)} className="text-[11px] text-muted underline underline-offset-2">poništi</button>
+    : <button type="button" onClick={() => oznaci(k, true)} className="text-[11px] font-semibold text-green underline underline-offset-2">označi gotovo</button>;
+  const imaUgradnju = pdfUgradnjeSpreman(d.ugradnja) || !!pj?.odgovor || r_("ugradnja");
   const prevozStanje: Stanje = imaUgradnju || d.transport_eur != null || ponude.some((x) => x.transport_eur != null) ? "ok" : d.prevoz_poslato_kad ? "ceka" : "fali";
   const ugradnjaStanje: Stanje = !trebaUgradnja ? "nema" : imaUgradnju ? "ok" : d.paja_poslato_kad || pj?.poruka ? "ceka" : "fali";
   const [poslatoPrevoz, setPoslatoPrevoz] = useState(false);
@@ -113,30 +120,32 @@ export function DosijeKartica({ d, ponude, lead, onOtvori, onObrisi }: {
       </div>
 
       <div className="mt-3">
-        <Red naslov="Materijal" stanje={ponude.length || imaUgradnju ? "ok" : s ? "fali" : "nema"}
+        <Red naslov="Materijal" stanje={ponude.length || imaUgradnju || r_("materijal") ? "ok" : "fali"}
           tekst={ponude.length
             ? <span className="flex flex-wrap gap-x-3 gap-y-0.5">{ponude.map((x) => <Link key={x.id} href={`/ponuda?id=${x.id}`} className="font-semibold text-ink underline underline-offset-2">Ponuda {x.broj} · {rsd(Number(x.ukupno_rsd))}</Link>)}</span>
-            : s ? "ponuda za materijal nije napravljena" : "ništa nije računato u kalkulatoru"}
+            : r_("materijal") ? "označeno kao gotovo" : imaUgradnju ? "rešeno uz ponudu za ugradnju" : <>ponuda za materijal nije napravljena · <Link href={d.lead_id ? `/kalkulator?lead=${d.lead_id}` : `/kalkulator?dosije=${d.id}`} className="font-semibold text-ink underline underline-offset-2">kalkulator</Link></>}
           akcija={ponude.length ? <PosaljiKlijentu mali telefon={telefon} imeFajla={imeFajla(metaPonude(ponude[0]))}
             napraviPdf={() => napraviPonudaPdf(ponude[0].redovi, Number(ponude[0].ukupno_rsd), metaPonude(ponude[0]))}
-            tekst={(url) => porukaMaterijal(ponude[0].broj, Number(ponude[0].ukupno_rsd), url)} /> : undefined} />
-        <Red naslov="Prevoz" stanje={imaUgradnju ? "ok" : s || d.prevoz_poslato_kad || poslatoPrevoz ? (poslatoPrevoz && prevozStanje === "fali" ? "ceka" : prevozStanje) : "nema"}
-          tekst={imaUgradnju && d.transport_eur == null && !ponude.some((x) => x.transport_eur != null) ? "rešeno uz ponudu za ugradnju" : poslatoPrevoz && !d.prevoz_poslato_kad ? "poruka prevozniku poslata, čeka se cena" : s || d.prevoz_poslato_kad ? prevozTekst() : "—"}
+            tekst={(url) => porukaMaterijal(ponude[0].broj, Number(ponude[0].ukupno_rsd), url)} /> : !imaUgradnju ? rucnoDugme("materijal") : undefined} />
+        <Red naslov="Prevoz" stanje={imaUgradnju || r_("prevoz") ? "ok" : d.prevoz_poslato_kad || poslatoPrevoz ? (poslatoPrevoz && prevozStanje === "fali" ? "ceka" : prevozStanje) : prevozStanje === "ok" ? "ok" : "fali"}
+          tekst={r_("prevoz") && d.transport_eur == null && !ponude.some((x) => x.transport_eur != null) ? "označeno kao gotovo" : imaUgradnju && d.transport_eur == null && !ponude.some((x) => x.transport_eur != null) ? "rešeno uz ponudu za ugradnju" : poslatoPrevoz && !d.prevoz_poslato_kad ? "poruka prevozniku poslata, čeka se cena" : s || d.prevoz_poslato_kad || prevozStanje === "ok" ? prevozTekst() : "poruka prevozniku nije poslata (prvo kalkulator)"}
           akcija={prevoz && r && !imaUgradnju ? (() => { const iz = izaberiPrevoznika(prevoz.palete, prevoz.kg, bezTransporta ? undefined : saIstovarom).prevoznik; const tekst = porukaPrevozu(mesto, prevoz.palete, prevoz.kg); return (
             <span className="flex items-center gap-2">
               <a href={prevoznikLink(iz, tekst)} target="_blank" rel="noreferrer" onClick={() => oznaciPrevoz(iz.ime)} className="text-[11px] font-semibold text-ink underline underline-offset-2">
                 {d.prevoz_poslato_kad || poslatoPrevoz ? "Pošalji ponovo" : `Pošalji ${dativ(iz)}`}
               </a>
               <button type="button" onClick={() => void kopirajPrevoz(tekst, iz.ime)} className="text-[11px] font-semibold text-muted underline underline-offset-2">Kopiraj</button>
-            </span>); })() : undefined} />
+              {prevozStanje !== "ok" && rucnoDugme("prevoz")}
+            </span>); })() : !imaUgradnju && prevozStanje !== "ok" ? rucnoDugme("prevoz") : undefined} />
         <Red naslov="Ugradnja" stanje={ugradnjaStanje}
           tekst={!trebaUgradnja ? "samo materijal, ugradnja nije potrebna"
             : pdfUgradnjeSpreman(d.ugradnja) ? <Link href={`/ugradnja?dosije=${d.id}`} className="font-semibold text-ink underline underline-offset-2">Ponuda za ugradnju {d.ugradnja!.broj || ""} · {eurFmt(d.ugradnja!.cena)} €</Link>
             : pj?.odgovor ? <>Paja poslao ponudu {kadFmt(pj.odgovor_kad)} · <Link href={`/ugradnja?dosije=${d.id}`} className="font-semibold text-ink underline underline-offset-2">napravi PDF</Link></>
+            : r_("ugradnja") ? "označeno kao gotovo"
             : pj?.poruka ? <>poruka Paji {kadFmt(pj.poruka_kad)}, čeka se njegov odgovor · <Link href="/ponude?tab=paja" className="underline underline-offset-2">tab Paja</Link></>
             : d.paja_poslato_kad ? <>specifikacija poslata Paji {kadFmt(d.paja_poslato_kad)}, čeka se njegov odgovor</>
             : <>specifikacija Paji nije poslata · <Link href="/ponude?tab=paja" className="underline underline-offset-2">dodaj u tabu Paja</Link></>}
-          akcija={trebaUgradnja && !pdfUgradnjeSpreman(d.ugradnja) && !pj?.odgovor ? <Link href={`/ugradnja?dosije=${d.id}`} className="text-[11px] font-semibold text-ink underline underline-offset-2">Upiši Pajin odgovor</Link>
+          akcija={trebaUgradnja && !pdfUgradnjeSpreman(d.ugradnja) && !pj?.odgovor ? <span className="flex items-center gap-2"><Link href={`/ugradnja?dosije=${d.id}`} className="text-[11px] font-semibold text-ink underline underline-offset-2">Upiši Pajin odgovor</Link>rucnoDugme("ugradnja")</span>
             : d.ugradnja && d.ugradnja.cena != null ? <PosaljiKlijentu mali telefon={telefon} imeFajla={imeFajlaUgradnje(d.ugradnja)}
                 napraviPdf={async () => napraviUgradnjaPdf(d.ugradnja!, await bajtoviSlike(d.ugradnja!.slika))}
                 tekst={(url) => porukaUgradnja(d.ugradnja!.broj, eurFmt(d.ugradnja!.cena), url)} /> : undefined} />

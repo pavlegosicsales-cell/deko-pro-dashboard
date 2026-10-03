@@ -49,7 +49,7 @@ export function PonudeView({ uRedu, ponude, dosijei = [], leadovi = {}, leadoviP
 
   const ponudeDosijea = (d: Dosije) => ponude.filter((x) => !obrisane.has(x.id) && (x.dosije_id === d.id || (!!d.lead_id && x.lead_id === d.lead_id)));
   const trebaUgradnja = (d: Dosije) => { const l = d.lead_id ? leadovi[d.lead_id] : null; return !l || (l.obuhvat !== "materijal" && l.obuhvat !== "materijal_prevoz"); };
-  const fali = (d: Dosije) => ponudeDosijea(d).length === 0 || (d.transport_eur == null && !d.prevoz_poslato_kad) || (trebaUgradnja(d) && !d.ugradnja && !d.paja_poslato_kad);
+  const fali = (d: Dosije) => { const r = d.ugradnja?.rucno ?? {}; const ug = !!d.ugradnja?.cena || !!d.ugradnja?.tekst || !!r.ugradnja; return (!ug && !r.materijal && ponudeDosijea(d).length === 0) || (!ug && !r.prevoz && d.transport_eur == null && !d.prevoz_poslato_kad && !ponudeDosijea(d).some((x) => x.transport_eur != null)) || (trebaUgradnja(d) && !ug && !d.paja_poslato_kad); };
   const kupci = dosijei
     .filter((d) => !obrisane.has(d.id))
     .filter((d) => !qq || [d.kupac, d.mesto ?? "", d.telefon ?? "", d.opis ?? ""].some((x) => x.toLowerCase().includes(qq)))
